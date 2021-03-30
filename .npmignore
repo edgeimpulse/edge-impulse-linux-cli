@@ -1,0 +1,8 @@
+library/
+img/
+examples/ts/
+examples/features.txt
+build/examples/
+tsconfig.json
+tslint.json
+webserver/*.ts
