@@ -32,7 +32,7 @@ Before you can classify data you'll first need to collect it. If you want to col
 
 ### Collecting data from other sensors
 
-To collect data from other sensors you'll need to write some code where you instantiate a `DataForwarder` object, write data samples, and finally call `finalize()` which uploads the data to Edge Impulse. [Here's an end-to-end example](examples/collect-custom.ts).
+To collect data from other sensors you'll need to write some code where you instantiate a `DataForwarder` object, write data samples, and finally call `finalize()` which uploads the data to Edge Impulse. [Here's an end-to-end example](https://github.com/edgeimpulse/edge-impulse-linux-cli/blob/master/examples/collect-custom.ts).
 
 ## Classifying data
 
@@ -55,10 +55,10 @@ To classify data (whether this is from the camera, the microphone, or a custom s
 
 Then you can start classifying realtime sensor data. We have examples for:
 
-* [Audio](examples/js/classify-audio.js) - grabs data from the microphone and classifies it in realtime.
-* [Audio (moving average filter)](examples/js/classify-audio-maf.js) - as above, but shows how to use the moving-average filter to smooth your data and reduce false positives.
-* [Camera](examples/js/classify-camera.js) - grabs data from a webcam and classifies it in realtime.
-* [Custom data](examples/js/classify-custom.js) - classifies custom sensor data.
+* [Audio](https://github.com/edgeimpulse/edge-impulse-linux-cli/blob/master/examples/js/classify-audio.js) - grabs data from the microphone and classifies it in realtime.
+* [Audio (moving average filter)](https://github.com/edgeimpulse/edge-impulse-linux-cli/blob/master/examples/js/classify-audio-maf.js) - as above, but shows how to use the moving-average filter to smooth your data and reduce false positives.
+* [Camera](https://github.com/edgeimpulse/edge-impulse-linux-cli/blob/master/examples/js/classify-camera.js) - grabs data from a webcam and classifies it in realtime.
+* [Custom data](https://github.com/edgeimpulse/edge-impulse-linux-cli/blob/master/examples/js/classify-custom.js) - classifies custom sensor data.
 
 ### Moving average filter
 
