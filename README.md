@@ -39,12 +39,7 @@ To collect data from other sensors you'll need to write some code where you inst
 To classify data (whether this is from the camera, the microphone, or a custom sensor) you'll need a model file. This model file contains all signal processing code, classical ML algorithms and neural networks - and typically contains hardware optimizations to run as fast as possible. To grab a model file:
 
 1. Train your model in Edge Impulse.
-1. Install the Edge Impulse CLI:
-
-    ```
-    $ npm install edge-impulse-cli -g
-    ```
-
+1. Install the [Edge Impulse for Linux CLI](https://docs.edgeimpulse.com/docs/edge-impulse-for-linux).
 1. Download the model file via:
 
     ```
