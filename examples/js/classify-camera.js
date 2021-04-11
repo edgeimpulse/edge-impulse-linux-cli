@@ -45,7 +45,7 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
         console.log('Using camera', device, 'starting...');
 
         await camera.start({
-            deviceId: device,
+            device: device,
             intervalMs: 200,
         });
 

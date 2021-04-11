@@ -79,9 +79,11 @@ export class GStreamer extends EventEmitter<{
         }
 
         // now we need to determine the resolution... we want something as close as possible to 640x480
-        let cap = device.caps.sort((a, b) => {
-            let diffA = Math.abs(a.width - 640) * Math.abs(a.height - 480);
-            let diffB = Math.abs(b.width - 640) * Math.abs(b.height - 480);
+        let cap = device.caps.filter(c => {
+            return c.width >= 640 && c.height >= 480;
+        }).sort((a, b) => {
+            let diffA = Math.abs(a.width - 640) + Math.abs(a.height - 480);
+            let diffB = Math.abs(b.width - 640) + Math.abs(b.height - 480);
 
             return diffA - diffB;
         })[0];
@@ -310,10 +312,15 @@ export class GStreamer extends EventEmitter<{
             d.caps = c.filter(x => x.width && x.height && x.framerate);
         }
 
-        return devices.filter(d => d.deviceClass === 'Video/Source').map(d => {
+        devices = devices.filter(d => d.deviceClass === 'Video/Source' && d.caps.length > 0);
+        return devices.map(d => {
+            let name = devices.filter(x => x.name === d.name).length >= 2 ?
+                d.name + ' (' + d.id + ')' :
+                d.name;
+
             return {
                 id: d.id,
-                name: d.name,
+                name: name,
                 caps: d.caps
             };
         });

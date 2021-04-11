@@ -111,8 +111,8 @@ export class RunnerDownloader extends EventEmitter<{
 
         let p = new Promise<void>((resolve2, reject2) => {
             let pingIv = setInterval(() => {
-                ws.ping();
-            }, 3000);
+                ws.send('2');
+            }, 25000);
 
             let checkJobStatusIv = setInterval(async () => {
                 try {
@@ -138,43 +138,37 @@ export class RunnerDownloader extends EventEmitter<{
                 }
             }, 3000);
 
-            const attachListeners = () => {
-                ws.onmessage = (msg) => {
-                    let data = <string>msg.data;
-                    try {
-                        let m = <any[]>JSON.parse(data.replace(/^[0-9]+/, ''));
-                        if (m[0] === 'job-data-' + jobId) {
-                            // tslint:disable-next-line: no-unsafe-any
-                            this.emit('build-progress', ((<any>m[1]).data).trim());
-                            allData.push(<string>(<any>m[1]).data);
+            ws.onmessage = (msg) => {
+                let data = <string>msg.data;
+                try {
+                    let m = <any[]>JSON.parse(data.replace(/^[0-9]+/, ''));
+                    if (m[0] === 'job-data-' + jobId) {
+                        // tslint:disable-next-line: no-unsafe-any
+                        this.emit('build-progress', ((<any>m[1]).data).trim());
+                        allData.push(<string>(<any>m[1]).data);
+                    }
+                    else if (m[0] === 'job-finished-' + jobId) {
+                        let success = (<any>m[1]).success;
+                        // console.log(BUILD_PREFIX, 'job finished', success);
+                        if (success) {
+                            clearInterval(checkJobStatusIv);
+                            resolve2();
                         }
-                        else if (m[0] === 'job-finished-' + jobId) {
-                            let success = (<any>m[1]).success;
-                            // console.log(BUILD_PREFIX, 'job finished', success);
-                            if (success) {
-                                clearInterval(checkJobStatusIv);
-                                resolve2();
-                            }
-                            else {
-                                clearInterval(checkJobStatusIv);
-                                reject2('Failed to build binary');
-                            }
+                        else {
+                            clearInterval(checkJobStatusIv);
+                            reject2('Failed to build binary');
                         }
                     }
-                    catch (ex) {
-                        // console.log(BUILD_PREFIX, 'Failed to parse', data);
-                    }
-                };
-
-                ws.onclose = async () => {
-                    clearInterval(pingIv);
-
-                    ws = await this.getWebsocket();
-                    attachListeners();
-                };
+                }
+                catch (ex) {
+                    // console.log(BUILD_PREFIX, 'Failed to parse', data);
+                }
             };
 
-            attachListeners();
+            ws.onclose = async () => {
+                reject2('Websocket was closed');
+                clearInterval(pingIv);
+            };
 
             setTimeout(() => {
                 reject2('Building did not succeed within 5 minutes: ' + allData.join(''));

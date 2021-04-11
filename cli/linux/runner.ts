@@ -118,10 +118,6 @@ function getModelPath(projectId: number, version: number) {
 // tslint:disable-next-line: no-floating-promises
 (async () => {
     try {
-        console.log(`This is a development preview.`);
-        console.log(`Edge Impulse does not offer support on edge-impulse-linux-runner at the moment.`);
-        console.log(``);
-
         let modelFile;
 
         // no model file passed in? then build / download the latest deployment...
@@ -349,7 +345,7 @@ async function connectCamera(cf: Config) {
 
     await camera.start({
         device: device,
-        intervalMs: 200,
+        intervalMs: 100,
     });
 
     camera.on('error', error => {

@@ -26,6 +26,8 @@ program
     .version(packageVersion)
     .option('--api-key <key>', 'API key to authenticate with Edge Impulse (overrides current credentials)')
     .option('--hmac-key <key>', 'HMAC key to sign new data with (overrides current credentials)')
+    .option('--disable-camera', `Don't prompt for camera`)
+    .option('--disable-microphone', `Don't prompt for microphone`)
     .option('--clean', 'Clear credentials')
     .option('--silent', `Run in silent mode, don't prompt for credentials`)
     .option('--dev', 'List development servers, alternatively you can use the EI_HOST environmental variable ' +
@@ -40,6 +42,8 @@ const silentArgv: boolean = !!program.silent;
 const verboseArgv: boolean = !!program.verbose;
 const apiKeyArgv = <string | undefined>program.apiKey;
 const hmacKeyArgv = <string | undefined>program.hmacKey;
+const noCamera: boolean = !!program.disableCamera;
+const noMicrophone: boolean = !!program.disableMicrophone;
 
 const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
 
@@ -63,7 +67,7 @@ const cliOptions = {
 class LinuxDevice extends EventEmitter<{
     snapshot: (buffer: Buffer) => void
 }> implements RemoteMgmtDevice  {
-    private _camera: ICamera;
+    private _camera: ICamera | undefined;
     private _config: EdgeImpulseConfig;
     private _devKeys: { apiKey: string, hmacKey: string };
     private _snapshotStreaming: boolean = false;
@@ -71,41 +75,44 @@ class LinuxDevice extends EventEmitter<{
     private _snapshotMutex = new Mutex();
     private _snapshotId = 0;
 
-    constructor(cameraInstance: ICamera, config: EdgeImpulseConfig, devKeys: { apiKey: string, hmacKey: string }) {
+    constructor(cameraInstance: ICamera | undefined, config: EdgeImpulseConfig,
+                devKeys: { apiKey: string, hmacKey: string }) {
         super();
 
         this._camera  = cameraInstance;
         this._config = config;
         this._devKeys = devKeys;
 
-        this._camera.on('snapshot', async (buffer) => {
-            const id = ++this._snapshotId;
-            const release = await this._snapshotMutex.acquire();
+        if (this._camera) {
+            this._camera.on('snapshot', async (buffer) => {
+                const id = ++this._snapshotId;
+                const release = await this._snapshotMutex.acquire();
 
-            // limit to 5 frames a second & no new frames should have come in...
-            try {
-                if (this._snapshotStreaming &&
-                    Date.now() - +this._lastSnapshot > 200 &&
-                    id === this._snapshotId) {
+                // limit to 5 frames a second & no new frames should have come in...
+                try {
+                    if (this._snapshotStreaming &&
+                        Date.now() - +this._lastSnapshot > 200 &&
+                        id === this._snapshotId) {
 
-                    const jpg = sharp(buffer);
+                        const jpg = sharp(buffer);
 
-                    const resized = await jpg.resize(undefined, 96).jpeg().toBuffer();
+                        const resized = await jpg.resize(undefined, 96).jpeg().toBuffer();
 
-                    if (verboseArgv) {
-                        console.log(Date.now(), 'sending snapshot');
+                        if (verboseArgv) {
+                            console.log(Date.now(), 'sending snapshot');
+                        }
+                        this.emit('snapshot', resized);
+                        this._lastSnapshot = new Date();
                     }
-                    this.emit('snapshot', resized);
-                    this._lastSnapshot = new Date();
                 }
-            }
-            catch (ex) {
-                console.warn('Failed to handle snapshot', ex);
-            }
-            finally {
-                release();
-            }
-        });
+                catch (ex) {
+                    console.warn('Failed to handle snapshot', ex);
+                }
+                finally {
+                    release();
+                }
+            });
+        }
     }
 
     connected() {
@@ -131,15 +138,22 @@ class LinuxDevice extends EventEmitter<{
     }
 
     getSensors() {
-        return [{
-            name: 'Microphone',
-            frequencies: [ 16000 ],
-            maxSampleLengthS: 3600
-        }, {
-            name: 'Camera (640x480)',
-            frequencies: [],
-            maxSampleLengthS: 60000
-        }];
+        let sensors = [];
+        if (!noMicrophone) {
+            sensors.push({
+                name: 'Microphone',
+                frequencies: [ 16000 ],
+                maxSampleLengthS: 3600
+            });
+        }
+        if (camera) {
+            sensors.push({
+                name: 'Camera (640x480)',
+                frequencies: [],
+                maxSampleLengthS: 60000
+            });
+        }
+        return sensors;
     }
 
     supportsSnapshotStreaming() {
@@ -160,9 +174,17 @@ class LinuxDevice extends EventEmitter<{
 
     async sampleRequest(data: MgmtInterfaceSampleRequestSample, ee: RemoteMgmtDeviceSampleEmitter) {
         if (data.sensor?.startsWith('Camera')) {
+            if (!this._camera) {
+                throw new Error('Linux daemon was started with --no-camera');
+            }
+
             ee.emit('started');
 
             let jpg = await new Promise<Buffer>((resolve, reject) => {
+                if (!this._camera) {
+                    return reject('No camera');
+                }
+
                 setTimeout(() => {
                     reject('Timeout');
                 }, 3000);
@@ -192,6 +214,10 @@ class LinuxDevice extends EventEmitter<{
             console.log(SERIAL_PREFIX, 'Sampling finished');
         }
         else if (data.sensor === 'Microphone') {
+            if (noMicrophone) {
+                throw new Error('Linux daemon was started with --no-microphone');
+            }
+
             let now = Date.now();
 
             const recorder = new AudioRecorder({
@@ -313,24 +339,22 @@ let configFactory: Config;
         const config = init.config;
         configFactory = init.configFactory;
 
-        console.log(`This is a development preview.`);
-        console.log(`Edge Impulse does not offer support on edge-impulse-linux at the moment.`);
-        console.log(``);
-
         const { projectId, devKeys } = await setupCliApp(configFactory, config, cliOptions, undefined);
 
         await configFactory.setLinuxProjectId(projectId);
 
-        if (process.platform === 'darwin') {
-            camera = new Imagesnap();
+        if (!noCamera) {
+            if (process.platform === 'darwin') {
+                camera = new Imagesnap();
+            }
+            else if (process.platform === 'linux') {
+                camera = new GStreamer(verboseArgv);
+            }
+            else {
+                throw new Error('Unsupported platform: "' + process.platform + '"');
+            }
+            await camera.init();
         }
-        else if (process.platform === 'linux') {
-            camera = new GStreamer(verboseArgv);
-        }
-        else {
-            throw new Error('Unsupported platform: "' + process.platform + '"');
-        }
-        await camera.init();
 
         const linuxDevice = new LinuxDevice(camera, config, devKeys);
         const remoteMgmt = new RemoteMgmt(projectId, devKeys, config, linuxDevice);
@@ -362,70 +386,75 @@ let configFactory: Config;
         process.on('SIGHUP', onSignal);
         process.on('SIGINT', onSignal);
 
-        let audioDevice: string | undefined;
-        const audioDevices = await AudioRecorder.ListDevices();
-        const storedAudio = await configFactory.getAudio();
-        if (storedAudio && audioDevices.find(d => d.id === storedAudio)) {
-            audioDevice = storedAudio;
-        }
-        else if (audioDevices.length === 1) {
-            audioDevice = audioDevices[0].id;
-        }
-        else if (audioDevices.length === 0) {
-            console.warn(SERIAL_PREFIX, 'Could not find any microphones...');
-            audioDevice = '';
-        }
-        else {
-            let inqRes = await inquirer.prompt([{
-                type: 'list',
-                choices: (audioDevices || []).map(p => ({ name: p.name, value: p.id })),
-                name: 'microphone',
-                message: 'Select a microphone',
-                pageSize: 20
-            }]);
-            audioDevice = <string>inqRes.microphone;
-        }
-        await configFactory.storeAudio(audioDevice);
+        if (!noMicrophone) {
+            let audioDevice: string | undefined;
+            const audioDevices = await AudioRecorder.ListDevices();
+            const storedAudio = await configFactory.getAudio();
+            if (storedAudio && audioDevices.find(d => d.id === storedAudio)) {
+                audioDevice = storedAudio;
+            }
+            else if (audioDevices.length === 1) {
+                audioDevice = audioDevices[0].id;
+            }
+            else if (audioDevices.length === 0) {
+                console.warn(SERIAL_PREFIX, 'Could not find any microphones, ' +
+                    'run this command with --disable-microphone to skip selection');
+                audioDevice = '';
+            }
+            else {
+                let inqRes = await inquirer.prompt([{
+                    type: 'list',
+                    choices: (audioDevices || []).map(p => ({ name: p.name, value: p.id })),
+                    name: 'microphone',
+                    message: 'Select a microphone (or run this command with --disable-microphone to skip selection)',
+                    pageSize: 20
+                }]);
+                audioDevice = <string>inqRes.microphone;
+            }
+            await configFactory.storeAudio(audioDevice);
 
-        console.log(SERIAL_PREFIX, 'Using microphone', audioDevice);
-
-        let cameraDevice: string | undefined;
-        const cameraDevices = await camera.listDevices();
-        if (cameraDevices.length === 0) {
-            throw new Error('Cannot find any webcams');
+            console.log(SERIAL_PREFIX, 'Using microphone', audioDevice);
         }
 
-        const storedCamera = await configFactory.getCamera();
-        if (storedCamera && cameraDevices.find(d => d === storedCamera)) {
-            cameraDevice = storedCamera;
+        if (camera) {
+            let cameraDevice: string | undefined;
+            const cameraDevices = await camera.listDevices();
+            if (cameraDevices.length === 0) {
+                throw new Error('Cannot find any webcams, run this command with --disable-camera to skip selection');
+            }
+
+            const storedCamera = await configFactory.getCamera();
+            if (storedCamera && cameraDevices.find(d => d === storedCamera)) {
+                cameraDevice = storedCamera;
+            }
+            else if (cameraDevices.length === 1) {
+                cameraDevice = cameraDevices[0];
+            }
+            else {
+                let inqRes = await inquirer.prompt([{
+                    type: 'list',
+                    choices: (cameraDevices || []).map(p => ({ name: p, value: p })),
+                    name: 'camera',
+                    message: 'Select a camera (or run this command with --disable-camera to skip selection)',
+                    pageSize: 20
+                }]);
+                cameraDevice = <string>inqRes.camera;
+            }
+            await configFactory.storeCamera(cameraDevice);
+
+            console.log(SERIAL_PREFIX, 'Using camera', cameraDevice, 'starting...');
+
+            await camera.start({
+                device: cameraDevice,
+                intervalMs: 200,
+            });
+
+            camera.on('error', error => {
+                console.log('imagesnap error', error);
+            });
+
+            console.log(SERIAL_PREFIX, 'Connected to camera');
         }
-        else if (cameraDevices.length === 1) {
-            cameraDevice = cameraDevices[0];
-        }
-        else {
-            let inqRes = await inquirer.prompt([{
-                type: 'list',
-                choices: (cameraDevices || []).map(p => ({ name: p, value: p })),
-                name: 'camera',
-                message: 'Select a camera',
-                pageSize: 20
-            }]);
-            cameraDevice = <string>inqRes.camera;
-        }
-        await configFactory.storeCamera(cameraDevice);
-
-        console.log(SERIAL_PREFIX, 'Using camera', cameraDevice, 'starting...');
-
-        await camera.start({
-            device: cameraDevice,
-            intervalMs: 200,
-        });
-
-        camera.on('error', error => {
-            console.log('imagesnap error', error);
-        });
-
-        console.log(SERIAL_PREFIX, 'Connected to camera');
 
         remoteMgmt.on('authenticationFailed', async () => {
             console.log(SERIAL_PREFIX, 'Authentication failed');
