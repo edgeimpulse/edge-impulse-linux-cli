@@ -4,5 +4,8 @@
         "exclude": [
             "./sdk/**"
         ]
+    },
+    "jsRules": {
+        "no-console": false
     }
 }

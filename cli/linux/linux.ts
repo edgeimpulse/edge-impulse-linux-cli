@@ -3,7 +3,7 @@
 import { Imagesnap } from "../../library/sensors/imagesnap";
 import inquirer from 'inquirer';
 import { initCliApp, setupCliApp } from "../init-cli-app";
-import { RemoteMgmt, RemoteMgmtDevice, RemoteMgmtDeviceSampleEmitter } from "../remote-mgmt-service";
+import { RemoteMgmt, RemoteMgmtDevice, RemoteMgmtDeviceSampleEmitter } from "../../shared/daemon/remote-mgmt-service";
 import { MgmtInterfaceSampleRequestSample } from "../../shared/MgmtInterfaceTypes";
 import { makeImage, makeWav, upload } from '../make-image';
 import { Config, EdgeImpulseConfig } from "../config";
@@ -17,6 +17,8 @@ import { ips } from "../../library/get-ips";
 import program from 'commander';
 import Path from 'path';
 import fs from 'fs';
+import Websocket from 'ws';
+import TypedEmitter from 'typed-emitter';
 
 const packageVersion = (<{ version: string }>JSON.parse(fs.readFileSync(
     Path.join(__dirname, '..', '..', '..', 'package.json'), 'utf-8'))).version;
@@ -64,9 +66,9 @@ const cliOptions = {
     }
 };
 
-class LinuxDevice extends EventEmitter<{
+class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
     snapshot: (buffer: Buffer) => void
-}> implements RemoteMgmtDevice  {
+}>) implements RemoteMgmtDevice  {
     private _camera: ICamera | undefined;
     private _config: EdgeImpulseConfig;
     private _devKeys: { apiKey: string, hmacKey: string };
@@ -130,7 +132,7 @@ class LinuxDevice extends EventEmitter<{
             return 'RASPBERRY_PI';
         }
 
-        if (id.startsWith('48:b0:2d')) {
+        if (id.startsWith('00:04:4b') || id.startsWith('48:b0:2d')) {
             return 'NVIDIA_JETSON_NANO';
         }
 
@@ -208,7 +210,8 @@ class LinuxDevice extends EventEmitter<{
                 category: data.path.indexOf('/training') > -1 ? 'training' : 'testing',
                 config: this._config,
                 dataBuffer: jpg,
-                label: data.label
+                label: data.label,
+                boundingBoxes: undefined
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -285,7 +288,8 @@ class LinuxDevice extends EventEmitter<{
                 category: data.path.indexOf('/training') > -1 ? 'training' : 'testing',
                 config: this._config,
                 dataBuffer: audioBuffer,
-                label: data.label
+                label: data.label,
+                boundingBoxes: undefined,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -357,7 +361,17 @@ let configFactory: Config;
         }
 
         const linuxDevice = new LinuxDevice(camera, config, devKeys);
-        const remoteMgmt = new RemoteMgmt(projectId, devKeys, config, linuxDevice);
+        const remoteMgmt = new RemoteMgmt(projectId, devKeys, config, linuxDevice,
+            url => new Websocket(url),
+            async (currName) => {
+                let nameDevice = <{ nameDevice: string }>await inquirer.prompt([{
+                    type: 'input',
+                    message: 'What name do you want to give this device?',
+                    name: 'nameDevice',
+                    default: currName
+                }]);
+                return nameDevice.nameDevice;
+            });
 
         let firstExit = true;
 

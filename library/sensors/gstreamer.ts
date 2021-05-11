@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, exec, ChildProcess } from 'child_process';
 import { EventEmitter } from 'tsee';
 import fs from 'fs';
 import Path from 'path';
@@ -9,6 +9,22 @@ import util from 'util';
 import crypto from 'crypto';
 
 const PREFIX = '\x1b[34m[GST]\x1b[0m';
+
+type GStreamerCap = {
+    type: 'video/x-raw' | 'image/jpeg' | 'nvarguscamerasrc',
+    width: number,
+    height: number,
+    framerate: number
+};
+
+type GStreamerDevice = {
+    name: string,
+    rawCaps: string[],
+    deviceClass: string,
+    inCapMode: boolean,
+    id: string,
+    caps: GStreamerCap[]
+};
 
 export class GStreamer extends EventEmitter<{
     snapshot: (buffer: Buffer) => void,
@@ -88,26 +104,73 @@ export class GStreamer extends EventEmitter<{
             return diffA - diffB;
         })[0];
 
-        const args = [
-            `v4l2src`,
-            `device=` + device.id,
-            // `num-buffers=999999999`,
-            `!`,
-            `video/x-raw,width=${cap.width},height=${cap.height}`,
-            `!`,
-            `videoconvert`,
-            `!`,
-            `jpegenc`,
-            `!`,
-            `multifilesink`,
-            `location=test%05d.jpg`
-        ];
+        if (!cap) {
+            cap = {
+                type: 'video/x-raw',
+                width: 640,
+                height: 480,
+                framerate: 30
+            };
+        }
+
+        let invokeProcess: 'spawn' | 'exec';
+        let args: string[];
+        if (cap.type === 'video/x-raw') {
+            args = [
+                `v4l2src`,
+                `device=` + device.id,
+                // `num-buffers=999999999`,
+                `!`,
+                `video/x-raw,width=${cap.width},height=${cap.height}`,
+                `!`,
+                `videoconvert`,
+                `!`,
+                `jpegenc`,
+                `!`,
+                `multifilesink`,
+                `location=test%05d.jpg`
+            ];
+            invokeProcess = 'spawn';
+        }
+        else if (cap.type === 'image/jpeg') {
+            args = [
+                `v4l2src`,
+                `device=` + device.id,
+                // `num-buffers=999999999`,
+                `!`,
+                `image/jpeg,width=${cap.width},height=${cap.height}`,
+                `!`,
+                `multifilesink`,
+                `location=test%05d.jpg`
+            ];
+            invokeProcess = 'spawn';
+        }
+        else if (cap.type === 'nvarguscamerasrc') {
+            args = [
+                `nvarguscamerasrc ! "video/x-raw(memory:NVMM),width=${cap.width},height=${cap.height}" ! ` +
+                    `nvvidconv flip-method=0 ! video/x-raw,width=${cap.width},height=${cap.height} ! nvvidconv ! ` +
+                    `jpegenc ! multifilesink location=test%05d.jpg`
+            ];
+            // no idea why... but if we throw this thru `spawn` this yields an invalid pipeline...
+            invokeProcess = 'exec';
+        }
+        else {
+            throw new Error('Invalid cap type ' + cap.type);
+        }
 
         if (this._verbose) {
             console.log(PREFIX, 'Starting gst-launch-1.0 with', args);
         }
 
-        this._captureProcess = spawn('gst-launch-1.0', args, { env: process.env, cwd: this._tempDir });
+        if (invokeProcess === 'spawn') {
+            this._captureProcess = spawn('gst-launch-1.0', args, { env: process.env, cwd: this._tempDir });
+        }
+        else if (invokeProcess === 'exec') {
+            this._captureProcess = exec('gst-launch-1.0 ' + args.join(' '), { env: process.env, cwd: this._tempDir });
+        }
+        else {
+            throw new Error('Invalid value for invokeProcess');
+        }
 
         if (this._captureProcess && this._captureProcess.stdout && this._captureProcess.stderr &&
             this._verbose) {
@@ -239,19 +302,6 @@ export class GStreamer extends EventEmitter<{
         let lines = (await spawnHelper('gst-device-monitor-1.0', []))
             .split('\n').filter(x => !!x).map(x => x.trim());
 
-        type GStreamerDevice = {
-            name: string,
-            rawCaps: string[],
-            deviceClass: string,
-            inCapMode: boolean,
-            id: string,
-            caps: {
-                width: number,
-                height: number,
-                framerate: number
-            }[]
-        };
-
         let devices: GStreamerDevice[] = [];
 
         let currDevice: GStreamerDevice | undefined;
@@ -298,21 +348,34 @@ export class GStreamer extends EventEmitter<{
         }
 
         for (let d of devices) {
-            let c = d.rawCaps.filter(x => x.startsWith('video/x-raw')).map(l => {
-                let width = (l.match(/width=[^\d]+(\d+)/) || [])[1];
-                let height = (l.match(/height=[^\d]+(\d+)/) || [])[1];
-                let framerate = (l.match(/framerate=[^\d]+(\d+)/) || [])[1];
+            let c: GStreamerCap[] =
+                d.rawCaps.filter(x => x.startsWith('video/x-raw') || x.startsWith('image/jpeg')).map(l => {
+                    let width = (l.match(/width=[^\d]+(\d+)/) || [])[1];
+                    let height = (l.match(/height=[^\d]+(\d+)/) || [])[1];
+                    let framerate = (l.match(/framerate=[^\d]+(\d+)/) || [])[1];
 
-                return {
-                    width: Number(width || '0'),
-                    height: Number(height || '0'),
-                    framerate: Number(framerate || '0'),
-                };
-            });
-            d.caps = c.filter(x => x.width && x.height && x.framerate);
+                    let r: GStreamerCap = {
+                        type: l.startsWith('video/x-raw') ? 'video/x-raw' : 'image/jpeg',
+                        width: Number(width || '0'),
+                        height: Number(height || '0'),
+                        framerate: Number(framerate || '0'),
+                    };
+                    return r;
+                });
+
+            c = c.filter(x => x.width && x.height && x.framerate);
+            // if the device supports video/x-raw, only list those types
+            if (c.some(x => x.type === 'video/x-raw')) {
+                c = c.filter(x => x.type === 'video/x-raw');
+            }
+            d.caps = c;
         }
 
         devices = devices.filter(d => d.deviceClass === 'Video/Source' && d.caps.length > 0);
+
+        // NVIDIA has their own plugins, query them too
+        devices = devices.concat(await this.listNvarguscamerasrcDevices());
+
         return devices.map(d => {
             let name = devices.filter(x => x.name === d.name).length >= 2 ?
                 d.name + ' (' + d.id + ')' :
@@ -324,6 +387,105 @@ export class GStreamer extends EventEmitter<{
                 caps: d.caps
             };
         });
+    }
+
+    private async listNvarguscamerasrcDevices(): Promise<GStreamerDevice[]> {
+        let hasPlugin: boolean;
+        try {
+            hasPlugin = (await spawnHelper('gst-inspect-1.0', [])).indexOf('nvarguscamerasrc') > -1;
+        }
+        catch (ex) {
+            if (this._verbose) {
+                console.log(PREFIX, 'Error invoking gst-inspect-1.0:', ex);
+            }
+            hasPlugin = false;
+        }
+
+        if (!hasPlugin) {
+            return [];
+        }
+
+        let caps: GStreamerCap[] = [];
+
+        let gstLaunchRet = await new Promise<string>((resolve, reject) => {
+            let command = 'gst-launch-1.0';
+            let args = [ 'nvarguscamerasrc' ];
+            let opts = { ignoreErrors: true };
+
+            const p = spawn(command, args, { env: process.env });
+
+            let allData: Buffer[] = [];
+
+            p.stdout.on('data', (data: Buffer) => {
+                allData.push(data);
+
+                if (data.toString('utf-8').indexOf('No cameras available') > -1) {
+                    p.kill('SIGINT');
+                    resolve(Buffer.concat(allData).toString('utf-8'));
+                }
+            });
+
+            p.stderr.on('data', (data: Buffer) => {
+                allData.push(data);
+
+                if (data.toString('utf-8').indexOf('No cameras available') > -1) {
+                    p.kill('SIGINT');
+                    resolve(Buffer.concat(allData).toString('utf-8'));
+                }
+            });
+
+            p.on('error', reject);
+
+            p.on('close', (code) => {
+                if (code === 0 || opts.ignoreErrors === true) {
+                    resolve(Buffer.concat(allData).toString('utf-8'));
+                }
+                else {
+                    reject('Error code was not 0: ' + Buffer.concat(allData).toString('utf-8'));
+                }
+            });
+        });
+
+        let lines = gstLaunchRet.split('\n').filter(x => !!x).map(x => x.trim());
+
+        lines = lines.filter(x => x.startsWith('GST_ARGUS:'));
+
+        if (this._verbose) {
+            console.log(PREFIX, 'gst-launch-1.0 nvarguscamerasrc options', lines.join('\n'));
+        }
+
+        for (let l of lines) {
+            let m = l.match(/^GST_ARGUS: (\d+)(?:\s*)x(?:\s*)(\d+).*?=(?:\s*)([\d,]+)(?:\s*)fps/);
+            if (!m) {
+                continue;
+            }
+
+            let cap: GStreamerCap = {
+                framerate: Number(m[3].replace(',', '.')),
+                height: Number(m[2]),
+                width: Number(m[1]),
+                type: 'nvarguscamerasrc'
+            };
+
+            if (!isNaN(cap.width) && !isNaN(cap.height) && !isNaN(cap.framerate)) {
+                caps.push(cap);
+            }
+        }
+
+        if (caps.length > 0) {
+            let d: GStreamerDevice = {
+                caps: caps,
+                deviceClass: '',
+                id: 'nvarguscamerasrc',
+                inCapMode: false,
+                name: 'CSI camera',
+                rawCaps: []
+            };
+            return [d];
+        }
+        else {
+            return [];
+        }
     }
 
     private async exists(path: string) {

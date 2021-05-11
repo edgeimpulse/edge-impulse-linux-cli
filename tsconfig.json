@@ -6,9 +6,14 @@
         "outDir": "./build",
         "strict": true,
         "sourceMap": true,
-        "declaration": true
+        "declaration": true,
+        "allowJs": true
     },
     "include": [
         "**/*"
+    ],
+    "exclude": [
+        "./build",
+        "./examples/js"
     ]
 }

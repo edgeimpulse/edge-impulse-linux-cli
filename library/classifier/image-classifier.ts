@@ -87,7 +87,9 @@ export class ImageClassifier extends EventEmitter<{
 
                 let timeSpent = Date.now() - now;
 
-                this.emit('result', classifyRes, timeSpent, await img.jpeg({ quality: 90 }).toBuffer());
+                this.emit('result', classifyRes,
+                    classifyRes.timing.dsp + classifyRes.timing.classification + classifyRes.timing.anomaly,
+                    await img.jpeg({ quality: 90 }).toBuffer());
             }
             finally {
                 this._runningInference = false;

@@ -106,7 +106,6 @@ window.WebServer = async () => {
                 els.cameraContainer.appendChild(el);
             }
 
-
             els.imageClassify.row.style.display = 'none';
         }
     });
