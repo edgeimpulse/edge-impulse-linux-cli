@@ -455,7 +455,7 @@ export class GStreamer extends EventEmitter<{
         }
 
         for (let l of lines) {
-            let m = l.match(/^GST_ARGUS: (\d+)(?:\s*)x(?:\s*)(\d+).*?=(?:\s*)([\d,]+)(?:\s*)fps/);
+            let m = l.match(/^GST_ARGUS: (\d+)(?:\s*)x(?:\s*)(\d+).*?=(?:\s*)([\d,\.]+)(?:\s*)fps/);
             if (!m) {
                 continue;
             }
