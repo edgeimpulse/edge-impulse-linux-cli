@@ -21,6 +21,7 @@ export type RunnerHelloResponseModelParameters = {
     input_features_count: number;
     image_input_height: number;
     image_input_width: number;
+    image_input_frames: number;
     image_channel_count: number;
     interval_ms: number;
     label_count: number;
@@ -286,6 +287,9 @@ export class LinuxImpulseRunner {
 
         if (!data.modelParameters.model_type) {
             data.modelParameters.model_type = 'classification';
+        }
+        if (typeof data.modelParameters.image_input_frames === 'undefined') {
+            data.modelParameters.image_input_frames = 1;
         }
 
         this._helloResponse = data;

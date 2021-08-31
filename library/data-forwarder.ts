@@ -3,6 +3,8 @@ import request from 'request';
 import http from 'http';
 import https from 'https';
 
+import encodeIngestionHeader from '../shared/encoding';
+
 const keepAliveAgentHttp = new http.Agent({ keepAlive: true });
 const keepAliveAgentHttps = new https.Agent({ keepAlive: true });
 
@@ -130,12 +132,12 @@ export class DataForwarder {
 
         let headers: { [k: string]: string} = {
             'x-api-key': this._options.apiKey,
-            'x-file-name': opts.filename,
+            'x-file-name': encodeIngestionHeader(opts.filename),
             'Content-Type': 'application/json',
             'Connection': 'keep-alive'
         };
         if (opts.label) {
-            headers['x-label'] = opts.label;
+            headers['x-label'] = encodeIngestionHeader(opts.label);
         }
         if (opts.allowDuplicates !== true) {
             headers['x-disallow-duplicates'] = '1';

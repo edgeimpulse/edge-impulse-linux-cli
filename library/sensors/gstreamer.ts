@@ -4,7 +4,7 @@ import fs from 'fs';
 import Path from 'path';
 import os from 'os';
 import { spawnHelper } from './spawn-helper';
-import { ICamera } from './icamera';
+import { ICamera, ICameraStartOptions } from './icamera';
 import util from 'util';
 import crypto from 'crypto';
 
@@ -27,7 +27,7 @@ type GStreamerDevice = {
 };
 
 export class GStreamer extends EventEmitter<{
-    snapshot: (buffer: Buffer) => void,
+    snapshot: (buffer: Buffer, filename: string) => void,
     error: (message: string) => void
 }> implements ICamera {
     private _captureProcess?: ChildProcess;
@@ -37,6 +37,7 @@ export class GStreamer extends EventEmitter<{
     private _verbose: boolean;
     private _lastHash = '';
     private _processing = false;
+    private _lastOptions?: ICameraStartOptions;
 
     constructor(verbose: boolean) {
         super();
@@ -69,13 +70,12 @@ export class GStreamer extends EventEmitter<{
         return devices.map(d => d.name);
     }
 
-    async start(options: {
-        device: string,
-        intervalMs: number
-    }) {
+    async start(options: ICameraStartOptions) {
         if (this._captureProcess) {
             throw new Error('Capture was already started');
         }
+
+        this._lastOptions = options;
 
         this._handledFiles = { };
 
@@ -218,7 +218,7 @@ export class GStreamer extends EventEmitter<{
                     // hash not changed? don't emit another event (streamer does this on Rpi)
                     let hash = crypto.createHash('sha256').update(data).digest('hex');
                     if (hash !== this._lastHash) {
-                        this.emit('snapshot', data);
+                        this.emit('snapshot', data, Path.basename(fileName));
                         lastPhoto = Date.now();
                     }
                     else if (this._verbose) {
@@ -486,6 +486,10 @@ export class GStreamer extends EventEmitter<{
         else {
             return [];
         }
+    }
+
+    getLastOptions() {
+        return this._lastOptions;
     }
 
     private async exists(path: string) {

@@ -1,5 +1,5 @@
 import { EventEmitter } from "tsee";
-import { LinuxImpulseRunner, RunnerClassifyResponseSuccess } from "./linux-impulse-runner";
+import { LinuxImpulseRunner, ModelInformation, RunnerClassifyResponseSuccess } from "./linux-impulse-runner";
 import sharp from 'sharp';
 import { ICamera } from "../sensors/icamera";
 
@@ -36,45 +36,47 @@ export class ImageClassifier extends EventEmitter<{
 
         this._stopped = false;
 
+        let frameQueue: { features: number[], img: sharp.Sharp }[] = [];
+
         this._camera.on('snapshot', async (data) => {
+            // are we looking at video? Then we always add to the frameQueue
+            if (model.modelParameters.image_input_frames > 1) {
+                let resized = await this.resizeImage(model, data);
+                frameQueue.push(resized);
+            }
+
             // still running inferencing?
             if (this._runningInference) {
+                return;
+            }
+
+            // too little frames? then wait for next one
+            if (model.modelParameters.image_input_frames > 1 &&
+                frameQueue.length < model.modelParameters.image_input_frames) {
                 return;
             }
 
             this._runningInference = true;
 
             try {
-                // sharp already auto-crops!
-
-                let values: number[] = [];
-                let img;
-                if (model.modelParameters.image_channel_count === 3) {
-                    img = sharp(data).resize({
-                        height: model.modelParameters.image_input_height,
-                        width: model.modelParameters.image_input_width
-                    });
-                    let buffer = await img.raw().toBuffer();
-
-                    for (let ix = 0; ix < buffer.length; ix += 3) {
-                        let r = buffer[ix + 0];
-                        let g = buffer[ix + 1];
-                        let b = buffer[ix + 2];
-                        // tslint:disable-next-line: no-bitwise
-                        values.push((r << 16) + (g << 8) + b);
-                    }
+                // if we have single frame then resize now
+                if (model.modelParameters.image_input_frames > 1) {
+                    frameQueue = frameQueue.slice(frameQueue.length - model.modelParameters.image_input_frames);
                 }
                 else {
-                    img = sharp(data).resize({
-                        height: model.modelParameters.image_input_height,
-                        width: model.modelParameters.image_input_width
-                    }).toColourspace('b-w');
-                    let buffer = await img.raw().toBuffer();
+                    let resized = await this.resizeImage(model, data);
+                    frameQueue = [ resized ];
+                }
 
-                    for (let p of buffer) {
-                        // tslint:disable-next-line: no-bitwise
-                        values.push((p << 16) + (p << 8) + p);
-                    }
+                let img = frameQueue[frameQueue.length - 1].img;
+
+                // slice the frame queue
+                frameQueue = frameQueue.slice(frameQueue.length - model.modelParameters.image_input_frames);
+
+                // concat the frames
+                let values: number[] = [];
+                for (let ix = 0; ix < model.modelParameters.image_input_frames; ix++) {
+                    values = values.concat(frameQueue[ix].features);
                 }
 
                 let now = Date.now();
@@ -107,5 +109,44 @@ export class ImageClassifier extends EventEmitter<{
             this._camera ? this._camera.stop() : Promise.resolve(),
             this._runner.stop()
         ]);
+    }
+
+    private async resizeImage(model: ModelInformation, data: Buffer) {
+        // resize image and add to frameQueue
+        let img;
+        let features = [];
+        if (model.modelParameters.image_channel_count === 3) {
+            img = sharp(data).resize({
+                height: model.modelParameters.image_input_height,
+                width: model.modelParameters.image_input_width,
+
+            });
+            let buffer = await img.raw().toBuffer();
+
+            for (let ix = 0; ix < buffer.length; ix += 3) {
+                let r = buffer[ix + 0];
+                let g = buffer[ix + 1];
+                let b = buffer[ix + 2];
+                // tslint:disable-next-line: no-bitwise
+                features.push((r << 16) + (g << 8) + b);
+            }
+        }
+        else {
+            img = sharp(data).resize({
+                height: model.modelParameters.image_input_height,
+                width: model.modelParameters.image_input_width
+            }).toColourspace('b-w');
+            let buffer = await img.raw().toBuffer();
+
+            for (let p of buffer) {
+                // tslint:disable-next-line: no-bitwise
+                features.push((p << 16) + (p << 8) + p);
+            }
+        }
+
+        return {
+            img: img,
+            features: features
+        };
     }
 }

@@ -5,7 +5,7 @@ import inquirer from 'inquirer';
 import { initCliApp, setupCliApp } from "../init-cli-app";
 import { RemoteMgmt, RemoteMgmtDevice, RemoteMgmtDeviceSampleEmitter } from "../../shared/daemon/remote-mgmt-service";
 import { MgmtInterfaceSampleRequestSample } from "../../shared/MgmtInterfaceTypes";
-import { makeImage, makeWav, upload } from '../make-image';
+import { makeImage, makeVideo, makeWav, upload } from '../make-image';
 import { Config, EdgeImpulseConfig } from "../config";
 import { EventEmitter } from "tsee";
 import { Mutex } from 'async-mutex';
@@ -19,6 +19,8 @@ import Path from 'path';
 import fs from 'fs';
 import Websocket from 'ws';
 import TypedEmitter from 'typed-emitter';
+import { Prophesee } from "../../library/sensors/prophesee";
+import { VideoRecorder } from "../../library/sensors/video-recorder";
 
 const packageVersion = (<{ version: string }>JSON.parse(fs.readFileSync(
     Path.join(__dirname, '..', '..', '..', 'package.json'), 'utf-8'))).version;
@@ -46,6 +48,7 @@ const apiKeyArgv = <string | undefined>program.apiKey;
 const hmacKeyArgv = <string | undefined>program.hmacKey;
 const noCamera: boolean = !!program.disableCamera;
 const noMicrophone: boolean = !!program.disableMicrophone;
+const isProphesee = process.env.PROPHESEE_CAM === '1';
 
 const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
 
@@ -67,7 +70,7 @@ const cliOptions = {
 };
 
 class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
-    snapshot: (buffer: Buffer) => void
+    snapshot: (buffer: Buffer, filename: string) => void
 }>) implements RemoteMgmtDevice  {
     private _camera: ICamera | undefined;
     private _config: EdgeImpulseConfig;
@@ -86,24 +89,21 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
         this._devKeys = devKeys;
 
         if (this._camera) {
-            this._camera.on('snapshot', async (buffer) => {
+            this._camera.on('snapshot', async (buffer, filename) => {
                 const id = ++this._snapshotId;
                 const release = await this._snapshotMutex.acquire();
 
-                // limit to 5 frames a second & no new frames should have come in...
+                // limit to 10 frames a second & no new frames should have come in...
                 try {
                     if (this._snapshotStreaming &&
-                        Date.now() - +this._lastSnapshot > 200 &&
+                        Date.now() - +this._lastSnapshot >= 100 &&
                         id === this._snapshotId) {
 
                         const jpg = sharp(buffer);
 
                         const resized = await jpg.resize(undefined, 96).jpeg().toBuffer();
 
-                        if (verboseArgv) {
-                            console.log(Date.now(), 'sending snapshot');
-                        }
-                        this.emit('snapshot', resized);
+                        this.emit('snapshot', resized, filename);
                         this._lastSnapshot = new Date();
                     }
                 }
@@ -154,11 +154,22 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 frequencies: [],
                 maxSampleLengthS: 60000
             });
+            if (isProphesee) {
+                sensors.push({
+                    name: 'Video (1280x720)',
+                    frequencies: [],
+                    maxSampleLengthS: 60000
+                });
+            }
         }
         return sensors;
     }
 
     supportsSnapshotStreaming() {
+        return true;
+    }
+
+    supportsSnapshotStreamingWhileCapturing() {
         return true;
     }
 
@@ -210,6 +221,60 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 category: data.path.indexOf('/training') > -1 ? 'training' : 'testing',
                 config: this._config,
                 dataBuffer: jpg,
+                label: data.label,
+                boundingBoxes: undefined
+            });
+
+            console.log(SERIAL_PREFIX, 'Sampling finished');
+        }
+        else if (data.sensor?.startsWith('Video')) {
+            if (!this._camera) {
+                throw new Error('Linux daemon was started with --no-camera');
+            }
+
+            console.log(SERIAL_PREFIX, 'Waiting 2 seconds');
+
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            ee.emit('started');
+
+            // give some time to emit...
+            await await new Promise((resolve) => setTimeout(resolve, 10));
+
+            let video = new VideoRecorder(this._camera, verboseArgv);
+            let videoEe = await video.record(data.length);
+
+            videoEe.on('processing', () => ee.emit('processing'));
+
+            let mp4 = await new Promise<Buffer>((resolve, reject) => {
+                if (!this._camera) {
+                    return reject('No camera');
+                }
+
+                videoEe.on('error', err => {
+                    reject(err);
+                });
+
+                videoEe.on('done', buffer => {
+                    resolve(buffer);
+                });
+            });
+
+            let img = makeVideo(mp4, this._devKeys.hmacKey, data.label + '.mp4');
+
+            console.log(SERIAL_PREFIX, 'Uploading sample to',
+                this._config.endpoints.internal.ingestion + data.path + '...');
+
+            ee.emit('uploading');
+
+            await upload({
+                apiKey: this._devKeys.apiKey,
+                filename: data.label + '.mp4',
+                processed: img,
+                allowDuplicates: false,
+                category: data.path.indexOf('/training') > -1 ? 'training' : 'testing',
+                config: this._config,
+                dataBuffer: mp4,
                 label: data.label,
                 boundingBoxes: undefined
             });
@@ -348,7 +413,10 @@ let configFactory: Config;
         await configFactory.setLinuxProjectId(projectId);
 
         if (!noCamera) {
-            if (process.platform === 'darwin') {
+            if (isProphesee) {
+                camera = new Prophesee(verboseArgv);
+            }
+            else if (process.platform === 'darwin') {
                 camera = new Imagesnap();
             }
             else if (process.platform === 'linux') {
@@ -458,13 +526,22 @@ let configFactory: Config;
 
             console.log(SERIAL_PREFIX, 'Using camera', cameraDevice, 'starting...');
 
-            await camera.start({
-                device: cameraDevice,
-                intervalMs: 200,
-            });
+            if (isProphesee) {
+                await camera.start({
+                    device: cameraDevice,
+                    intervalMs: 40,
+                });
+            }
+            else {
+                await camera.start({
+                    device: cameraDevice,
+                    intervalMs: 200,
+                });
+            }
+
 
             camera.on('error', error => {
-                console.log('imagesnap error', error);
+                console.log('camera error', error);
             });
 
             console.log(SERIAL_PREFIX, 'Connected to camera');

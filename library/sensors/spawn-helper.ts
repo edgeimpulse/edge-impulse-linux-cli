@@ -1,9 +1,9 @@
 import { spawn } from 'child_process';
 
 export function spawnHelper(command: string, args: string[],
-                            opts: { ignoreErrors: boolean } = { ignoreErrors: false }) {
+                            opts: { ignoreErrors: boolean, cwd?: string } = { ignoreErrors: false }) {
     return new Promise<string>((resolve, reject) => {
-        const p = spawn(command, args, { env: process.env });
+        const p = spawn(command, args, { env: process.env, cwd: opts.cwd });
 
         let allData: Buffer[] = [];
 

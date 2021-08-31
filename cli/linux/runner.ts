@@ -20,6 +20,7 @@ import socketIO from 'socket.io';
 import sharp from 'sharp';
 import { AudioRecorder } from '../../library';
 import { ips } from '../get-ips';
+import { Prophesee } from '../../library/sensors/prophesee';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 const BUILD_PREFIX = '\x1b[32m[BLD]\x1b[0m';
@@ -37,6 +38,7 @@ program
     .option('--model-file <file>', 'Specify model file, if not provided the model will be fetched from Edge Impulse')
     .option('--api-key <key>', 'API key to authenticate with Edge Impulse (overrides current credentials)')
     .option('--download <file>', 'Just download the model and store it on the file system')
+    .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand')
     .option('--clean', 'Clear credentials')
     .option('--silent', `Run in silent mode, don't prompt for credentials`)
     .option('--quantized', 'Download int8 quantized neural networks, rather than the float32 neural networks. ' +
@@ -58,6 +60,7 @@ const verboseArgv: boolean = !!program.verbose;
 const apiKeyArgv = <string | undefined>program.apiKey;
 const modelFileArgv = <string | undefined>program.modelFile;
 const downloadArgv = <string | undefined>program.download;
+const forceTargetArgv = <string | undefined>program.forceTarget;
 
 process.on('warning', e => console.warn(e.stack));
 
@@ -130,7 +133,8 @@ function getModelPath(projectId: number, version: number) {
 
             await configFactory.setLinuxProjectId(projectId);
 
-            const downloader = new RunnerDownloader(projectId, quantizedArgv ? 'int8' : 'float32', config);
+            const downloader = new RunnerDownloader(projectId, quantizedArgv ? 'int8' : 'float32',
+                config, forceTargetArgv);
             downloader.on('build-progress', msg => {
                 console.log(BUILD_PREFIX, msg);
             });
@@ -167,6 +171,7 @@ function getModelPath(projectId: number, version: number) {
             }
             configFactory = new Config();
             modelFile = modelFileArgv;
+            await fs.promises.chmod(modelFile, 0o755);
         }
 
         const runner = new LinuxImpulseRunner(modelFile);
@@ -305,7 +310,10 @@ function getModelPath(projectId: number, version: number) {
 
 async function connectCamera(cf: Config) {
     let camera: ICamera;
-    if (process.platform === 'darwin') {
+    if (process.env.PROPHESEE_CAM === '1') {
+        camera = new Prophesee(verboseArgv);
+    }
+    else if (process.platform === 'darwin') {
         camera = new Imagesnap();
     }
     else if (process.platform === 'linux') {
@@ -408,7 +416,14 @@ function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier:
     // you can also get the actual image being classified from 'imageClassifier.on("result")',
     // but then you're limited by the inference speed.
     // here we get a direct feed from the camera so we guarantee the fps that we set earlier.
+
+    let nextFrame = Date.now();
+    let processingFrame = false;
     camera.on('snapshot', async (data) => {
+        if (nextFrame > Date.now() || processingFrame) return;
+
+        processingFrame = true;
+
         let img;
         if (model.modelParameters.image_channel_count === 3) {
             img = sharp(data).resize({
@@ -426,6 +441,9 @@ function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier:
         io.emit('image', {
             img: 'data:image/jpeg;base64,' + (await img.jpeg().toBuffer()).toString('base64')
         });
+
+        nextFrame = Date.now() + 50;
+        processingFrame = false;
     });
 
     imgClassifier.on('result', async (result, timeMs, imgAsJpg) => {

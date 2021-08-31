@@ -11,16 +11,23 @@ export class RunnerDownloader extends EventEmitter<{
     private _projectId: number;
     private _config: EdgeImpulseConfig;
     private _modelType: 'int8' | 'float32';
+    private _forceTarget: string | undefined;
 
-    constructor(projectId: number, modelType: 'int8' | 'float32', config: EdgeImpulseConfig) {
+    constructor(projectId: number, modelType: 'int8' | 'float32',
+                config: EdgeImpulseConfig, forceTarget: string | undefined) {
         super();
 
         this._projectId = projectId;
         this._config = config;
         this._modelType = modelType;
+        this._forceTarget = forceTarget;
     }
 
     async getDownloadType() {
+        if (this._forceTarget) {
+            return this._forceTarget;
+        }
+
         let downloadType: string;
         if (process.platform === 'darwin') {
             if (process.arch !== 'x64') {
@@ -47,6 +54,9 @@ export class RunnerDownloader extends EventEmitter<{
                 }
 
                 downloadType = 'runner-linux-aarch64';
+            }
+            else if (process.arch === 'x64') {
+                downloadType = 'runner-linux-x86_64';
             }
             else {
                 throw new Error('Unsupported architecture "' + process.arch + '", only ' +

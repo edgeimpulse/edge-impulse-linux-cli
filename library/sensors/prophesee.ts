@@ -5,21 +5,31 @@ import Path from 'path';
 import os from 'os';
 import { spawnHelper } from './spawn-helper';
 import { ICamera, ICameraStartOptions } from './icamera';
+import crypto from 'crypto';
+import util from 'util';
 
-export class Imagesnap extends EventEmitter<{
+const PREFIX = '\x1b[34m[PRO]\x1b[0m';
+
+export class Prophesee extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
     error: (message: string) => void
 }> implements ICamera {
     private _captureProcess?: ChildProcess;
     private _tempDir?: string;
     private _watcher?: fs.FSWatcher;
+    private _verbose: boolean;
+    private _handledFiles: { [k: string]: true } = { };
+    private _lastHash = '';
+    private _processing = false;
     private _lastOptions?: ICameraStartOptions;
 
     /**
-     * Instantiate the imagesnap backend (on macOS)
+     * Instantiate the prophesee backend
      */
-    constructor() {
+    constructor(verbose: boolean) {
         super();
+
+        this._verbose = verbose;
     }
 
     /**
@@ -27,10 +37,10 @@ export class Imagesnap extends EventEmitter<{
      */
     async init() {
         try {
-            await spawnHelper('which', [ 'imagesnap' ]);
+            await spawnHelper('which', [ 'prophesee-cam' ]);
         }
         catch (ex) {
-            throw new Error('Missing "imagesnap" in PATH. Install via `brew install imagesnap`');
+            throw new Error('Missing "prophesee-cam" in PATH.');
         }
     }
 
@@ -38,19 +48,7 @@ export class Imagesnap extends EventEmitter<{
      * List all available cameras
      */
     async listDevices() {
-        let devices = await spawnHelper('imagesnap', [ '-l' ]);
-        let names = devices.split('\n').filter(l => l.startsWith('<') || l.startsWith('=>')).map(l => {
-            // Big Sur
-            if (l.startsWith('=>')) {
-                return l.substr(3).trim();
-            }
-
-            // Catalina
-            let name = l.split('[')[1];
-            return name.substr(0, name.length - 1);
-        });
-
-        return names;
+        return ['Prophesee camera'];
     }
 
     /**
@@ -70,28 +68,74 @@ export class Imagesnap extends EventEmitter<{
             throw new Error('Invalid device ' + options.device);
         }
 
-        this._captureProcess = spawn('imagesnap', [
-            '-d', options.device,
-            '-t', (options.intervalMs / 1000).toString()
+        this._captureProcess = spawn('prophesee-cam', [
+            '--out-folder', this._tempDir,
+            '--fps', (1000 / options.intervalMs).toString()
         ], { env: process.env, cwd: this._tempDir });
 
+        if (this._verbose && this._captureProcess.stdout && this._captureProcess.stderr) {
+            this._captureProcess.stdout.on('data', (data: Buffer) => {
+                console.log(PREFIX, data.toString('utf-8').trim());
+            });
+            this._captureProcess.stderr.on('data', (data: Buffer) => {
+                console.log(PREFIX, data.toString('utf-8').trim());
+            });
+        }
+
+        let lastPhoto = 0;
+
         this._watcher = fs.watch(this._tempDir, async (eventType, fileName) => {
-            if (eventType === 'rename' && fileName.endsWith('.jpg') && this._tempDir) {
+            // if (eventType !== 'rename') return;
+            if (!(fileName.endsWith('.jpeg') || fileName.endsWith('.jpg'))) return;
+            if (!this._tempDir) return;
+            if (this._handledFiles[fileName]) return;
+
+            try {
+                this._processing = true;
+                this._handledFiles[fileName] = true;
+
+                if (lastPhoto !== 0 && this._verbose) {
+                    console.log(PREFIX, 'Got snapshot', fileName, 'time since last:',
+                        (Date.now() - lastPhoto) + 'ms.');
+                }
+
                 try {
                     let data = await fs.promises.readFile(Path.join(this._tempDir, fileName));
-                    this.emit('snapshot', data, Path.basename(fileName));
+
+                    // hash not changed? don't emit another event (streamer does this on Rpi)
+                    let hash = crypto.createHash('sha256').update(data).digest('hex');
+                    if (hash !== this._lastHash) {
+                        this.emit('snapshot', data, Path.basename(fileName));
+                        lastPhoto = Date.now();
+                    }
+                    else if (this._verbose) {
+                        console.log(PREFIX, 'Discarding', fileName, 'hash does not differ');
+                    }
+                    this._lastHash = hash;
                 }
                 catch (ex) {
-                    console.error('Failed to load file', Path.join(this._tempDir, fileName));
+                    console.error('Failed to load file', Path.join(this._tempDir, fileName), ex);
                 }
+
+                if (await this.exists(Path.join(this._tempDir, fileName))) {
+                    await fs.promises.unlink(Path.join(this._tempDir, fileName));
+                }
+            }
+            finally {
+                this._processing = false;
             }
         });
 
         return new Promise<void>((resolve, reject) => {
             if (this._captureProcess) {
                 this._captureProcess.on('close', code => {
+                    if (this._verbose) {
+                        console.log(PREFIX, 'Closed with exit code', code);
+                    }
+
                     if (typeof code === 'number') {
-                        reject('Capture process failed with code ' + code);
+                        reject('Failed to start Prophesee cam, capture process exited with code ' + code + '. ' +
+                            'Run with --verbose to see full device logs.');
                     }
                     else {
                         reject('Failed to start capture process, but no exit code. ' +
@@ -114,7 +158,8 @@ export class Imagesnap extends EventEmitter<{
                 });
 
                 setTimeout(() => {
-                    return reject('First photo was not created within 10 seconds');
+                    return reject('Did not receive any data from the camera, try restarting ' +
+                        'the camera. Or run with --verbose to see full device logs.');
                 }, 10000);
             })();
         });
@@ -134,7 +179,7 @@ export class Imagesnap extends EventEmitter<{
                     if (this._captureProcess) {
                         this._captureProcess.kill('SIGHUP');
                     }
-                }, 500);
+                }, 2000);
             }
             else {
                 resolve();
@@ -144,5 +189,17 @@ export class Imagesnap extends EventEmitter<{
 
     getLastOptions() {
         return this._lastOptions;
+    }
+
+    private async exists(path: string) {
+        let exists = false;
+        try {
+            await util.promisify(fs.stat)(path);
+            exists = true;
+        }
+        catch (ex) {
+            /* noop */
+        }
+        return exists;
     }
 }
