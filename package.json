@@ -1,6 +1,6 @@
 {
   "name": "edge-impulse-linux",
-  "version": "1.2.9",
+  "version": "1.2.10",
   "description": "Node.js SDK and tools for Edge Impulse for Linux",
   "directories": {
     "example": "examples"
@@ -11,7 +11,8 @@
   },
   "bin": {
     "edge-impulse-linux": "build/cli/linux/linux.js",
-    "edge-impulse-linux-runner": "build/cli/linux/runner.js"
+    "edge-impulse-linux-runner": "build/cli/linux/runner.js",
+    "edge-impulse-camera-debug": "build/cli/linux/camera-debug.js"
   },
   "main": "build/library/index.js",
   "types": "build/library/index.d.ts",

@@ -74,7 +74,7 @@ type RunnerClassifyResponse = ({
 export type ModelInformation = {
     project: RunnerHelloResponseProject,
     modelParameters: RunnerHelloResponseModelParameters & {
-        sensorType: 'unknown' | 'accelerometer' | 'microphone' | 'camera'
+        sensorType: 'unknown' | 'accelerometer' | 'microphone' | 'camera' | 'positional'
     }
 };
 
@@ -267,7 +267,7 @@ export class LinuxImpulseRunner {
             throw new Error(resp.error);
         }
 
-        let sensor: 'unknown' | 'accelerometer' | 'microphone' | 'camera' = 'unknown';
+        let sensor: 'unknown' | 'accelerometer' | 'microphone' | 'camera' | 'positional' = 'unknown';
         switch (resp.model_parameters.sensor) {
             case -1:
             default:
@@ -278,6 +278,8 @@ export class LinuxImpulseRunner {
                 sensor = 'accelerometer'; break;
             case 3:
                 sensor = 'camera'; break;
+            case 4:
+                sensor = 'positional'; break;
         }
 
         let data: ModelInformation = {

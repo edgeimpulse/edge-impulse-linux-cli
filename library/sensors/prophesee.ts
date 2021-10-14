@@ -68,10 +68,18 @@ export class Prophesee extends EventEmitter<{
             throw new Error('Invalid device ' + options.device);
         }
 
-        this._captureProcess = spawn('prophesee-cam', [
+        let args = [
             '--out-folder', this._tempDir,
             '--fps', (1000 / options.intervalMs).toString()
-        ], { env: process.env, cwd: this._tempDir });
+        ];
+        if (options.dimensions) {
+            args = args.concat([
+                `--width`, options.dimensions.width.toString(),
+                `--height`, options.dimensions.height.toString()
+            ]);
+        }
+
+        this._captureProcess = spawn('prophesee-cam', args, { env: process.env, cwd: this._tempDir });
 
         if (this._verbose && this._captureProcess.stdout && this._captureProcess.stderr) {
             this._captureProcess.stdout.on('data', (data: Buffer) => {
@@ -179,7 +187,7 @@ export class Prophesee extends EventEmitter<{
                     if (this._captureProcess) {
                         this._captureProcess.kill('SIGHUP');
                     }
-                }, 2000);
+                }, 5000);
             }
             else {
                 resolve();

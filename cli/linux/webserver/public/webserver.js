@@ -5,6 +5,7 @@ window.WebServer = async () => {
         cameraContainer: document.querySelector('#capture-camera .capture-camera-inner'),
         cameraImg: document.querySelector('#capture-camera img'),
         timePerInference: document.querySelector('#time-per-inference'),
+        timePerInferenceContainer: document.querySelector('#time-per-inference-container'),
         imageClassify: {
             row: document.querySelector('#image-classification-conclusion'),
             text: document.querySelector('#image-classification-conclusion .col'),
@@ -48,6 +49,7 @@ window.WebServer = async () => {
         let result = opts.result;
 
         els.timePerInference.textContent = opts.timeMs;
+        els.timePerInferenceContainer.style.display = '';
 
         console.log('classification', opts.result, opts.timeMs);
 

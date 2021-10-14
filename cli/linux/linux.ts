@@ -32,6 +32,8 @@ program
     .option('--hmac-key <key>', 'HMAC key to sign new data with (overrides current credentials)')
     .option('--disable-camera', `Don't prompt for camera`)
     .option('--disable-microphone', `Don't prompt for microphone`)
+    .option('--width <px>', 'Desired width of the camera stream')
+    .option('--height <px>', 'Desired height of the camera stream')
     .option('--clean', 'Clear credentials')
     .option('--silent', `Run in silent mode, don't prompt for credentials`)
     .option('--dev', 'List development servers, alternatively you can use the EI_HOST environmental variable ' +
@@ -49,6 +51,15 @@ const hmacKeyArgv = <string | undefined>program.hmacKey;
 const noCamera: boolean = !!program.disableCamera;
 const noMicrophone: boolean = !!program.disableMicrophone;
 const isProphesee = process.env.PROPHESEE_CAM === '1';
+const dimensions = program.width && program.height ? {
+    width: Number(program.width),
+    height: Number(program.height)
+} : undefined;
+
+if ((program.width && !program.height) || (!program.width && program.height)) {
+    console.error('--width and --height need to either be both specified or both omitted');
+    process.exit(1);
+}
 
 const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
 
@@ -149,8 +160,9 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
             });
         }
         if (camera) {
+            let str = dimensions ? `(${dimensions.width}x${dimensions.height})` : `640x480`;
             sensors.push({
-                name: 'Camera (640x480)',
+                name: `Camera (${str})`,
                 frequencies: [],
                 maxSampleLengthS: 60000
             });
@@ -530,15 +542,16 @@ let configFactory: Config;
                 await camera.start({
                     device: cameraDevice,
                     intervalMs: 40,
+                    dimensions: dimensions
                 });
             }
             else {
                 await camera.start({
                     device: cameraDevice,
                     intervalMs: 200,
+                    dimensions: dimensions
                 });
             }
-
 
             camera.on('error', error => {
                 console.log('camera error', error);

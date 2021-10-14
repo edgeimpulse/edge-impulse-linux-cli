@@ -79,6 +79,8 @@ export class GStreamer extends EventEmitter<{
 
         this._handledFiles = { };
 
+        let dimensions = options.dimensions || { width: 640, height: 480 };
+
         // if we have /dev/shm, use that (RAM backed, instead of SD card backed, better for wear)
         let osTmpDir = os.tmpdir();
         if (await this.exists('/dev/shm')) {
@@ -94,12 +96,12 @@ export class GStreamer extends EventEmitter<{
             throw new Error('Could not find resolution info for this device');
         }
 
-        // now we need to determine the resolution... we want something as close as possible to 640x480
+        // now we need to determine the resolution... we want something as close as possible to dimensions.widthx480
         let cap = device.caps.filter(c => {
-            return c.width >= 640 && c.height >= 480;
+            return c.width >= dimensions.width && c.height >= dimensions.height;
         }).sort((a, b) => {
-            let diffA = Math.abs(a.width - 640) + Math.abs(a.height - 480);
-            let diffB = Math.abs(b.width - 640) + Math.abs(b.height - 480);
+            let diffA = Math.abs(a.width - dimensions.width) + Math.abs(a.height - dimensions.height);
+            let diffB = Math.abs(b.width - dimensions.width) + Math.abs(b.height - dimensions.height);
 
             return diffA - diffB;
         })[0];
@@ -107,8 +109,8 @@ export class GStreamer extends EventEmitter<{
         if (!cap) {
             cap = {
                 type: 'video/x-raw',
-                width: 640,
-                height: 480,
+                width: dimensions.width,
+                height: dimensions.height,
                 framerate: 30
             };
         }
