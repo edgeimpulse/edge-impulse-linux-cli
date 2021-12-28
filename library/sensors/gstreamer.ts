@@ -14,7 +14,7 @@ type GStreamerCap = {
     type: 'video/x-raw' | 'image/jpeg' | 'nvarguscamerasrc',
     width: number,
     height: number,
-    framerate: number
+    framerate: number,
 };
 
 type GStreamerDevice = {
@@ -23,7 +23,7 @@ type GStreamerDevice = {
     deviceClass: string,
     inCapMode: boolean,
     id: string,
-    caps: GStreamerCap[]
+    caps: GStreamerCap[],
 };
 
 export class GStreamer extends EventEmitter<{
@@ -38,6 +38,7 @@ export class GStreamer extends EventEmitter<{
     private _lastHash = '';
     private _processing = false;
     private _lastOptions?: ICameraStartOptions;
+    private _mode: 'default' | 'rpi-bullseye' = 'default';
 
     constructor(verbose: boolean) {
         super();
@@ -57,6 +58,13 @@ export class GStreamer extends EventEmitter<{
         }
         catch (ex) {
             throw new Error('Missing "gst-device-monitor-1.0" in PATH. Install via `sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-base gstreamer1.0-plugins-base-apps`');
+        }
+
+        if (await this.exists('/etc/os-release')) {
+            let x = await fs.promises.readFile('/etc/os-release', 'utf-8');
+            if (x.indexOf('bullseye') > -1) {
+                this._mode = 'rpi-bullseye';
+            }
         }
     }
 
@@ -111,17 +119,25 @@ export class GStreamer extends EventEmitter<{
                 type: 'video/x-raw',
                 width: dimensions.width,
                 height: dimensions.height,
-                framerate: 30
+                framerate: 30,
             };
+        }
+
+        let videoSource = [ 'v4l2src', 'device=' + device.id ];
+        if (this._mode === 'rpi-bullseye') {
+            // Rpi camera
+            if (!device.id) {
+                videoSource = [ 'libcamerasrc' ];
+            }
+            else {
+                videoSource = [ 'uvch264src', 'device=' + device.id ];
+            }
         }
 
         let invokeProcess: 'spawn' | 'exec';
         let args: string[];
         if (cap.type === 'video/x-raw') {
-            args = [
-                `v4l2src`,
-                `device=` + device.id,
-                // `num-buffers=999999999`,
+            args = videoSource.concat([
                 `!`,
                 `video/x-raw,width=${cap.width},height=${cap.height}`,
                 `!`,
@@ -131,20 +147,17 @@ export class GStreamer extends EventEmitter<{
                 `!`,
                 `multifilesink`,
                 `location=test%05d.jpg`
-            ];
+            ]);
             invokeProcess = 'spawn';
         }
         else if (cap.type === 'image/jpeg') {
-            args = [
-                `v4l2src`,
-                `device=` + device.id,
-                // `num-buffers=999999999`,
+            args = videoSource.concat([
                 `!`,
                 `image/jpeg,width=${cap.width},height=${cap.height}`,
                 `!`,
                 `multifilesink`,
                 `location=test%05d.jpg`
-            ];
+            ]);
             invokeProcess = 'spawn';
         }
         else if (cap.type === 'nvarguscamerasrc') {
@@ -313,7 +326,14 @@ export class GStreamer extends EventEmitter<{
                 if (currDevice) {
                     devices.push(currDevice);
                 }
-                currDevice = { name: '', deviceClass: '', rawCaps: [], inCapMode: false, id: '', caps: [] };
+                currDevice = {
+                    name: '',
+                    deviceClass: '',
+                    rawCaps: [],
+                    inCapMode: false,
+                    id: '',
+                    caps: []
+                };
                 continue;
             }
 
@@ -356,6 +376,19 @@ export class GStreamer extends EventEmitter<{
                     let height = (l.match(/height=[^\d]+(\d+)/) || [])[1];
                     let framerate = (l.match(/framerate=[^\d]+(\d+)/) || [])[1];
 
+                    // Rpi on bullseye has lines like this..
+                    // tslint:disable-next-line: max-line-length
+                    // image/jpeg, width=160, height=120, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                    if (!width) {
+                        width = (l.match(/width=(\d+)/) || [])[1];
+                    }
+                    if (!height) {
+                        height = (l.match(/height=(\d+)/) || [])[1];
+                    }
+                    if (!framerate) {
+                        framerate = (l.match(/framerate=(\d+)/) || [])[1];
+                    }
+
                     let r: GStreamerCap = {
                         type: l.startsWith('video/x-raw') ? 'video/x-raw' : 'image/jpeg',
                         width: Number(width || '0'),
@@ -365,7 +398,13 @@ export class GStreamer extends EventEmitter<{
                     return r;
                 });
 
-            c = c.filter(x => x.width && x.height && x.framerate);
+            if (this._mode === 'rpi-bullseye') { // no framerate here...
+                c = c.filter(x => x.width && x.height);
+            }
+            else {
+                c = c.filter(x => x.width && x.height && x.framerate);
+            }
+
             // if the device supports video/x-raw, only list those types
             if (c.some(x => x.type === 'video/x-raw')) {
                 c = c.filter(x => x.type === 'video/x-raw');
@@ -373,12 +412,17 @@ export class GStreamer extends EventEmitter<{
             d.caps = c;
         }
 
-        devices = devices.filter(d => d.deviceClass === 'Video/Source' && d.caps.length > 0);
+        devices = devices.filter(d => {
+            return (d.deviceClass === 'Video/Source' ||
+                d.deviceClass === 'Source/Video' ||
+                d.deviceClass === 'Video/CameraSource') &&
+                d.caps.length > 0;
+        });
 
         // NVIDIA has their own plugins, query them too
         devices = devices.concat(await this.listNvarguscamerasrcDevices());
 
-        return devices.map(d => {
+        let mapped = devices.map(d => {
             let name = devices.filter(x => x.name === d.name).length >= 2 ?
                 d.name + ' (' + d.id + ')' :
                 d.name;
@@ -386,9 +430,18 @@ export class GStreamer extends EventEmitter<{
             return {
                 id: d.id,
                 name: name,
-                caps: d.caps
+                caps: d.caps,
             };
         });
+
+        // deduplicate (by name)
+        mapped = mapped.reduce((curr: { id: string, name: string, caps: GStreamerCap[] }[], m) => {
+            if (curr.find(x => x.id === m.id)) return curr;
+            curr.push(m);
+            return curr;
+        }, []);
+
+        return mapped;
     }
 
     private async listNvarguscamerasrcDevices(): Promise<GStreamerDevice[]> {
@@ -481,7 +534,7 @@ export class GStreamer extends EventEmitter<{
                 id: 'nvarguscamerasrc',
                 inCapMode: false,
                 name: 'CSI camera',
-                rawCaps: []
+                rawCaps: [],
             };
             return [d];
         }

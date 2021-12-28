@@ -30,9 +30,9 @@ export class RunnerDownloader extends EventEmitter<{
 
         let downloadType: string;
         if (process.platform === 'darwin') {
-            if (process.arch !== 'x64') {
+            if (process.arch !== 'x64' && process.arch !== 'arm64') {
                 throw new Error('Unsupported architecture "' + process.arch + '", only ' +
-                    'x64 supported for now');
+                    'x64 or arm64 supported for now');
             }
             downloadType = 'runner-mac-x86_64';
         }
