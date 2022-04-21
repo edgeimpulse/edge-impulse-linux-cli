@@ -16,7 +16,9 @@ import { DependencyData } from './dependencyData';
 import { GenericApiResponse } from './genericApiResponse';
 import { KerasModelTypeEnum } from './kerasModelTypeEnum';
 import { KerasResponseAllOf } from './kerasResponseAllOf';
+import { KerasResponseAllOfTransferLearningModels } from './kerasResponseAllOfTransferLearningModels';
 import { KerasVisualLayer } from './kerasVisualLayer';
+import { LearnBlockType } from './learnBlockType';
 
 export class KerasResponse {
     /**
@@ -33,10 +35,7 @@ export class KerasResponse {
     */
     'trained': boolean;
     'name': string;
-    /**
-    * The type of Keras block (keras, keras-transfer-image, keras-transfer-kws, keras-object-detection, keras-regression). Each behaves differently.
-    */
-    'type'?: KerasResponseTypeEnum;
+    'type'?: LearnBlockType;
     /**
     * The Keras script. This script might be empty if the mode is visual.
     */
@@ -63,6 +62,10 @@ export class KerasResponse {
     */
     'learningRate': number;
     /**
+    * Python-formatted tuple of input axes
+    */
+    'shape': string;
+    /**
     * Train/test split (between 0 and 1)
     */
     'trainTestSplit'?: number;
@@ -70,24 +73,9 @@ export class KerasResponse {
     * Whether to automatically balance class weights, use this for skewed datasets.
     */
     'autoClassWeights'?: boolean;
-    /**
-    * Possible learning rates (between 0 and 1).
-    */
-    'learningRates'?: Array<number>;
-    /**
-    * Tuning algorithm to use to search hyperparameter space
-    */
-    'tuningAlgorithm'?: KerasResponseTuningAlgorithmEnum;
-    /**
-    * Total number of trials (model configurations) to test at most.
-    */
-    'tuningMaxTrials'?: number;
-    /**
-    * Number of parallel workers used for tuning
-    */
-    'tuningWorkers'?: number;
     'augmentationPolicyImage': AugmentationPolicyImageEnum;
     'augmentationPolicySpectrogram'?: AugmentationPolicySpectrogram;
+    'transferLearningModels': Array<KerasResponseAllOfTransferLearningModels>;
 
     static discriminator: string | undefined = undefined;
 
@@ -120,7 +108,7 @@ export class KerasResponse {
         {
             "name": "type",
             "baseName": "type",
-            "type": "KerasResponseTypeEnum"
+            "type": "LearnBlockType"
         },
         {
             "name": "script",
@@ -158,6 +146,11 @@ export class KerasResponse {
             "type": "number"
         },
         {
+            "name": "shape",
+            "baseName": "shape",
+            "type": "string"
+        },
+        {
             "name": "trainTestSplit",
             "baseName": "trainTestSplit",
             "type": "number"
@@ -168,26 +161,6 @@ export class KerasResponse {
             "type": "boolean"
         },
         {
-            "name": "learningRates",
-            "baseName": "learningRates",
-            "type": "Array<number>"
-        },
-        {
-            "name": "tuningAlgorithm",
-            "baseName": "tuningAlgorithm",
-            "type": "KerasResponseTuningAlgorithmEnum"
-        },
-        {
-            "name": "tuningMaxTrials",
-            "baseName": "tuningMaxTrials",
-            "type": "number"
-        },
-        {
-            "name": "tuningWorkers",
-            "baseName": "tuningWorkers",
-            "type": "number"
-        },
-        {
             "name": "augmentationPolicyImage",
             "baseName": "augmentationPolicyImage",
             "type": "AugmentationPolicyImageEnum"
@@ -196,6 +169,11 @@ export class KerasResponse {
             "name": "augmentationPolicySpectrogram",
             "baseName": "augmentationPolicySpectrogram",
             "type": "AugmentationPolicySpectrogram"
+        },
+        {
+            "name": "transferLearningModels",
+            "baseName": "transferLearningModels",
+            "type": "Array<KerasResponseAllOfTransferLearningModels>"
         }    ];
 
     static getAttributeTypeMap() {
@@ -204,11 +182,5 @@ export class KerasResponse {
 }
 
 
-export type KerasResponseTypeEnum = 'keras' | 'keras-transfer-image' | 'keras-transfer-kws' | 'keras-object-detection' | 'keras-regression';
-export const KerasResponseTypeEnumValues: string[] = ['keras', 'keras-transfer-image', 'keras-transfer-kws', 'keras-object-detection', 'keras-regression'];
-
 export type KerasResponseModeEnum = 'visual' | 'expert';
 export const KerasResponseModeEnumValues: string[] = ['visual', 'expert'];
-
-export type KerasResponseTuningAlgorithmEnum = 'random' | 'hyperband' | 'bayesian';
-export const KerasResponseTuningAlgorithmEnumValues: string[] = ['random', 'hyperband', 'bayesian'];

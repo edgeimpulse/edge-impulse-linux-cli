@@ -27,7 +27,7 @@ export type RunnerHelloResponseModelParameters = {
     label_count: number;
     sensor: number;
     labels: string[];
-    model_type: 'classification' | 'object_detection';
+    model_type: 'classification' | 'object_detection' | 'constrained_object_detection';
 };
 
 export type RunnerHelloResponseProject = {
@@ -122,14 +122,14 @@ export class LinuxImpulseRunner {
             throw new Error('stdout is null');
         }
 
-        let stdout = '';
-        this._runner.stdout.on('data', (data: Buffer) => {
+        const onStdout = (data: Buffer) => {
             stdout += data.toString('utf-8');
-        });
+        };
+
+        let stdout = '';
+        this._runner.stdout.on('data', onStdout);
         if (this._runner.stderr) {
-            this._runner.stderr.on('data', (data: Buffer) => {
-                stdout += data.toString('utf-8');
-            });
+            this._runner.stderr.on('data', onStdout);
         }
 
         let exitCode: number | undefined | null;
@@ -150,6 +150,11 @@ export class LinuxImpulseRunner {
 
         if (typeof exitCode !== 'undefined') {
             throw new Error('Failed to start runner (code: ' + exitCode + '): ' + stdout);
+        }
+
+        this._runner.stdout.off('data', onStdout);
+        if (this._runner.stderr) {
+            this._runner.stderr.off('data', onStdout);
         }
 
         let bracesOpen = 0;

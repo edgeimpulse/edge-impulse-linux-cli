@@ -7,15 +7,22 @@ import { ips } from './get-ips';
 import {
     LoginApi,
     DevicesApi, DevicesApiApiKeys,
+    DSPApi, DSPApiApiKeys,
     ProjectsApi, ProjectsApiApiKeys,
     OrganizationsApi, OrganizationsApiApiKeys,
     OrganizationCreateProjectApi, OrganizationCreateProjectApiApiKeys,
     OrganizationJobsApi, OrganizationJobsApiApiKeys, OrganizationBlocksApi,
     OrganizationBlocksApiApiKeys, DeploymentApi, ImpulseApi, LearnApi,
-    JobsApi, ImpulseApiApiKeys, LearnApiApiKeys, JobsApiApiKeys, DeploymentApiApiKeys
+    JobsApi, ImpulseApiApiKeys, LearnApiApiKeys, JobsApiApiKeys, DeploymentApiApiKeys,
+    OrganizationDataApi, OrganizationDataApiApiKeys, UserApi
 } from '../sdk/studio/api';
 
 const PREFIX = '\x1b[34m[CFG]\x1b[0m';
+
+export interface RunnerConfig {
+    projectId: number | undefined;
+    blockId: number | undefined;
+}
 
 export interface SerialConfig {
     host: string;
@@ -40,11 +47,13 @@ export interface SerialConfig {
     linuxProjectId: number | undefined;
     camera: string | undefined;
     audio: string | undefined;
+    runner: RunnerConfig;
 }
 
 export interface EdgeImpulseAPI {
     login: LoginApi;
     devices: DevicesApi;
+    dsp: DSPApi;
     projects: ProjectsApi;
     impulse: ImpulseApi;
     learn: LearnApi;
@@ -54,6 +63,8 @@ export interface EdgeImpulseAPI {
     organizationCreateProject: OrganizationCreateProjectApi;
     organizationBlocks: OrganizationBlocksApi;
     organizationJobs: OrganizationJobsApi;
+    organizationData: OrganizationDataApi;
+    user: UserApi;
 }
 
 export interface EdgeImpulseEndpoints {
@@ -74,6 +85,7 @@ export interface EdgeImpulseConfig {
     api: EdgeImpulseAPI;
     endpoints: EdgeImpulseEndpoints;
     setDeviceUpload: boolean;
+    host: string;
 }
 
 export class Config {
@@ -238,6 +250,7 @@ export class Config {
         this._api = {
             login: new LoginApi(apiEndpointInternal),
             devices: new DevicesApi(apiEndpointInternal),
+            dsp: new DSPApi(apiEndpointInternal),
             projects: new ProjectsApi(apiEndpointInternal),
             impulse: new ImpulseApi(apiEndpointInternal),
             learn: new LearnApi(apiEndpointInternal),
@@ -247,6 +260,8 @@ export class Config {
             organizationCreateProject: new OrganizationCreateProjectApi(apiEndpointInternal),
             organizationBlocks: new OrganizationBlocksApi(apiEndpointInternal),
             organizationJobs: new OrganizationJobsApi(apiEndpointInternal),
+            organizationData: new OrganizationDataApi(apiEndpointInternal),
+            user: new UserApi(apiEndpointInternal),
         };
 
         this._endpoints = {
@@ -266,6 +281,7 @@ export class Config {
         if (apiKey) {
             // try and authenticate...
             this._api.devices.setApiKey(DevicesApiApiKeys.ApiKeyAuthentication, apiKey);
+            this._api.dsp.setApiKey(DSPApiApiKeys.ApiKeyAuthentication, apiKey);
             this._api.projects.setApiKey(ProjectsApiApiKeys.ApiKeyAuthentication, apiKey);
             this._api.impulse.setApiKey(ImpulseApiApiKeys.ApiKeyAuthentication, apiKey);
             this._api.learn.setApiKey(LearnApiApiKeys.ApiKeyAuthentication, apiKey);
@@ -276,23 +292,46 @@ export class Config {
                 apiKey);
             this._api.organizationBlocks.setApiKey(OrganizationBlocksApiApiKeys.ApiKeyAuthentication, apiKey);
             this._api.organizationJobs.setApiKey(OrganizationJobsApiApiKeys.ApiKeyAuthentication, apiKey);
+            this._api.organizationData.setApiKey(OrganizationDataApiApiKeys.ApiKeyAuthentication, apiKey);
             config.apiKey = apiKey;
         }
         else {
             if (!config.jwtToken) {
-                let inq = <{ username: string, password: string }>await inquirer.prompt([{
+                const username = <{ username: string }>await inquirer.prompt({
                     type: 'input',
                     name: 'username',
                     message: `What is your user name or e-mail address (${host})?`
-                }, {
+                });
+
+                const { needPassword, email, whitelabel } = (
+                    await this._api.user.getUserNeedToSetPassword(
+                        encodeURIComponent(username.username)
+                    )
+                ).body;
+                if (needPassword) {
+                    const protocol = `http${
+                        config.host === 'localhost' ? '' : 's'
+                    }://`;
+                    const port = `${
+                        config.host === 'localhost' ? ':4800' : ''
+                    }`;
+                    const encodedEmail = encodeURIComponent(`${email}`);
+                    const resetUrl =
+                        `${protocol}${whitelabel || config.host}${port}/set-password?email=${encodedEmail}`;
+                    throw new Error(
+                        `To use the CLI you'll need to set an app password. Go to ${resetUrl} to set one.`
+                    );
+                }
+
+                const password = <{ password: string }>await inquirer.prompt({
                     type: 'password',
                     name: 'password',
                     message: `What is your password?`
-                }]);
+                });
 
                 let res = (await this._api.login.login({
-                    username: inq.username,
-                    password: inq.password
+                    username: username.username,
+                    password: password.password,
                 })).body;
 
                 if (!res.success || !res.token) {
@@ -304,6 +343,7 @@ export class Config {
 
             // try and authenticate...
             this._api.devices.setApiKey(DevicesApiApiKeys.JWTAuthentication, config.jwtToken);
+            this._api.dsp.setApiKey(DSPApiApiKeys.JWTAuthentication, config.jwtToken);
             this._api.projects.setApiKey(ProjectsApiApiKeys.JWTAuthentication, config.jwtToken);
             this._api.impulse.setApiKey(ImpulseApiApiKeys.JWTAuthentication, config.jwtToken);
             this._api.learn.setApiKey(LearnApiApiKeys.JWTAuthentication, config.jwtToken);
@@ -315,6 +355,7 @@ export class Config {
             this._api.organizationBlocks.setApiKey(OrganizationBlocksApiApiKeys.JWTAuthentication,
                 config.jwtToken);
             this._api.organizationJobs.setApiKey(OrganizationJobsApiApiKeys.JWTAuthentication, config.jwtToken);
+            this._api.organizationData.setApiKey(OrganizationDataApiApiKeys.JWTAuthentication, config.jwtToken);
         }
 
         if (verifyType === 'project') {
@@ -338,6 +379,7 @@ export class Config {
             api: this._api,
             endpoints: this._endpoints,
             setDeviceUpload: setDeviceUpload,
+            host: host,
         };
     }
 
@@ -405,6 +447,23 @@ export class Config {
         await this.store(config);
     }
 
+    async getRunner(): Promise<RunnerConfig> {
+        let config = await this.load();
+        return config.runner;
+    }
+
+    async storeProjectId(projectId: number) {
+        let config = await this.load();
+        config.runner.projectId = projectId;
+        await this.store(config);
+    }
+
+    async storeBlockId(blockId: number) {
+        let config = await this.load();
+        config.runner.blockId = blockId;
+        await this.store(config);
+    }
+
     private async load(): Promise<SerialConfig> {
         if (!await Config.exists(this._filename)) {
             return {
@@ -417,7 +476,11 @@ export class Config {
                 daemonDevices: { },
                 camera: undefined,
                 audio: undefined,
-                linuxProjectId: undefined
+                linuxProjectId: undefined,
+                runner: {
+                    projectId: undefined,
+                    blockId: undefined
+                }
             };
         }
 

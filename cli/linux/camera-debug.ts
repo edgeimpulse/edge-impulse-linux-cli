@@ -41,6 +41,8 @@ if ((program.width && !program.height) || (!program.width && program.height)) {
 
 const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
 
+let isExiting = false;
+
 // tslint:disable-next-line: no-floating-promises
 (async () => {
     let camera: ICamera | undefined;
@@ -49,7 +51,7 @@ const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
             camera = new Prophesee(verboseArgv);
         }
         else if (process.platform === 'darwin') {
-            camera = new Imagesnap();
+            camera = new Imagesnap(verboseArgv);
         }
         else if (process.platform === 'linux') {
             camera = new GStreamer(verboseArgv);
@@ -66,6 +68,8 @@ const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
                 process.exit(1);
             }
             else {
+                isExiting = true;
+
                 console.log(SERIAL_PREFIX, 'Received stop signal, stopping application... ' +
                     'Press CTRL+C again to force quit.');
                 firstExit = false;
@@ -115,7 +119,10 @@ const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
         });
 
         camera.on('error', error => {
+            if (isExiting) return;
+
             console.log('camera error', error);
+            process.exit(1);
         });
 
         console.log(SERIAL_PREFIX, 'Connected to camera');

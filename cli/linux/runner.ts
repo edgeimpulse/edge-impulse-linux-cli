@@ -84,12 +84,15 @@ const cliOptions = {
 };
 
 let firstExit = true;
+let isExiting = false;
 
 const onSignal = async () => {
     if (!firstExit) {
         process.exit(1);
     }
     else {
+        isExiting = true;
+
         console.log(RUNNER_PREFIX, 'Received stop signal, stopping application... ' +
             'Press CTRL+C again to force quit.');
         firstExit = false;
@@ -314,7 +317,7 @@ async function connectCamera(cf: Config) {
         camera = new Prophesee(verboseArgv);
     }
     else if (process.platform === 'darwin') {
-        camera = new Imagesnap();
+        camera = new Imagesnap(verboseArgv);
     }
     else if (process.platform === 'linux') {
         camera = new GStreamer(verboseArgv);
@@ -357,7 +360,10 @@ async function connectCamera(cf: Config) {
     });
 
     camera.on('error', error => {
+        if (isExiting) return;
+
         console.log(RUNNER_PREFIX, 'camera error', error);
+        process.exit(1);
     });
 
     console.log(RUNNER_PREFIX, 'Connected to camera');
@@ -448,6 +454,7 @@ function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier:
 
     imgClassifier.on('result', async (result, timeMs, imgAsJpg) => {
         io.emit('classification', {
+            modelType: model.modelParameters.model_type,
             result: result.result,
             timeMs: timeMs,
         });

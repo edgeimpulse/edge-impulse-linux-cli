@@ -51,6 +51,7 @@ import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } from 
 
         camera.on('error', error => {
             console.log('camera error', error);
+            process.exit(1);
         });
 
         console.log('Connected to camera');

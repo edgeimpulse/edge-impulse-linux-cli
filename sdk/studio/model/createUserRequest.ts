@@ -27,7 +27,7 @@ export class CreateUserRequest {
     /**
     * Password, minimum length 8 characters.
     */
-    'password': string;
+    'password'?: string;
     /**
     * A project will automatically be created. Sets the name of the first project. If not set, this will be derived from the username.
     */
@@ -37,13 +37,17 @@ export class CreateUserRequest {
     */
     'privacyPolicy': boolean;
     /**
-    * Whether this is an ephemeral evaluation account.
+    * Activation token for users created via SSO
     */
-    'evaluation': boolean;
+    'activationToken'?: string;
     /**
-    * Evaluation project type
+    * Unique identifier of the identity provider asserting the identity of this user
     */
-    'evaluationProjectType'?: CreateUserRequestEvaluationProjectTypeEnum;
+    'identityProvider'?: string;
+    /**
+    * White label domain, if any
+    */
+    'whitelabel'?: string;
 
     static discriminator: string | undefined = undefined;
 
@@ -79,14 +83,19 @@ export class CreateUserRequest {
             "type": "boolean"
         },
         {
-            "name": "evaluation",
-            "baseName": "evaluation",
-            "type": "boolean"
+            "name": "activationToken",
+            "baseName": "activationToken",
+            "type": "string"
         },
         {
-            "name": "evaluationProjectType",
-            "baseName": "evaluationProjectType",
-            "type": "CreateUserRequestEvaluationProjectTypeEnum"
+            "name": "identityProvider",
+            "baseName": "identityProvider",
+            "type": "string"
+        },
+        {
+            "name": "whitelabel",
+            "baseName": "whitelabel",
+            "type": "string"
         }    ];
 
     static getAttributeTypeMap() {
@@ -94,6 +103,3 @@ export class CreateUserRequest {
     }
 }
 
-
-export type CreateUserRequestEvaluationProjectTypeEnum = 'motion' | 'audio' | 'visual';
-export const CreateUserRequestEvaluationProjectTypeEnumValues: string[] = ['motion', 'audio', 'visual'];

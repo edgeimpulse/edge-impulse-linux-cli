@@ -31,6 +31,12 @@ export enum PageType {
     LabelObjectDetection = 29,
     SelectProjectThirdParty = 30,
     ApplicationTesting = 31,
+    Jobs = 32,
+    ActivationRequired = 33,
+    Redirect = 34,
+    DataExplorer = 35,
+    SetPasswordSuccess = 36,
+    DataSources = 37,
     OrganizationDashboard = 90,
     OrganizationUsers = 91,
     OrganizationKeys = 92,
@@ -44,6 +50,10 @@ export enum PageType {
     OrganizationDeploy = 100,
     OrganizationPortals = 101,
     OrganizationDataPipelines = 102,
+    OrganizationDsp = 103,
+    OrganizationTransferLearning = 104,
+    OrganizationSettings = 105,
+    OrganizationDatasets = 106,
     UploadPortal = 200,
 }
 
@@ -75,13 +85,18 @@ export interface ClientInitUser {
 }
 
 export interface ClientInitStudioOptions {
+    studioHost: string;
+    ingestionHost: string;
+    remoteMgmtHost: string;
     pageType: PageType;
     gaId: string;
     userId: number;
     projectId: number;
     baseUrl: string;
     projectName: string;
+    projectOwnerOrganizationId: number | undefined;
     socketToken: string;
+    orgSocketToken: string | undefined;
     connectedDevices: ClientConnectedDevice[];
     staticAssetsPrefix: string;
     sentryDSN?: string;
@@ -94,6 +109,9 @@ export interface ClientInitStudioOptions {
 }
 
 export interface ClientInitOrganizationOptions {
+    studioHost: string;
+    ingestionHost: string;
+    remoteMgmtHost: string;
     pageType: PageType;
     gaId: string;
     userId: number;
@@ -105,9 +123,14 @@ export interface ClientInitOrganizationOptions {
     sentryEnvironment?: string;
     errorPage: boolean;
     user: ClientInitUser | undefined;
+    themeId: number;
+    whitelabelId: number | undefined;
 }
 
 export interface ClientInitOrganizationPortalOptions {
+    studioHost: string;
+    ingestionHost: string;
+    remoteMgmtHost: string;
     pageType: PageType;
     portalId: number;
     baseUrl: string;
@@ -120,6 +143,9 @@ export interface ClientInitOrganizationPortalOptions {
 }
 
 export interface ClientInitFormOptions {
+    studioHost: string;
+    ingestionHost: string;
+    remoteMgmtHost: string;
     pageType: PageType;
     gaId: string;
     userId: number;
@@ -130,11 +156,15 @@ export interface ClientInitFormOptions {
 }
 
 export interface ClientInitPublicOptions {
+    studioHost: string;
+    ingestionHost: string;
+    remoteMgmtHost: string;
     pageType: PageType;
     gaId: string;
     staticAssetsPrefix: string;
     sentryDSN?: string;
     sentryEnvironment?: string;
+    ssoWhitelist?: { [domain: string]: string[] };
 }
 
 export interface OrganizationWebsocketHello {

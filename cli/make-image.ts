@@ -60,12 +60,11 @@ export function makeImage(buffer: Buffer, hmacKey: string | undefined, fileName:
     };
 }
 
-export function makeVideo(buffer: Buffer, hmacKey: string | undefined, fileName: string) {
+export function makeVideo(buffer: Buffer, hmacKey: string | undefined, fileName: string, mimeType: string) {
     let hmacVideo = crypto.createHmac('sha256', hmacKey || '');
     hmacVideo.update(buffer);
 
     let emptySignature = Array(64).fill('0').join('');
-    let mimeType = 'video/mp4';
     let data = {
         protected: {
             ver: "v1",
@@ -185,7 +184,7 @@ export function makeWav(buffer: Buffer, hmacKey: string | undefined) {
 
 export function upload(opts: {
     filename: string,
-    label: string | undefined,
+    label: { type: 'unlabeled' } | { type: 'infer'} | { type: 'label', label: string },
     allowDuplicates: boolean,
     apiKey: string,
     processed: {
@@ -202,12 +201,18 @@ export function upload(opts: {
         'x-api-key': opts.apiKey,
         'x-file-name': encodeLabel(opts.filename),
         'Content-Type': (!opts.processed.attachments ? opts.processed.contentType : 'multipart/form-data'),
+        'x-no-date-id': '1',
         'Connection': 'keep-alive'
     };
 
-    if (opts.label) {
-        headers['x-label'] = encodeLabel(opts.label);
+    if (opts.label.type === 'label') {
+        headers['x-label'] = encodeLabel(opts.label.label);
     }
+    else if (opts.label.type === 'unlabeled') {
+        headers['x-label'] = encodeLabel('');
+        headers['x-no-label'] = '1';
+    }
+
     if (!opts.allowDuplicates) {
         headers['x-disallow-duplicates'] = '1';
     }

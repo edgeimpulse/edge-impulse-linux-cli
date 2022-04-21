@@ -16,17 +16,30 @@
 */
 export class OrganizationCreateProjectRequest {
     'name': string;
-    'filter': string;
-    'uploadType': OrganizationCreateProjectRequestUploadTypeEnum;
+    'filter'?: string;
+    'uploadType'?: OrganizationCreateProjectRequestUploadTypeEnum;
     'projectId'?: number;
     'newProjectName'?: string;
     'projectApiKey'?: string;
     'projectHmacKey'?: string;
     'transformationBlockId'?: number;
+    'builtinTransformationBlock'?: object;
     'category'?: OrganizationCreateProjectRequestCategoryEnum;
     'outputDatasetName'?: string;
     'label'?: string;
     'emailRecipientUids'?: Array<number>;
+    /**
+    * Number of parallel jobs to start
+    */
+    'transformationParallel'?: number;
+    /**
+    * Optional extra arguments for this transformation block
+    */
+    'extraCliArguments'?: string;
+    /**
+    * White label domain, if any
+    */
+    'whitelabel'?: string;
 
     static discriminator: string | undefined = undefined;
 
@@ -72,6 +85,11 @@ export class OrganizationCreateProjectRequest {
             "type": "number"
         },
         {
+            "name": "builtinTransformationBlock",
+            "baseName": "builtinTransformationBlock",
+            "type": "object"
+        },
+        {
             "name": "category",
             "baseName": "category",
             "type": "OrganizationCreateProjectRequestCategoryEnum"
@@ -90,6 +108,21 @@ export class OrganizationCreateProjectRequest {
             "name": "emailRecipientUids",
             "baseName": "emailRecipientUids",
             "type": "Array<number>"
+        },
+        {
+            "name": "transformationParallel",
+            "baseName": "transformationParallel",
+            "type": "number"
+        },
+        {
+            "name": "extraCliArguments",
+            "baseName": "extraCliArguments",
+            "type": "string"
+        },
+        {
+            "name": "whitelabel",
+            "baseName": "whitelabel",
+            "type": "string"
         }    ];
 
     static getAttributeTypeMap() {

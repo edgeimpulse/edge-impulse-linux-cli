@@ -11,9 +11,10 @@
  */
 
 import { GenericApiResponse } from './genericApiResponse';
-import { GetEvalUserMobileClientUrlResponseAllOf } from './getEvalUserMobileClientUrlResponseAllOf';
+import { ListOrganizationSecretsResponseAllOf } from './listOrganizationSecretsResponseAllOf';
+import { ListOrganizationSecretsResponseAllOfSecrets } from './listOrganizationSecretsResponseAllOfSecrets';
 
-export class GetEvalUserMobileClientUrlResponse {
+export class ListOrganizationSecretsResponse {
     /**
     * Whether the operation succeeded
     */
@@ -22,7 +23,7 @@ export class GetEvalUserMobileClientUrlResponse {
     * Optional error description (set if \'success\' was false)
     */
     'error'?: string;
-    'redirectUrl': string;
+    'secrets': Array<ListOrganizationSecretsResponseAllOfSecrets>;
 
     static discriminator: string | undefined = undefined;
 
@@ -38,13 +39,13 @@ export class GetEvalUserMobileClientUrlResponse {
             "type": "string"
         },
         {
-            "name": "redirectUrl",
-            "baseName": "redirectUrl",
-            "type": "string"
+            "name": "secrets",
+            "baseName": "secrets",
+            "type": "Array<ListOrganizationSecretsResponseAllOfSecrets>"
         }    ];
 
     static getAttributeTypeMap() {
-        return GetEvalUserMobileClientUrlResponse.attributeTypeMap;
+        return ListOrganizationSecretsResponse.attributeTypeMap;
     }
 }
 

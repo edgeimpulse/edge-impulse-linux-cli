@@ -11,38 +11,26 @@
  */
 
 
-export class OrganizationInfoResponseAllOfDatasets {
-    'dataset': string;
-    'lastFileCreated': Date;
-    'totalFileSize': number;
-    'totalFileCount': number;
+export class ImpulseDspBlockOrganization {
+    'id': number;
+    'dspId': number;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "dataset",
-            "baseName": "dataset",
-            "type": "string"
-        },
-        {
-            "name": "lastFileCreated",
-            "baseName": "lastFileCreated",
-            "type": "Date"
-        },
-        {
-            "name": "totalFileSize",
-            "baseName": "totalFileSize",
+            "name": "id",
+            "baseName": "id",
             "type": "number"
         },
         {
-            "name": "totalFileCount",
-            "baseName": "totalFileCount",
+            "name": "dspId",
+            "baseName": "dspId",
             "type": "number"
         }    ];
 
     static getAttributeTypeMap() {
-        return OrganizationInfoResponseAllOfDatasets.attributeTypeMap;
+        return ImpulseDspBlockOrganization.attributeTypeMap;
     }
 }
 

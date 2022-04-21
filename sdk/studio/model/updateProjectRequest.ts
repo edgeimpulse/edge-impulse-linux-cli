@@ -44,7 +44,11 @@ export class UpdateProjectRequest {
     /**
     * Whether to show the getting started wizard on the next page load of the dashboard
     */
-    'showGettingStartedWizard'?: boolean;
+    'showProjectTypeWizard'?: boolean;
+    /**
+    * The next step in the getting started wizard, or set to -1 to clear the getting started wizard
+    */
+    'gettingStartedStep'?: number;
     /**
     * Whether to use GPU for training
     */
@@ -61,10 +65,32 @@ export class UpdateProjectRequest {
     * DSP file size in MB
     */
     'dspFileSizeMb'?: number;
+    'enterprisePerformance'?: boolean;
+    /**
+    * Amount of RAM allocated to training jobs
+    */
+    'trainJobRamMb'?: number;
     /**
     * New metadata about the project
     */
     'metadata'?: object;
+    /**
+    * Readme for the project (in Markdown)
+    */
+    'readme'?: string;
+    'lastAcquisitionLabel'?: string;
+    /**
+    * The IDs of users who should be notified when a Keras or retrain job is finished.
+    */
+    'trainJobNotificationUids'?: Array<number>;
+    /**
+    * The IDs of users who should be notified when a DSP job is finished.
+    */
+    'dspJobNotificationUids'?: Array<number>;
+    /**
+    * The IDs of users who should be notified when a model testing job is finished.
+    */
+    'modelTestingJobNotificationUids'?: Array<number>;
 
     static discriminator: string | undefined = undefined;
 
@@ -110,9 +136,14 @@ export class UpdateProjectRequest {
             "type": "UpdateProjectRequestLabelingMethodEnum"
         },
         {
-            "name": "showGettingStartedWizard",
-            "baseName": "showGettingStartedWizard",
+            "name": "showProjectTypeWizard",
+            "baseName": "showProjectTypeWizard",
             "type": "boolean"
+        },
+        {
+            "name": "gettingStartedStep",
+            "baseName": "gettingStartedStep",
+            "type": "number"
         },
         {
             "name": "useGpu",
@@ -135,9 +166,44 @@ export class UpdateProjectRequest {
             "type": "number"
         },
         {
+            "name": "enterprisePerformance",
+            "baseName": "enterprisePerformance",
+            "type": "boolean"
+        },
+        {
+            "name": "trainJobRamMb",
+            "baseName": "trainJobRamMb",
+            "type": "number"
+        },
+        {
             "name": "metadata",
             "baseName": "metadata",
             "type": "object"
+        },
+        {
+            "name": "readme",
+            "baseName": "readme",
+            "type": "string"
+        },
+        {
+            "name": "lastAcquisitionLabel",
+            "baseName": "lastAcquisitionLabel",
+            "type": "string"
+        },
+        {
+            "name": "trainJobNotificationUids",
+            "baseName": "trainJobNotificationUids",
+            "type": "Array<number>"
+        },
+        {
+            "name": "dspJobNotificationUids",
+            "baseName": "dspJobNotificationUids",
+            "type": "Array<number>"
+        },
+        {
+            "name": "modelTestingJobNotificationUids",
+            "baseName": "modelTestingJobNotificationUids",
+            "type": "Array<number>"
         }    ];
 
     static getAttributeTypeMap() {

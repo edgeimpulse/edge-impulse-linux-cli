@@ -51,6 +51,7 @@ const hmacKeyArgv = <string | undefined>program.hmacKey;
 const noCamera: boolean = !!program.disableCamera;
 const noMicrophone: boolean = !!program.disableMicrophone;
 const isProphesee = process.env.PROPHESEE_CAM === '1';
+const enableVideo = isProphesee || (process.env.ENABLE_VIDEO === '1');
 const dimensions = program.width && program.height ? {
     width: Number(program.width),
     height: Number(program.height)
@@ -90,6 +91,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
     private _lastSnapshot: Date = new Date(0);
     private _snapshotMutex = new Mutex();
     private _snapshotId = 0;
+    private _snapshotStreamingResolution: 'low' | 'high' = 'low';
 
     constructor(cameraInstance: ICamera | undefined, config: EdgeImpulseConfig,
                 devKeys: { apiKey: string, hmacKey: string }) {
@@ -104,17 +106,24 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 const id = ++this._snapshotId;
                 const release = await this._snapshotMutex.acquire();
 
+                let timeBetweenFrames = this._snapshotStreamingResolution === 'low' ?
+                    100 : 0;
+
                 // limit to 10 frames a second & no new frames should have come in...
                 try {
                     if (this._snapshotStreaming &&
-                        Date.now() - +this._lastSnapshot >= 100 &&
+                        Date.now() - +this._lastSnapshot >= timeBetweenFrames &&
                         id === this._snapshotId) {
 
-                        const jpg = sharp(buffer);
+                        if (this._snapshotStreamingResolution === 'low') {
+                            const jpg = sharp(buffer);
+                            const resized = await jpg.resize(undefined, 96).jpeg().toBuffer();
+                            this.emit('snapshot', resized, filename);
+                        }
+                        else {
+                            this.emit('snapshot', buffer, filename);
+                        }
 
-                        const resized = await jpg.resize(undefined, 96).jpeg().toBuffer();
-
-                        this.emit('snapshot', resized, filename);
                         this._lastSnapshot = new Date();
                     }
                 }
@@ -166,7 +175,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 frequencies: [],
                 maxSampleLengthS: 60000
             });
-            if (isProphesee) {
+            if (enableVideo) {
                 sensors.push({
                     name: 'Video (1280x720)',
                     frequencies: [],
@@ -189,8 +198,9 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
         return Promise.resolve();
     }
 
-    async startSnapshotStreaming() {
+    async startSnapshotStreaming(resolution: 'high' | 'low') {
         this._snapshotStreaming = true;
+        this._snapshotStreamingResolution = resolution;
     }
 
     async stopSnapshotStreaming() {
@@ -272,7 +282,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 });
             });
 
-            let img = makeVideo(mp4, this._devKeys.hmacKey, data.label + '.mp4');
+            let img = makeVideo(mp4, this._devKeys.hmacKey, data.label + '.mp4', 'video/mp4');
 
             console.log(SERIAL_PREFIX, 'Uploading sample to',
                 this._config.endpoints.internal.ingestion + data.path + '...');
@@ -412,6 +422,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
 
 let camera: ICamera | undefined;
 let configFactory: Config;
+let isExiting = false;
 
 // tslint:disable-next-line: no-floating-promises
 (async () => {
@@ -429,7 +440,7 @@ let configFactory: Config;
                 camera = new Prophesee(verboseArgv);
             }
             else if (process.platform === 'darwin') {
-                camera = new Imagesnap();
+                camera = new Imagesnap(verboseArgv);
             }
             else if (process.platform === 'linux') {
                 camera = new GStreamer(verboseArgv);
@@ -460,6 +471,8 @@ let configFactory: Config;
                 process.exit(1);
             }
             else {
+                isExiting = true;
+
                 console.log(SERIAL_PREFIX, 'Received stop signal, stopping application... ' +
                     'Press CTRL+C again to force quit.');
                 firstExit = false;
@@ -554,7 +567,10 @@ let configFactory: Config;
             }
 
             camera.on('error', error => {
+                if (isExiting) return;
+
                 console.log('camera error', error);
+                process.exit(1);
             });
 
             console.log(SERIAL_PREFIX, 'Connected to camera');

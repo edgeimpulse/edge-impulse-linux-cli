@@ -18,6 +18,7 @@ export class OrganizationCreateProject {
     'organizationId': number;
     'name': string;
     'uploadType': OrganizationCreateProjectUploadTypeEnum;
+    'status': OrganizationCreateProjectStatusEnum;
     'transformJobStatus': OrganizationCreateProjectTransformJobStatusEnum;
     'uploadJobId'?: number;
     'uploadJobStatus': OrganizationCreateProjectUploadJobStatusEnum;
@@ -26,6 +27,7 @@ export class OrganizationCreateProject {
     'projectId'?: number;
     'projectName'?: string;
     'transformationBlockId'?: number;
+    'builtinTransformationBlock'?: object;
     'transformationBlockName'?: string;
     'category': OrganizationCreateProjectCategoryEnum;
     'created': Date;
@@ -44,6 +46,11 @@ export class OrganizationCreateProject {
     'label'?: string;
     'filterQuery'?: string;
     'emailRecipientUids'?: Array<number>;
+    'pipelineId'?: number;
+    'pipelineName'?: string;
+    'pipelineRunId'?: number;
+    'pipelineStep'?: number;
+    'operatesOn': OrganizationCreateProjectOperatesOnEnum;
 
     static discriminator: string | undefined = undefined;
 
@@ -67,6 +74,11 @@ export class OrganizationCreateProject {
             "name": "uploadType",
             "baseName": "uploadType",
             "type": "OrganizationCreateProjectUploadTypeEnum"
+        },
+        {
+            "name": "status",
+            "baseName": "status",
+            "type": "OrganizationCreateProjectStatusEnum"
         },
         {
             "name": "transformJobStatus",
@@ -107,6 +119,11 @@ export class OrganizationCreateProject {
             "name": "transformationBlockId",
             "baseName": "transformationBlockId",
             "type": "number"
+        },
+        {
+            "name": "builtinTransformationBlock",
+            "baseName": "builtinTransformationBlock",
+            "type": "object"
         },
         {
             "name": "transformationBlockName",
@@ -182,6 +199,31 @@ export class OrganizationCreateProject {
             "name": "emailRecipientUids",
             "baseName": "emailRecipientUids",
             "type": "Array<number>"
+        },
+        {
+            "name": "pipelineId",
+            "baseName": "pipelineId",
+            "type": "number"
+        },
+        {
+            "name": "pipelineName",
+            "baseName": "pipelineName",
+            "type": "string"
+        },
+        {
+            "name": "pipelineRunId",
+            "baseName": "pipelineRunId",
+            "type": "number"
+        },
+        {
+            "name": "pipelineStep",
+            "baseName": "pipelineStep",
+            "type": "number"
+        },
+        {
+            "name": "operatesOn",
+            "baseName": "operatesOn",
+            "type": "OrganizationCreateProjectOperatesOnEnum"
         }    ];
 
     static getAttributeTypeMap() {
@@ -193,6 +235,9 @@ export class OrganizationCreateProject {
 export type OrganizationCreateProjectUploadTypeEnum = 'dataset' | 'project';
 export const OrganizationCreateProjectUploadTypeEnumValues: string[] = ['dataset', 'project'];
 
+export type OrganizationCreateProjectStatusEnum = 'waiting' | 'created' | 'started' | 'finished' | 'failed';
+export const OrganizationCreateProjectStatusEnumValues: string[] = ['waiting', 'created', 'started', 'finished', 'failed'];
+
 export type OrganizationCreateProjectTransformJobStatusEnum = 'waiting' | 'created' | 'started' | 'finished' | 'failed';
 export const OrganizationCreateProjectTransformJobStatusEnumValues: string[] = ['waiting', 'created', 'started', 'finished', 'failed'];
 
@@ -201,3 +246,6 @@ export const OrganizationCreateProjectUploadJobStatusEnumValues: string[] = ['wa
 
 export type OrganizationCreateProjectCategoryEnum = 'training' | 'testing' | 'split';
 export const OrganizationCreateProjectCategoryEnumValues: string[] = ['training', 'testing', 'split'];
+
+export type OrganizationCreateProjectOperatesOnEnum = 'file' | 'dataitem' | 'standalone';
+export const OrganizationCreateProjectOperatesOnEnumValues: string[] = ['file', 'dataitem', 'standalone'];

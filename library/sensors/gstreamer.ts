@@ -39,6 +39,9 @@ export class GStreamer extends EventEmitter<{
     private _processing = false;
     private _lastOptions?: ICameraStartOptions;
     private _mode: 'default' | 'rpi-bullseye' = 'default';
+    private _keepAliveTimeout: NodeJS.Timeout | undefined;
+    private _isStarted = false;
+    private _isRestarting = false;
 
     constructor(verbose: boolean) {
         super();
@@ -227,6 +230,10 @@ export class GStreamer extends EventEmitter<{
                         (Date.now() - lastPhoto) + 'ms.', 'size');
                 }
 
+                if (this._keepAliveTimeout) {
+                    clearTimeout(this._keepAliveTimeout);
+                }
+
                 try {
                     let data = await fs.promises.readFile(Path.join(this._tempDir, fileName));
 
@@ -235,6 +242,15 @@ export class GStreamer extends EventEmitter<{
                     if (hash !== this._lastHash) {
                         this.emit('snapshot', data, Path.basename(fileName));
                         lastPhoto = Date.now();
+
+                        // 2 seconds no new data? trigger timeout
+                        if (this._keepAliveTimeout) {
+                            clearTimeout(this._keepAliveTimeout);
+                        }
+                        this._keepAliveTimeout = setTimeout(() => {
+                            // tslint:disable-next-line: no-floating-promises
+                            this.timeoutCallback();
+                        }, 2000);
                     }
                     else if (this._verbose) {
                         console.log(PREFIX, 'Discarding', fileName, 'hash does not differ');
@@ -256,7 +272,13 @@ export class GStreamer extends EventEmitter<{
 
         let p = new Promise<void>((resolve, reject) => {
             if (this._captureProcess) {
+                let cp = this._captureProcess;
+
                 this._captureProcess.on('close', code => {
+                    if (this._keepAliveTimeout) {
+                        clearTimeout(this._keepAliveTimeout);
+                    }
+
                     if (typeof code === 'number') {
                         reject('Capture process failed with code ' + code);
                     }
@@ -265,6 +287,12 @@ export class GStreamer extends EventEmitter<{
                             'This might be a permissions issue. ' +
                             'Are you running this command from a simulated shell (like in Visual Studio Code)?');
                     }
+
+                    // already started and we're the active process?
+                    if (this._isStarted && cp === this._captureProcess && !this._isRestarting) {
+                        this.emit('error', 'gstreamer process was killed with code (' + code + ')');
+                    }
+
                     this._captureProcess = undefined;
                 });
             }
@@ -276,11 +304,16 @@ export class GStreamer extends EventEmitter<{
                 }
 
                 const watcher = fs.watch(this._tempDir, () => {
+                    this._isStarted = true;
                     resolve();
                     watcher.close();
                 });
 
                 setTimeout(async () => {
+                    if (this._keepAliveTimeout) {
+                        clearTimeout(this._keepAliveTimeout);
+                    }
+
                     return reject('First photo was not created within 20 seconds');
                 }, 20000);
             })();
@@ -292,7 +325,11 @@ export class GStreamer extends EventEmitter<{
     }
 
     async stop() {
-        return new Promise<void>((resolve) => {
+        if (this._keepAliveTimeout) {
+            clearTimeout(this._keepAliveTimeout);
+        }
+
+        let stopRes = new Promise<void>((resolve) => {
             if (this._captureProcess) {
                 this._captureProcess.on('close', code => {
                     if (this._watcher) {
@@ -311,6 +348,13 @@ export class GStreamer extends EventEmitter<{
                 resolve();
             }
         });
+
+        // set isStarted to false
+        stopRes
+            .then(() => { this._isStarted = false; })
+            .catch(() => { this._isStarted = false; });
+
+        return stopRes;
     }
 
     private async getAllDevices() {
@@ -557,5 +601,39 @@ export class GStreamer extends EventEmitter<{
             /* noop */
         }
         return exists;
+    }
+
+    private async timeoutCallback() {
+        try {
+            this._isRestarting = true;
+
+            if (this._verbose) {
+                console.log(PREFIX, 'No images received for 2 seconds, restarting...');
+            }
+            await this.stop();
+            if (this._verbose) {
+                console.log(PREFIX, 'Stopped');
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            if (this._lastOptions) {
+                if (this._verbose) {
+                    console.log(PREFIX, 'Starting gstreamer...');
+                }
+                await this.start(this._lastOptions);
+                if (this._verbose) {
+                    console.log(PREFIX, 'Restart completed');
+                }
+            }
+            else {
+                this.emit('error', 'gstreamer process went stale');
+            }
+        }
+        catch (ex2) {
+            let ex = <Error>ex2;
+            this.emit('error', 'gstreamer failed to restart: ' + (ex.message || ex.toString()));
+        }
+        finally {
+            this._isRestarting = false;
+        }
     }
 }

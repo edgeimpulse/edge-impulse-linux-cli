@@ -22,6 +22,8 @@ import { ProjectInfoResponseAllOfExperiments } from './projectInfoResponseAllOfE
 import { ProjectInfoResponseAllOfImpulse } from './projectInfoResponseAllOfImpulse';
 import { ProjectInfoResponseAllOfLatencyDevices } from './projectInfoResponseAllOfLatencyDevices';
 import { ProjectInfoResponseAllOfPerformance } from './projectInfoResponseAllOfPerformance';
+import { ProjectInfoResponseAllOfReadme } from './projectInfoResponseAllOfReadme';
+import { ProjectInfoResponseAllOfShowGettingStartedWizard } from './projectInfoResponseAllOfShowGettingStartedWizard';
 import { ProjectInfoResponseAllOfUrls } from './projectInfoResponseAllOfUrls';
 import { User } from './user';
 
@@ -41,14 +43,25 @@ export class ProjectInfoResponseAllOf {
     */
     'experiments': Array<ProjectInfoResponseAllOfExperiments>;
     'latencyDevices': Array<ProjectInfoResponseAllOfLatencyDevices>;
-    /**
-    * Evaluation project type
-    */
-    'evaluationProjectType'?: string;
     'urls': ProjectInfoResponseAllOfUrls;
     'showCreateFirstImpulse': boolean;
-    'showGettingStartedWizard': boolean;
+    'showProjectTypeWizard': boolean;
+    'showGettingStartedWizard': ProjectInfoResponseAllOfShowGettingStartedWizard;
     'performance': ProjectInfoResponseAllOfPerformance;
+    'readme'?: ProjectInfoResponseAllOfReadme;
+    /**
+    * The IDs of users who should be notified when a Keras or retrain job is finished.
+    */
+    'trainJobNotificationUids': Array<number>;
+    /**
+    * The IDs of users who should be notified when a DSP job is finished.
+    */
+    'dspJobNotificationUids': Array<number>;
+    /**
+    * The IDs of users who should be notified when a model testing job is finished.
+    */
+    'modelTestingJobNotificationUids': Array<number>;
+    'hasNewTrainingData': boolean;
 
     static discriminator: string | undefined = undefined;
 
@@ -114,11 +127,6 @@ export class ProjectInfoResponseAllOf {
             "type": "Array<ProjectInfoResponseAllOfLatencyDevices>"
         },
         {
-            "name": "evaluationProjectType",
-            "baseName": "evaluationProjectType",
-            "type": "string"
-        },
-        {
             "name": "urls",
             "baseName": "urls",
             "type": "ProjectInfoResponseAllOfUrls"
@@ -129,14 +137,44 @@ export class ProjectInfoResponseAllOf {
             "type": "boolean"
         },
         {
+            "name": "showProjectTypeWizard",
+            "baseName": "showProjectTypeWizard",
+            "type": "boolean"
+        },
+        {
             "name": "showGettingStartedWizard",
             "baseName": "showGettingStartedWizard",
-            "type": "boolean"
+            "type": "ProjectInfoResponseAllOfShowGettingStartedWizard"
         },
         {
             "name": "performance",
             "baseName": "performance",
             "type": "ProjectInfoResponseAllOfPerformance"
+        },
+        {
+            "name": "readme",
+            "baseName": "readme",
+            "type": "ProjectInfoResponseAllOfReadme"
+        },
+        {
+            "name": "trainJobNotificationUids",
+            "baseName": "trainJobNotificationUids",
+            "type": "Array<number>"
+        },
+        {
+            "name": "dspJobNotificationUids",
+            "baseName": "dspJobNotificationUids",
+            "type": "Array<number>"
+        },
+        {
+            "name": "modelTestingJobNotificationUids",
+            "baseName": "modelTestingJobNotificationUids",
+            "type": "Array<number>"
+        },
+        {
+            "name": "hasNewTrainingData",
+            "baseName": "hasNewTrainingData",
+            "type": "boolean"
         }    ];
 
     static getAttributeTypeMap() {

@@ -12,9 +12,11 @@
 
 import { GenericApiResponse } from './genericApiResponse';
 import { Organization } from './organization';
+import { OrganizationDataset } from './organizationDataset';
 import { OrganizationInfoResponseAllOf } from './organizationInfoResponseAllOf';
-import { OrganizationInfoResponseAllOfDatasets } from './organizationInfoResponseAllOfDatasets';
 import { OrganizationInfoResponseAllOfDefaultComputeLimits } from './organizationInfoResponseAllOfDefaultComputeLimits';
+import { ProjectInfoResponseAllOfExperiments } from './projectInfoResponseAllOfExperiments';
+import { ProjectInfoResponseAllOfReadme } from './projectInfoResponseAllOfReadme';
 
 export class OrganizationInfoResponse {
     /**
@@ -26,8 +28,13 @@ export class OrganizationInfoResponse {
     */
     'error'?: string;
     'organization': Organization;
-    'datasets': Array<OrganizationInfoResponseAllOfDatasets>;
+    'datasets': Array<OrganizationDataset>;
     'defaultComputeLimits': OrganizationInfoResponseAllOfDefaultComputeLimits;
+    /**
+    * Experiments that the organization has access to. Enabling experiments can only be done through a JWT token.
+    */
+    'experiments': Array<ProjectInfoResponseAllOfExperiments>;
+    'readme'?: ProjectInfoResponseAllOfReadme;
 
     static discriminator: string | undefined = undefined;
 
@@ -50,12 +57,22 @@ export class OrganizationInfoResponse {
         {
             "name": "datasets",
             "baseName": "datasets",
-            "type": "Array<OrganizationInfoResponseAllOfDatasets>"
+            "type": "Array<OrganizationDataset>"
         },
         {
             "name": "defaultComputeLimits",
             "baseName": "defaultComputeLimits",
             "type": "OrganizationInfoResponseAllOfDefaultComputeLimits"
+        },
+        {
+            "name": "experiments",
+            "baseName": "experiments",
+            "type": "Array<ProjectInfoResponseAllOfExperiments>"
+        },
+        {
+            "name": "readme",
+            "baseName": "readme",
+            "type": "ProjectInfoResponseAllOfReadme"
         }    ];
 
     static getAttributeTypeMap() {

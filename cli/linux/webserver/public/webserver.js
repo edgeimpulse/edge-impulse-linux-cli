@@ -47,6 +47,7 @@ window.WebServer = async () => {
 
     socket.on('classification', (opts) => {
         let result = opts.result;
+        let modelType = opts.modelType;
 
         els.timePerInference.textContent = opts.timeMs;
         els.timePerInferenceContainer.style.display = '';
@@ -73,7 +74,7 @@ window.WebServer = async () => {
 
             let factor = els.cameraImg.naturalHeight / els.cameraImg.clientHeight;
 
-            for (let b of result.bounding_boxes.filter(bb => bb.value >= 0.5)) {
+            for (let b of result.bounding_boxes) {
                 let bb = {
                     x: b.x / factor,
                     y: b.y / factor,
@@ -94,15 +95,31 @@ window.WebServer = async () => {
                 el.classList.add('bounding-box-container');
                 el.style.position = 'absolute';
                 el.style.border = 'solid 3px ' + color;
-                el.style.width = (bb.width) + 'px';
-                el.style.height = (bb.height) + 'px';
-                el.style.left = (bb.x) + 'px';
-                el.style.top = (bb.y) + 'px';
+
+                if (modelType === 'object_detection') {
+                    el.style.width = (bb.width) + 'px';
+                    el.style.height = (bb.height) + 'px';
+                    el.style.left = (bb.x) + 'px';
+                    el.style.top = (bb.y) + 'px';
+                }
+                else if (modelType === 'constrained_object_detection') {
+                    let centerX = bb.x + (bb.width / 2);
+                    let centerY = bb.y + (bb.height / 2);
+
+                    el.style.borderRadius = '10px';
+                    el.style.width = 20 + 'px';
+                    el.style.height = 20 + 'px';
+                    el.style.left = (centerX - 10) + 'px';
+                    el.style.top = (centerY - 10) + 'px';
+                }
 
                 let label = document.createElement('div');
                 label.classList.add('bounding-box-label');
                 label.style.background = color;
                 label.textContent = bb.label + ' (' + bb.value.toFixed(2) + ')';
+                if (modelType === 'constrained_object_detection') {
+                    el.style.whiteSpace = 'nowrap';
+                }
                 el.appendChild(label);
 
                 els.cameraContainer.appendChild(el);
