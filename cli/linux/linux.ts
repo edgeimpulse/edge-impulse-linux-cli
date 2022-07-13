@@ -5,7 +5,7 @@ import inquirer from 'inquirer';
 import { initCliApp, setupCliApp } from "../init-cli-app";
 import { RemoteMgmt, RemoteMgmtDevice, RemoteMgmtDeviceSampleEmitter } from "../../shared/daemon/remote-mgmt-service";
 import { MgmtInterfaceSampleRequestSample } from "../../shared/MgmtInterfaceTypes";
-import { makeImage, makeVideo, makeWav, upload } from '../make-image';
+import { upload } from '../make-image';
 import { Config, EdgeImpulseConfig } from "../config";
 import { EventEmitter } from "tsee";
 import { Mutex } from 'async-mutex';
@@ -228,8 +228,6 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 });
             });
 
-            let img = makeImage(jpg, this._devKeys.hmacKey, data.label + '.jpg');
-
             console.log(SERIAL_PREFIX, 'Uploading sample to',
                 this._config.endpoints.internal.ingestion + data.path + '...');
 
@@ -238,12 +236,11 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
             await upload({
                 apiKey: this._devKeys.apiKey,
                 filename: data.label + '.jpg',
-                processed: img,
+                buffer: jpg,
                 allowDuplicates: false,
                 category: data.path.indexOf('/training') > -1 ? 'training' : 'testing',
                 config: this._config,
-                dataBuffer: jpg,
-                label: data.label,
+                label: { label: data.label, type: 'label' },
                 boundingBoxes: undefined
             });
 
@@ -282,8 +279,6 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 });
             });
 
-            let img = makeVideo(mp4, this._devKeys.hmacKey, data.label + '.mp4', 'video/mp4');
-
             console.log(SERIAL_PREFIX, 'Uploading sample to',
                 this._config.endpoints.internal.ingestion + data.path + '...');
 
@@ -292,12 +287,11 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
             await upload({
                 apiKey: this._devKeys.apiKey,
                 filename: data.label + '.mp4',
-                processed: img,
+                buffer: mp4,
                 allowDuplicates: false,
                 category: data.path.indexOf('/training') > -1 ? 'training' : 'testing',
                 config: this._config,
-                dataBuffer: mp4,
-                label: data.label,
+                label: { label: data.label, type: 'label' },
                 boundingBoxes: undefined
             });
 
@@ -360,8 +354,6 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
 
             let wavFile = this.buildWavFileBuffer(audioBuffer, data.interval);
 
-            let wav = makeWav(wavFile, this._devKeys.hmacKey);
-
             console.log(SERIAL_PREFIX, 'Uploading sample to',
                 this._config.endpoints.internal.ingestion + data.path + '...');
 
@@ -370,12 +362,11 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
             await upload({
                 apiKey: this._devKeys.apiKey,
                 filename: data.label + '.wav',
-                processed: wav,
+                buffer: wavFile,
                 allowDuplicates: false,
                 category: data.path.indexOf('/training') > -1 ? 'training' : 'testing',
                 config: this._config,
-                dataBuffer: audioBuffer,
-                label: data.label,
+                label: { label: data.label, type: 'label' },
                 boundingBoxes: undefined,
             });
 

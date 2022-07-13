@@ -1,5 +1,10 @@
 import { spawn } from 'child_process';
 
+export type SpawnHelperType = (
+    command: string,
+    args: string[],
+    opts?: { ignoreErrors: boolean, cwd?: string }) => Promise<string>;
+
 export function spawnHelper(command: string, args: string[],
                             opts: { ignoreErrors: boolean, cwd?: string } = { ignoreErrors: false }) {
     return new Promise<string>((resolve, reject) => {

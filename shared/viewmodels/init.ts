@@ -30,13 +30,14 @@ export enum PageType {
     Tuner = 28,
     LabelObjectDetection = 29,
     SelectProjectThirdParty = 30,
-    ApplicationTesting = 31,
+    PerformanceCalibration = 31,
     Jobs = 32,
     ActivationRequired = 33,
     Redirect = 34,
     DataExplorer = 35,
     SetPasswordSuccess = 36,
     DataSources = 37,
+    CreateDeveloperProfile = 38,
     OrganizationDashboard = 90,
     OrganizationUsers = 91,
     OrganizationKeys = 92,
@@ -54,6 +55,7 @@ export enum PageType {
     OrganizationTransferLearning = 104,
     OrganizationSettings = 105,
     OrganizationDatasets = 106,
+    OrganizationJobs = 107,
     UploadPortal = 200,
 }
 
@@ -95,6 +97,7 @@ export interface ClientInitStudioOptions {
     baseUrl: string;
     projectName: string;
     projectOwnerOrganizationId: number | undefined;
+    projectOwnerOrganizationName: string | undefined;
     socketToken: string;
     orgSocketToken: string | undefined;
     connectedDevices: ClientConnectedDevice[];
@@ -116,6 +119,7 @@ export interface ClientInitOrganizationOptions {
     gaId: string;
     userId: number;
     organizationId: number;
+    organizationName: string;
     socketToken: string;
     staticAssetsPrefix: string;
     baseUrl: string;
@@ -140,6 +144,7 @@ export interface ClientInitOrganizationPortalOptions {
     sentryEnvironment?: string;
     errorPage: boolean;
     authToken: string;
+    isAdmin: boolean;
 }
 
 export interface ClientInitFormOptions {

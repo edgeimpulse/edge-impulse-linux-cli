@@ -185,7 +185,8 @@ function getModelPath(projectId: number, version: number) {
             let file = getModelPath(model.project.id, model.project.deploy_version);
             if (file !== modelFile) {
                 await fs.promises.mkdir(Path.dirname(file), { recursive: true });
-                await fs.promises.rename(modelFile, file);
+                await fs.promises.copyFile(modelFile, file);
+                await fs.promises.unlink(modelFile);
                 console.log(RUNNER_PREFIX, 'Stored model version in', file);
             }
         }

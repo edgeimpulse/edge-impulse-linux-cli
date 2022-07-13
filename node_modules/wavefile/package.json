@@ -1,0 +1,103 @@
+{
+  "name": "wavefile",
+  "version": "11.0.0",
+  "description": "Create, read and write wav files according to the specs.",
+  "homepage": "https://github.com/rochars/wavefile",
+  "author": "Rafael da Silva Rocha <rocha.rafaelsilva@gmail.com>",
+  "license": "MIT",
+  "main": "./dist/wavefile.js",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "bin": "./bin/wavefile.js",
+  "engines": {
+    "node": ">=8"
+  },
+  "keywords": [
+    "wav",
+    "RIFF",
+    "RIFX",
+    "RF64",
+    "WAVE",
+    "BWF",
+    "audio",
+    "8-bit",
+    "11-bit",
+    "12-bit",
+    "16-bit",
+    "20-bit",
+    "24-bit",
+    "32-bit",
+    "64-bit",
+    "PCM",
+    "ADPCM",
+    "encode",
+    "decode",
+    "A-Law",
+    "mu-Law",
+    "_PMX",
+    "iXML",
+    "cue",
+    "resampler"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/rochars/wavefile.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rochars/wavefile/issues"
+  },
+  "directories": {
+    "bin": "bin",
+    "dist": "dist",
+    "externs": "externs",
+    "lib": "lib",
+    "scripts": "scripts"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "externs",
+    "lib",
+    "scripts",
+    "index.js",
+    "index.d.ts",
+    "LICENSE",
+    "README.md",
+    "AUTHORS.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "lint": "jshint index.js bin externs lib test/src",
+    "test": "nyc ./node_modules/mocha/bin/_mocha test/resampler test/dist test/src test/wavefile-parser test/lib --recursive -R dot --timeout=1600000",
+    "test-sr": "node ./node_modules/mocha/bin/_mocha test/resampler-full -R dot --timeout=1600000",
+    "test-sr-point": "node ./node_modules/mocha/bin/_mocha test/resampler-full/point.js -R dot --timeout=1600000",
+    "test-sr-linear": "node ./node_modules/mocha/bin/_mocha test/resampler-full/linear.js -R dot --timeout=1600000",
+    "test-sr-cubic": "node ./node_modules/mocha/bin/_mocha test/resampler-full/cubic.js -R dot --timeout=1600000",
+    "test-sr-sinc": "node ./node_modules/mocha/bin/_mocha test/resampler-full/sinc.js test/resampler-full/sinc-IIR.js test/resampler-full/sinc-no-lpf.js -R dot --timeout=1600000",
+    "test-umd": "node ./node_modules/mocha/bin/_mocha test/resampler test/dist test/src --umd --recursive -R dot --timeout=240000",
+    "test-tsc": "tsc ./test/TypeScript/index.ts && node -r esm ./test/TypeScript/index.js",
+    "test-cli": "wavefile ./test/files/M1F1-int12WE-AFsp.wav --tag=ICMT && wavefile ./test/files/M1F1-int12WE-AFsp.wav --resample=16000 --method=point ./test/files/out/to-sample-rate/M1F1-int12WE-AFsp-CLI.wav",
+    "test-dist": "npm run test-umd && npm run test-tsc && npm run test-cli",
+    "rollup-bundle": "rollup -c && npm run test-dist",
+    "doc": "./node_modules/.bin/jsdoc -c .jsdocrc -d docs -r README.md -t node_modules/docdash",
+    "build": "npm run lint && npm test && npm run rollup-bundle && npm run doc",
+    "coverage": "nyc report --reporter=lcov > coverage.lcov && codecov"
+  },
+  "devDependencies": {
+    "@ampproject/rollup-plugin-closure-compiler": "^0.13.0",
+    "@rollup/plugin-commonjs": "^11.0.0",
+    "@rollup/plugin-node-resolve": "^6.0.0",
+    "byte-data": "^19.0.1",
+    "codecov": "^3.6.1",
+    "docdash": "^1.1.1",
+    "esm": "^3.2.25",
+    "jsdoc": "^3.6.3",
+    "jshint": "^2.10.3",
+    "mocha": "^6.2.2",
+    "mocha-lcov-reporter": "^1.3.0",
+    "nyc": "^14.1.1",
+    "rollup": "^1.27.14",
+    "typescript": "^3.7.4"
+  },
+  "dependencies": {}
+}

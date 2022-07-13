@@ -3,7 +3,7 @@ import { EventEmitter } from 'tsee';
 import fs from 'fs';
 import Path from 'path';
 import os from 'os';
-import { spawnHelper } from './spawn-helper';
+import { spawnHelper, SpawnHelperType } from './spawn-helper';
 import { ICamera, ICameraStartOptions } from './icamera';
 import util from 'util';
 import crypto from 'crypto';
@@ -42,22 +42,24 @@ export class GStreamer extends EventEmitter<{
     private _keepAliveTimeout: NodeJS.Timeout | undefined;
     private _isStarted = false;
     private _isRestarting = false;
+    private _spawnHelper: SpawnHelperType;
 
-    constructor(verbose: boolean) {
+    constructor(verbose: boolean, spawnHelperOverride?: SpawnHelperType) {
         super();
 
         this._verbose = verbose;
+        this._spawnHelper = spawnHelperOverride || spawnHelper;
     }
 
     async init() {
         try {
-            await spawnHelper('which', [ 'gst-launch-1.0' ]);
+            await this._spawnHelper('which', [ 'gst-launch-1.0' ]);
         }
         catch (ex) {
             throw new Error('Missing "gst-launch-1.0" in PATH. Install via `sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-base gstreamer1.0-plugins-base-apps`');
         }
         try {
-            await spawnHelper('which', [ 'gst-device-monitor-1.0' ]);
+            await this._spawnHelper('which', [ 'gst-device-monitor-1.0' ]);
         }
         catch (ex) {
             throw new Error('Missing "gst-device-monitor-1.0" in PATH. Install via `sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-base gstreamer1.0-plugins-base-apps`');
@@ -105,6 +107,20 @@ export class GStreamer extends EventEmitter<{
         }
         if (device.caps.length === 0) {
             throw new Error('Could not find resolution info for this device');
+        }
+
+        if (device.name === 'RZG2L_CRU') {
+            // run commands to initialize the Coral camera on Renesas
+            if (this._verbose) {
+                console.log(PREFIX, 'Detected RZ/G2L target, initializing camera...');
+            }
+            await spawnHelper('media-ctl', ['-d', '/dev/media0', '-r']);
+            await spawnHelper('media-ctl', ['-d', '/dev/media0', '-l', "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"]);
+            await spawnHelper('media-ctl', ['-d', '/dev/media0', '-V', "'rzg2l_csi2 10830400.csi2':1 [fmt:UYVY8_2X8/640x480 field:none]"]);
+            await spawnHelper('media-ctl', ['-d', '/dev/media0', '-V', "'ov5645 0-003c':0 [fmt:UYVY8_2X8/640x480 field:none]"]);
+            if (this._verbose) {
+                console.log(PREFIX, 'Detected RZ/G2L target, initializing camera OK');
+            }
         }
 
         // now we need to determine the resolution... we want something as close as possible to dimensions.widthx480
@@ -357,9 +373,28 @@ export class GStreamer extends EventEmitter<{
         return stopRes;
     }
 
-    private async getAllDevices() {
-        let lines = (await spawnHelper('gst-device-monitor-1.0', []))
-            .split('\n').filter(x => !!x).map(x => x.trim());
+    async getAllDevices() {
+        let lines;
+        try {
+            lines = (await this._spawnHelper('gst-device-monitor-1.0', []))
+                .split('\n').filter(x => !!x).map(x => x.trim());
+        }
+        catch (ex2) {
+            const ex = <Error>ex2;
+            const message = ex.message || ex.toString();
+
+            if (typeof message === 'string' && message.indexOf('Failed to start device monitor') > -1) {
+                if (this._verbose) {
+                    console.log(PREFIX, 'Failed to start gst-device-monitor-1.0, retrying with only video sources...');
+                }
+                lines = (await this._spawnHelper('gst-device-monitor-1.0',
+                        ['Video/Source', 'Source/Video', 'Video/CameraSource']))
+                    .split('\n').filter(x => !!x).map(x => x.trim());
+            }
+            else {
+                throw ex;
+            }
+        }
 
         let devices: GStreamerDevice[] = [];
 
@@ -445,6 +480,18 @@ export class GStreamer extends EventEmitter<{
             if (this._mode === 'rpi-bullseye') { // no framerate here...
                 c = c.filter(x => x.width && x.height);
             }
+            else if (d.name === 'RZG2L_CRU') {
+                // so here we always parse 320x240, but 640x480 is also fine
+                c = c.filter(x => x.width && x.height).map(x => {
+                    if (x.width === 320) {
+                        x.width = 640;
+                    }
+                    if (x.height === 240) {
+                        x.height = 480;
+                    }
+                    return x;
+                });
+            }
             else {
                 c = c.filter(x => x.width && x.height && x.framerate);
             }
@@ -453,6 +500,19 @@ export class GStreamer extends EventEmitter<{
             if (c.some(x => x.type === 'video/x-raw')) {
                 c = c.filter(x => x.type === 'video/x-raw');
             }
+
+            c = c.reduce((curr: GStreamerCap[], o) => {
+                // deduplicate caps
+                if (!curr.some(obj => obj.framerate === o.framerate &&
+                        obj.width === o.width &&
+                        obj.height === o.height &&
+                        obj.framerate === o.framerate)) {
+                    curr.push(o);
+                }
+                return curr;
+            }, []);
+
+
             d.caps = c;
         }
 
@@ -491,7 +551,7 @@ export class GStreamer extends EventEmitter<{
     private async listNvarguscamerasrcDevices(): Promise<GStreamerDevice[]> {
         let hasPlugin: boolean;
         try {
-            hasPlugin = (await spawnHelper('gst-inspect-1.0', [])).indexOf('nvarguscamerasrc') > -1;
+            hasPlugin = (await this._spawnHelper('gst-inspect-1.0', [])).indexOf('nvarguscamerasrc') > -1;
         }
         catch (ex) {
             if (this._verbose) {
@@ -506,44 +566,55 @@ export class GStreamer extends EventEmitter<{
 
         let caps: GStreamerCap[] = [];
 
-        let gstLaunchRet = await new Promise<string>((resolve, reject) => {
+        let gstLaunchRet;
+
+        // not overridden spawn helper?
+        if (this._spawnHelper === spawnHelper) {
+            gstLaunchRet = await new Promise<string>((resolve, reject) => {
+                let command = 'gst-launch-1.0';
+                let args = [ 'nvarguscamerasrc' ];
+                let opts = { ignoreErrors: true };
+
+                const p = spawn(command, args, { env: process.env });
+
+                let allData: Buffer[] = [];
+
+                p.stdout.on('data', (data: Buffer) => {
+                    allData.push(data);
+
+                    if (data.toString('utf-8').indexOf('No cameras available') > -1) {
+                        p.kill('SIGINT');
+                        resolve(Buffer.concat(allData).toString('utf-8'));
+                    }
+                });
+
+                p.stderr.on('data', (data: Buffer) => {
+                    allData.push(data);
+
+                    if (data.toString('utf-8').indexOf('No cameras available') > -1) {
+                        p.kill('SIGINT');
+                        resolve(Buffer.concat(allData).toString('utf-8'));
+                    }
+                });
+
+                p.on('error', reject);
+
+                p.on('close', (code) => {
+                    if (code === 0 || opts.ignoreErrors === true) {
+                        resolve(Buffer.concat(allData).toString('utf-8'));
+                    }
+                    else {
+                        reject('Error code was not 0: ' + Buffer.concat(allData).toString('utf-8'));
+                    }
+                });
+            });
+        }
+        else {
             let command = 'gst-launch-1.0';
             let args = [ 'nvarguscamerasrc' ];
             let opts = { ignoreErrors: true };
-
-            const p = spawn(command, args, { env: process.env });
-
-            let allData: Buffer[] = [];
-
-            p.stdout.on('data', (data: Buffer) => {
-                allData.push(data);
-
-                if (data.toString('utf-8').indexOf('No cameras available') > -1) {
-                    p.kill('SIGINT');
-                    resolve(Buffer.concat(allData).toString('utf-8'));
-                }
-            });
-
-            p.stderr.on('data', (data: Buffer) => {
-                allData.push(data);
-
-                if (data.toString('utf-8').indexOf('No cameras available') > -1) {
-                    p.kill('SIGINT');
-                    resolve(Buffer.concat(allData).toString('utf-8'));
-                }
-            });
-
-            p.on('error', reject);
-
-            p.on('close', (code) => {
-                if (code === 0 || opts.ignoreErrors === true) {
-                    resolve(Buffer.concat(allData).toString('utf-8'));
-                }
-                else {
-                    reject('Error code was not 0: ' + Buffer.concat(allData).toString('utf-8'));
-                }
-            });
-        });
+            gstLaunchRet = await this._spawnHelper(command, args, opts);
+        }
 
         let lines = gstLaunchRet.split('\n').filter(x => !!x).map(x => x.trim());
 
