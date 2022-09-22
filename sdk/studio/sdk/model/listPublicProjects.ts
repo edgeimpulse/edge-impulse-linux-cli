@@ -10,36 +10,31 @@
  * Do not edit the class manually.
  */
 
+import { ProjectPublicData } from './projectPublicData';
 
-/**
-* Only fields set in this object will be updated.
-*/
-export class UpdateUserRequest {
+export class ListPublicProjects {
     /**
-    * New full name
+    * Array with public projects
     */
-    'name'?: string;
-    /**
-    * Whether to show the Imagine 2022 banner
-    */
-    'showImagine2022'?: boolean;
+    'projects': Array<ProjectPublicData>;
+    'totalProjectCount': number;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "name",
-            "baseName": "name",
-            "type": "string"
+            "name": "projects",
+            "baseName": "projects",
+            "type": "Array<ProjectPublicData>"
         },
         {
-            "name": "showImagine2022",
-            "baseName": "showImagine2022",
-            "type": "boolean"
+            "name": "totalProjectCount",
+            "baseName": "totalProjectCount",
+            "type": "number"
         }    ];
 
     static getAttributeTypeMap() {
-        return UpdateUserRequest.attributeTypeMap;
+        return ListPublicProjects.attributeTypeMap;
     }
 }
 

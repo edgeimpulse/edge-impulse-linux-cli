@@ -258,6 +258,9 @@ function getModelPath(projectId: number, version: number) {
                     c[k] = (<number>c[k]).toFixed(4);
                 }
                 console.log('classifyRes', timeMs + 'ms.', c);
+                if (ev.debug) {
+                    console.log('additionalInfo:', ev.debug);
+                }
             });
         }
         else if (param.sensorType === 'camera') {
@@ -293,6 +296,9 @@ function getModelPath(projectId: number, version: number) {
                 }
                 else if (ev.result.bounding_boxes) {
                     console.log('boundingBoxes', timeMs + 'ms.', JSON.stringify(ev.result.bounding_boxes));
+                }
+                if (ev.debug) {
+                    console.log('additionalInfo:', ev.debug);
                 }
             });
         }

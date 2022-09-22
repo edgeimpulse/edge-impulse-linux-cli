@@ -11,35 +11,20 @@
  */
 
 
-/**
-* Only fields set in this object will be updated.
-*/
-export class UpdateUserRequest {
-    /**
-    * New full name
-    */
-    'name'?: string;
-    /**
-    * Whether to show the Imagine 2022 banner
-    */
-    'showImagine2022'?: boolean;
+export class UpdateProjectTagsRequest {
+    'tags': Array<string>;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "name",
-            "baseName": "name",
-            "type": "string"
-        },
-        {
-            "name": "showImagine2022",
-            "baseName": "showImagine2022",
-            "type": "boolean"
+            "name": "tags",
+            "baseName": "tags",
+            "type": "Array<string>"
         }    ];
 
     static getAttributeTypeMap() {
-        return UpdateUserRequest.attributeTypeMap;
+        return UpdateProjectTagsRequest.attributeTypeMap;
     }
 }
 

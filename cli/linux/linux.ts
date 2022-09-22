@@ -241,7 +241,8 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 category: data.path.indexOf('/training') > -1 ? 'training' : 'testing',
                 config: this._config,
                 label: { label: data.label, type: 'label' },
-                boundingBoxes: undefined
+                boundingBoxes: undefined,
+                metadata: { }, // TODO get this from MgmtInterfaceSampleRequestSample
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -292,7 +293,8 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 category: data.path.indexOf('/training') > -1 ? 'training' : 'testing',
                 config: this._config,
                 label: { label: data.label, type: 'label' },
-                boundingBoxes: undefined
+                boundingBoxes: undefined,
+                metadata: { }, // TODO get this from MgmtInterfaceSampleRequestSample
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -368,6 +370,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 config: this._config,
                 label: { label: data.label, type: 'label' },
                 boundingBoxes: undefined,
+                metadata: { }, // TODO get this from MgmtInterfaceSampleRequestSample
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');

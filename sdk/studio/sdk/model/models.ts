@@ -105,6 +105,8 @@ export * from './dSPMetadataResponse';
 export * from './dataExplorerPredictionsResponse';
 export * from './dataExplorerPredictionsResponseAllOf';
 export * from './dataExplorerSettings';
+export * from './datasetRatioData';
+export * from './datasetRatioDataRatio';
 export * from './deletePortalFileRequest';
 export * from './dependencyData';
 export * from './deploymentTarget';
@@ -304,6 +306,8 @@ export * from './listPortalFilesInFolderResponse';
 export * from './listPortalFilesInFolderResponseAllOf';
 export * from './listProjects';
 export * from './listProjectsResponse';
+export * from './listPublicProjects';
+export * from './listPublicProjectsResponse';
 export * from './listPublicVersionsResponse';
 export * from './listPublicVersionsResponseAllOf';
 export * from './listPublicVersionsResponseAllOfVersions';
@@ -393,6 +397,11 @@ export * from './performanceCalibrationUploadLabeledAudioResponse';
 export * from './performanceCalibrationUploadLabeledAudioResponseAllOf';
 export * from './portalFile';
 export * from './portalInfoResponse';
+export * from './profileTfLiteRequest';
+export * from './profileTfLiteResponse';
+export * from './profileTfLiteResponseAllOf';
+export * from './profileTfLiteResponseAllOfMemory';
+export * from './profileTfLiteResponseAllOfMemoryTflite';
 export * from './project';
 export * from './projectCollaborator';
 export * from './projectCollaboratorAllOf';
@@ -413,12 +422,15 @@ export * from './projectInfoResponseAllOfExperiments';
 export * from './projectInfoResponseAllOfImpulse';
 export * from './projectInfoResponseAllOfLatencyDevices';
 export * from './projectInfoResponseAllOfPerformance';
-export * from './projectInfoResponseAllOfReadme';
 export * from './projectInfoResponseAllOfShowGettingStartedWizard';
 export * from './projectInfoResponseAllOfUrls';
+export * from './projectPrivateData';
+export * from './projectPublicData';
+export * from './projectPublicDataReadme';
 export * from './projectVersionRequest';
 export * from './rawSampleData';
 export * from './rawSamplePayload';
+export * from './rebalanceDatasetResponse';
 export * from './removeCollaboratorRequest';
 export * from './removeMemberRequest';
 export * from './renameDeviceRequest';
@@ -449,12 +461,14 @@ export * from './setOptimizeSpaceRequestAllOfSpace';
 export * from './setOrganizationDataDatasetRequest';
 export * from './setProjectComputeTimeRequest';
 export * from './setProjectDspFileSizeRequest';
+export * from './setSampleMetadataRequest';
 export * from './setSyntiantPosteriorRequest';
 export * from './setUserPasswordRequest';
 export * from './socketTokenResponse';
 export * from './socketTokenResponseAllOf';
 export * from './socketTokenResponseAllOfToken';
 export * from './splitSampleInFramesRequest';
+export * from './staffInfo';
 export * from './startJobResponse';
 export * from './startJobResponseAllOf';
 export * from './startPerformanceCalibrationRequest';
@@ -502,6 +516,7 @@ export * from './updateOrganizationRequest';
 export * from './updateOrganizationTransferLearningBlockRequest';
 export * from './updateOrganizationTransformationBlockRequest';
 export * from './updateProjectRequest';
+export * from './updateProjectTagsRequest';
 export * from './updateThemeColorsRequest';
 export * from './updateThemeLogosRequest';
 export * from './updateThirdPartyAuthRequest';
@@ -520,7 +535,6 @@ export * from './uploadUserPhotoResponse';
 export * from './uploadUserPhotoResponseAllOf';
 export * from './user';
 export * from './userByThirdPartyActivationRequest';
-export * from './userStaffInfo';
 export * from './verifyDspBlockUrlRequest';
 export * from './verifyDspBlockUrlResponse';
 export * from './verifyDspBlockUrlResponseAllOf';
@@ -641,6 +655,8 @@ import { DSPMetadataResponse } from './dSPMetadataResponse';
 import { DataExplorerPredictionsResponse } from './dataExplorerPredictionsResponse';
 import { DataExplorerPredictionsResponseAllOf } from './dataExplorerPredictionsResponseAllOf';
 import { DataExplorerSettings } from './dataExplorerSettings';
+import { DatasetRatioData } from './datasetRatioData';
+import { DatasetRatioDataRatio } from './datasetRatioDataRatio';
 import { DeletePortalFileRequest } from './deletePortalFileRequest';
 import { DependencyData } from './dependencyData';
 import { DeploymentTarget } from './deploymentTarget';
@@ -840,6 +856,8 @@ import { ListPortalFilesInFolderResponse } from './listPortalFilesInFolderRespon
 import { ListPortalFilesInFolderResponseAllOf } from './listPortalFilesInFolderResponseAllOf';
 import { ListProjects } from './listProjects';
 import { ListProjectsResponse } from './listProjectsResponse';
+import { ListPublicProjects } from './listPublicProjects';
+import { ListPublicProjectsResponse } from './listPublicProjectsResponse';
 import { ListPublicVersionsResponse } from './listPublicVersionsResponse';
 import { ListPublicVersionsResponseAllOf } from './listPublicVersionsResponseAllOf';
 import { ListPublicVersionsResponseAllOfVersions } from './listPublicVersionsResponseAllOfVersions';
@@ -929,6 +947,11 @@ import { PerformanceCalibrationUploadLabeledAudioResponse } from './performanceC
 import { PerformanceCalibrationUploadLabeledAudioResponseAllOf } from './performanceCalibrationUploadLabeledAudioResponseAllOf';
 import { PortalFile } from './portalFile';
 import { PortalInfoResponse } from './portalInfoResponse';
+import { ProfileTfLiteRequest } from './profileTfLiteRequest';
+import { ProfileTfLiteResponse } from './profileTfLiteResponse';
+import { ProfileTfLiteResponseAllOf } from './profileTfLiteResponseAllOf';
+import { ProfileTfLiteResponseAllOfMemory } from './profileTfLiteResponseAllOfMemory';
+import { ProfileTfLiteResponseAllOfMemoryTflite } from './profileTfLiteResponseAllOfMemoryTflite';
 import { Project } from './project';
 import { ProjectCollaborator } from './projectCollaborator';
 import { ProjectCollaboratorAllOf } from './projectCollaboratorAllOf';
@@ -949,12 +972,15 @@ import { ProjectInfoResponseAllOfExperiments } from './projectInfoResponseAllOfE
 import { ProjectInfoResponseAllOfImpulse } from './projectInfoResponseAllOfImpulse';
 import { ProjectInfoResponseAllOfLatencyDevices } from './projectInfoResponseAllOfLatencyDevices';
 import { ProjectInfoResponseAllOfPerformance } from './projectInfoResponseAllOfPerformance';
-import { ProjectInfoResponseAllOfReadme } from './projectInfoResponseAllOfReadme';
 import { ProjectInfoResponseAllOfShowGettingStartedWizard } from './projectInfoResponseAllOfShowGettingStartedWizard';
 import { ProjectInfoResponseAllOfUrls } from './projectInfoResponseAllOfUrls';
+import { ProjectPrivateData } from './projectPrivateData';
+import { ProjectPublicData } from './projectPublicData';
+import { ProjectPublicDataReadme } from './projectPublicDataReadme';
 import { ProjectVersionRequest } from './projectVersionRequest';
 import { RawSampleData } from './rawSampleData';
 import { RawSamplePayload } from './rawSamplePayload';
+import { RebalanceDatasetResponse } from './rebalanceDatasetResponse';
 import { RemoveCollaboratorRequest } from './removeCollaboratorRequest';
 import { RemoveMemberRequest } from './removeMemberRequest';
 import { RenameDeviceRequest } from './renameDeviceRequest';
@@ -985,12 +1011,14 @@ import { SetOptimizeSpaceRequestAllOfSpace } from './setOptimizeSpaceRequestAllO
 import { SetOrganizationDataDatasetRequest } from './setOrganizationDataDatasetRequest';
 import { SetProjectComputeTimeRequest } from './setProjectComputeTimeRequest';
 import { SetProjectDspFileSizeRequest } from './setProjectDspFileSizeRequest';
+import { SetSampleMetadataRequest } from './setSampleMetadataRequest';
 import { SetSyntiantPosteriorRequest } from './setSyntiantPosteriorRequest';
 import { SetUserPasswordRequest } from './setUserPasswordRequest';
 import { SocketTokenResponse } from './socketTokenResponse';
 import { SocketTokenResponseAllOf } from './socketTokenResponseAllOf';
 import { SocketTokenResponseAllOfToken } from './socketTokenResponseAllOfToken';
 import { SplitSampleInFramesRequest } from './splitSampleInFramesRequest';
+import { StaffInfo } from './staffInfo';
 import { StartJobResponse } from './startJobResponse';
 import { StartJobResponseAllOf } from './startJobResponseAllOf';
 import { StartPerformanceCalibrationRequest } from './startPerformanceCalibrationRequest';
@@ -1038,6 +1066,7 @@ import { UpdateOrganizationRequest } from './updateOrganizationRequest';
 import { UpdateOrganizationTransferLearningBlockRequest } from './updateOrganizationTransferLearningBlockRequest';
 import { UpdateOrganizationTransformationBlockRequest } from './updateOrganizationTransformationBlockRequest';
 import { UpdateProjectRequest } from './updateProjectRequest';
+import { UpdateProjectTagsRequest } from './updateProjectTagsRequest';
 import { UpdateThemeColorsRequest } from './updateThemeColorsRequest';
 import { UpdateThemeLogosRequest } from './updateThemeLogosRequest';
 import { UpdateThirdPartyAuthRequest } from './updateThirdPartyAuthRequest';
@@ -1056,7 +1085,6 @@ import { UploadUserPhotoResponse } from './uploadUserPhotoResponse';
 import { UploadUserPhotoResponseAllOf } from './uploadUserPhotoResponseAllOf';
 import { User } from './user';
 import { UserByThirdPartyActivationRequest } from './userByThirdPartyActivationRequest';
-import { UserStaffInfo } from './userStaffInfo';
 import { VerifyDspBlockUrlRequest } from './verifyDspBlockUrlRequest';
 import { VerifyDspBlockUrlResponse } from './verifyDspBlockUrlResponse';
 import { VerifyDspBlockUrlResponseAllOf } from './verifyDspBlockUrlResponseAllOf';
@@ -1165,8 +1193,10 @@ let enumsMap: {[index: string]: any} = {
     "PerformanceCalibrationFalsePositiveTypeEnum": "PerformanceCalibrationFalsePositiveTypeEnum",
     "PerformanceCalibrationGroundTruthTypeEnum": "PerformanceCalibrationGroundTruthTypeEnum",
     "PerformanceCalibrationParametersTypeEnum": "PerformanceCalibrationParametersTypeEnum",
+    "ProfileTfLiteRequestReferenceModelEnum": "ProfileTfLiteRequestReferenceModelEnum",
     "ProjectLabelingMethodEnum": "ProjectLabelingMethodEnum",
     "ProjectInfoResponseAllOfDeploySettingsSensorEnum": "ProjectInfoResponseAllOfDeploySettingsSensorEnum",
+    "ProjectPublicDataProjectTypeEnum": "ProjectPublicDataProjectTypeEnum",
     "SampleBoundingBoxesTypeEnum": "SampleBoundingBoxesTypeEnum",
     "SampleChartTypeEnum": "SampleChartTypeEnum",
     "SetKerasParameterRequestModeEnum": "SetKerasParameterRequestModeEnum",
@@ -1293,6 +1323,8 @@ let typeMap: {[index: string]: any} = {
     "DataExplorerPredictionsResponse": DataExplorerPredictionsResponse,
     "DataExplorerPredictionsResponseAllOf": DataExplorerPredictionsResponseAllOf,
     "DataExplorerSettings": DataExplorerSettings,
+    "DatasetRatioData": DatasetRatioData,
+    "DatasetRatioDataRatio": DatasetRatioDataRatio,
     "DeletePortalFileRequest": DeletePortalFileRequest,
     "DependencyData": DependencyData,
     "DeploymentTarget": DeploymentTarget,
@@ -1489,6 +1521,8 @@ let typeMap: {[index: string]: any} = {
     "ListPortalFilesInFolderResponseAllOf": ListPortalFilesInFolderResponseAllOf,
     "ListProjects": ListProjects,
     "ListProjectsResponse": ListProjectsResponse,
+    "ListPublicProjects": ListPublicProjects,
+    "ListPublicProjectsResponse": ListPublicProjectsResponse,
     "ListPublicVersionsResponse": ListPublicVersionsResponse,
     "ListPublicVersionsResponseAllOf": ListPublicVersionsResponseAllOf,
     "ListPublicVersionsResponseAllOfVersions": ListPublicVersionsResponseAllOfVersions,
@@ -1577,6 +1611,11 @@ let typeMap: {[index: string]: any} = {
     "PerformanceCalibrationUploadLabeledAudioResponseAllOf": PerformanceCalibrationUploadLabeledAudioResponseAllOf,
     "PortalFile": PortalFile,
     "PortalInfoResponse": PortalInfoResponse,
+    "ProfileTfLiteRequest": ProfileTfLiteRequest,
+    "ProfileTfLiteResponse": ProfileTfLiteResponse,
+    "ProfileTfLiteResponseAllOf": ProfileTfLiteResponseAllOf,
+    "ProfileTfLiteResponseAllOfMemory": ProfileTfLiteResponseAllOfMemory,
+    "ProfileTfLiteResponseAllOfMemoryTflite": ProfileTfLiteResponseAllOfMemoryTflite,
     "Project": Project,
     "ProjectCollaborator": ProjectCollaborator,
     "ProjectCollaboratorAllOf": ProjectCollaboratorAllOf,
@@ -1597,12 +1636,15 @@ let typeMap: {[index: string]: any} = {
     "ProjectInfoResponseAllOfImpulse": ProjectInfoResponseAllOfImpulse,
     "ProjectInfoResponseAllOfLatencyDevices": ProjectInfoResponseAllOfLatencyDevices,
     "ProjectInfoResponseAllOfPerformance": ProjectInfoResponseAllOfPerformance,
-    "ProjectInfoResponseAllOfReadme": ProjectInfoResponseAllOfReadme,
     "ProjectInfoResponseAllOfShowGettingStartedWizard": ProjectInfoResponseAllOfShowGettingStartedWizard,
     "ProjectInfoResponseAllOfUrls": ProjectInfoResponseAllOfUrls,
+    "ProjectPrivateData": ProjectPrivateData,
+    "ProjectPublicData": ProjectPublicData,
+    "ProjectPublicDataReadme": ProjectPublicDataReadme,
     "ProjectVersionRequest": ProjectVersionRequest,
     "RawSampleData": RawSampleData,
     "RawSamplePayload": RawSamplePayload,
+    "RebalanceDatasetResponse": RebalanceDatasetResponse,
     "RemoveCollaboratorRequest": RemoveCollaboratorRequest,
     "RemoveMemberRequest": RemoveMemberRequest,
     "RenameDeviceRequest": RenameDeviceRequest,
@@ -1633,12 +1675,14 @@ let typeMap: {[index: string]: any} = {
     "SetOrganizationDataDatasetRequest": SetOrganizationDataDatasetRequest,
     "SetProjectComputeTimeRequest": SetProjectComputeTimeRequest,
     "SetProjectDspFileSizeRequest": SetProjectDspFileSizeRequest,
+    "SetSampleMetadataRequest": SetSampleMetadataRequest,
     "SetSyntiantPosteriorRequest": SetSyntiantPosteriorRequest,
     "SetUserPasswordRequest": SetUserPasswordRequest,
     "SocketTokenResponse": SocketTokenResponse,
     "SocketTokenResponseAllOf": SocketTokenResponseAllOf,
     "SocketTokenResponseAllOfToken": SocketTokenResponseAllOfToken,
     "SplitSampleInFramesRequest": SplitSampleInFramesRequest,
+    "StaffInfo": StaffInfo,
     "StartJobResponse": StartJobResponse,
     "StartJobResponseAllOf": StartJobResponseAllOf,
     "StartPerformanceCalibrationRequest": StartPerformanceCalibrationRequest,
@@ -1686,6 +1730,7 @@ let typeMap: {[index: string]: any} = {
     "UpdateOrganizationTransferLearningBlockRequest": UpdateOrganizationTransferLearningBlockRequest,
     "UpdateOrganizationTransformationBlockRequest": UpdateOrganizationTransformationBlockRequest,
     "UpdateProjectRequest": UpdateProjectRequest,
+    "UpdateProjectTagsRequest": UpdateProjectTagsRequest,
     "UpdateThemeColorsRequest": UpdateThemeColorsRequest,
     "UpdateThemeLogosRequest": UpdateThemeLogosRequest,
     "UpdateThirdPartyAuthRequest": UpdateThirdPartyAuthRequest,
@@ -1704,7 +1749,6 @@ let typeMap: {[index: string]: any} = {
     "UploadUserPhotoResponseAllOf": UploadUserPhotoResponseAllOf,
     "User": User,
     "UserByThirdPartyActivationRequest": UserByThirdPartyActivationRequest,
-    "UserStaffInfo": UserStaffInfo,
     "VerifyDspBlockUrlRequest": VerifyDspBlockUrlRequest,
     "VerifyDspBlockUrlResponse": VerifyDspBlockUrlResponse,
     "VerifyDspBlockUrlResponseAllOf": VerifyDspBlockUrlResponseAllOf,

@@ -11,35 +11,32 @@
  */
 
 
-/**
-* Only fields set in this object will be updated.
-*/
-export class UpdateUserRequest {
+export class DatasetRatioDataRatio {
     /**
-    * New full name
+    * number of training samples after rebalance
     */
-    'name'?: string;
+    'training'?: number;
     /**
-    * Whether to show the Imagine 2022 banner
+    * number of testing samples after rebalance
     */
-    'showImagine2022'?: boolean;
+    'testing'?: number;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "name",
-            "baseName": "name",
-            "type": "string"
+            "name": "training",
+            "baseName": "training",
+            "type": "number"
         },
         {
-            "name": "showImagine2022",
-            "baseName": "showImagine2022",
-            "type": "boolean"
+            "name": "testing",
+            "baseName": "testing",
+            "type": "number"
         }    ];
 
     static getAttributeTypeMap() {
-        return UpdateUserRequest.attributeTypeMap;
+        return DatasetRatioDataRatio.attributeTypeMap;
     }
 }
 

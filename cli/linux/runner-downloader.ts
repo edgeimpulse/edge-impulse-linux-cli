@@ -37,7 +37,11 @@ export class RunnerDownloader extends EventEmitter<{
             downloadType = 'runner-mac-x86_64';
         }
         else if (process.platform === 'linux') {
-            if (process.arch === 'arm') {
+            // AKD1000 is target independent (Python based)
+            if (fs.existsSync('/dev/akida0')) {
+                downloadType = 'runner-linux-akd1000';
+            }
+            else if (process.arch === 'arm') {
                 let uname = (await spawnHelper('uname', ['-m'])).trim();
                 if (uname !== 'armv7l') {
                     throw new Error('Unsupported architecture "' + uname + '", only ' +

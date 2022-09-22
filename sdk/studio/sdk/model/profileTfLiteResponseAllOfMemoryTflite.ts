@@ -11,35 +11,26 @@
  */
 
 
-/**
-* Only fields set in this object will be updated.
-*/
-export class UpdateUserRequest {
-    /**
-    * New full name
-    */
-    'name'?: string;
-    /**
-    * Whether to show the Imagine 2022 banner
-    */
-    'showImagine2022'?: boolean;
+export class ProfileTfLiteResponseAllOfMemoryTflite {
+    'ram': number;
+    'rom': number;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "name",
-            "baseName": "name",
-            "type": "string"
+            "name": "ram",
+            "baseName": "ram",
+            "type": "number"
         },
         {
-            "name": "showImagine2022",
-            "baseName": "showImagine2022",
-            "type": "boolean"
+            "name": "rom",
+            "baseName": "rom",
+            "type": "number"
         }    ];
 
     static getAttributeTypeMap() {
-        return UpdateUserRequest.attributeTypeMap;
+        return ProfileTfLiteResponseAllOfMemoryTflite.attributeTypeMap;
     }
 }
 
