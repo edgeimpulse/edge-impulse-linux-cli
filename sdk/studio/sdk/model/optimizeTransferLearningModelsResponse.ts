@@ -11,10 +11,10 @@
  */
 
 import { GenericApiResponse } from './genericApiResponse';
-import { OptimizeSpaceResponseAllOf } from './optimizeSpaceResponseAllOf';
-import { TunerSpaceImpulse } from './tunerSpaceImpulse';
+import { OptimizeTransferLearningModelsResponseAllOf } from './optimizeTransferLearningModelsResponseAllOf';
+import { OptimizeTransferLearningModelsResponseAllOfModels } from './optimizeTransferLearningModelsResponseAllOfModels';
 
-export class OptimizeSpaceResponse {
+export class OptimizeTransferLearningModelsResponse {
     /**
     * Whether the operation succeeded
     */
@@ -23,10 +23,7 @@ export class OptimizeSpaceResponse {
     * Optional error description (set if \'success\' was false)
     */
     'error'?: string;
-    /**
-    * List of impulses specifying the EON Tuner search space
-    */
-    'impulse': Array<TunerSpaceImpulse>;
+    'models'?: OptimizeTransferLearningModelsResponseAllOfModels;
 
     static discriminator: string | undefined = undefined;
 
@@ -42,13 +39,13 @@ export class OptimizeSpaceResponse {
             "type": "string"
         },
         {
-            "name": "impulse",
-            "baseName": "impulse",
-            "type": "Array<TunerSpaceImpulse>"
+            "name": "models",
+            "baseName": "models",
+            "type": "OptimizeTransferLearningModelsResponseAllOfModels"
         }    ];
 
     static getAttributeTypeMap() {
-        return OptimizeSpaceResponse.attributeTypeMap;
+        return OptimizeTransferLearningModelsResponse.attributeTypeMap;
     }
 }
 

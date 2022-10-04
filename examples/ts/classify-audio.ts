@@ -55,7 +55,7 @@ import { AudioClassifier, AudioRecorder, LinuxImpulseRunner } from "../../librar
             process.exit(1);
         });
 
-        await audioClassifier.start(device, 250 /* interval, so here 4 times per second */);
+        await audioClassifier.start(device);
 
         // when new data comes in, this handler is called.
         // Use it to draw conclusions, send interesting events to the cloud etc.

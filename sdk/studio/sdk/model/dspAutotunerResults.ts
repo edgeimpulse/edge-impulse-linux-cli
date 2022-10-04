@@ -10,11 +10,11 @@
  * Do not edit the class manually.
  */
 
+import { DspAutotunerResultsAllOf } from './dspAutotunerResultsAllOf';
+import { DspAutotunerResultsAllOfResults } from './dspAutotunerResultsAllOfResults';
 import { GenericApiResponse } from './genericApiResponse';
-import { OptimizeSpaceResponseAllOf } from './optimizeSpaceResponseAllOf';
-import { TunerSpaceImpulse } from './tunerSpaceImpulse';
 
-export class OptimizeSpaceResponse {
+export class DspAutotunerResults {
     /**
     * Whether the operation succeeded
     */
@@ -23,10 +23,7 @@ export class OptimizeSpaceResponse {
     * Optional error description (set if \'success\' was false)
     */
     'error'?: string;
-    /**
-    * List of impulses specifying the EON Tuner search space
-    */
-    'impulse': Array<TunerSpaceImpulse>;
+    'results': Array<DspAutotunerResultsAllOfResults>;
 
     static discriminator: string | undefined = undefined;
 
@@ -42,13 +39,13 @@ export class OptimizeSpaceResponse {
             "type": "string"
         },
         {
-            "name": "impulse",
-            "baseName": "impulse",
-            "type": "Array<TunerSpaceImpulse>"
+            "name": "results",
+            "baseName": "results",
+            "type": "Array<DspAutotunerResultsAllOfResults>"
         }    ];
 
     static getAttributeTypeMap() {
-        return OptimizeSpaceResponse.attributeTypeMap;
+        return DspAutotunerResults.attributeTypeMap;
     }
 }
 

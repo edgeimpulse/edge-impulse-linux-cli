@@ -36,6 +36,7 @@ export * from './anomalyTrainedFeaturesResponseAllOfData';
 export * from './augmentationPolicyImageEnum';
 export * from './augmentationPolicySpectrogram';
 export * from './authorizeThirdPartyRequest';
+export * from './autotuneDspRequest';
 export * from './boundingBox';
 export * from './buildOnDeviceModelRequest';
 export * from './buildOrganizationOnDeviceModelRequest';
@@ -123,6 +124,9 @@ export * from './download';
 export * from './downloadPortalFileRequest';
 export * from './downloadPortalFileResponse';
 export * from './downloadPortalFileResponseAllOf';
+export * from './dspAutotunerResults';
+export * from './dspAutotunerResultsAllOf';
+export * from './dspAutotunerResultsAllOfResults';
 export * from './dspFeatureImportanceResponse';
 export * from './dspFeatureImportanceResponseAllOf';
 export * from './dspFeatureImportanceResponseAllOfFeatures';
@@ -245,7 +249,6 @@ export * from './kerasModelMetadataMetricsTflite';
 export * from './kerasModelTypeEnum';
 export * from './kerasResponse';
 export * from './kerasResponseAllOf';
-export * from './kerasResponseAllOfTransferLearningModels';
 export * from './kerasVisualLayer';
 export * from './kerasVisualLayerType';
 export * from './lastModificationDateResponse';
@@ -339,11 +342,17 @@ export * from './optimizeConfig';
 export * from './optimizeConfigResponse';
 export * from './optimizeConfigResponseAllOf';
 export * from './optimizeConfigTargetDevice';
+export * from './optimizeDSPParametersResponse';
+export * from './optimizeDSPParametersResponseAllOf';
 export * from './optimizeSpaceResponse';
+export * from './optimizeSpaceResponseAllOf';
 export * from './optimizeStateResponse';
 export * from './optimizeStateResponseAllOf';
 export * from './optimizeStateResponseAllOfStatus';
 export * from './optimizeStateResponseAllOfWorkers';
+export * from './optimizeTransferLearningModelsResponse';
+export * from './optimizeTransferLearningModelsResponseAllOf';
+export * from './optimizeTransferLearningModelsResponseAllOfModels';
 export * from './organization';
 export * from './organizationAddDataFileRequest';
 export * from './organizationAddDataFolderRequest';
@@ -457,7 +466,6 @@ export * from './setMemberDatasetsRequest';
 export * from './setMemberRoleRequest';
 export * from './setOptimizeSpaceRequest';
 export * from './setOptimizeSpaceRequestAllOf';
-export * from './setOptimizeSpaceRequestAllOfSpace';
 export * from './setOrganizationDataDatasetRequest';
 export * from './setProjectComputeTimeRequest';
 export * from './setProjectDspFileSizeRequest';
@@ -486,17 +494,11 @@ export * from './thirdPartyAuth';
 export * from './trackObjectsRequest';
 export * from './trackObjectsResponse';
 export * from './trackObjectsResponseAllOf';
+export * from './transferLearningModel';
 export * from './transferOwnershipOrganizationRequest';
 export * from './transformationBlockAdditionalMountPoint';
-export * from './tunerCreateTrialDSPBlock';
 export * from './tunerCreateTrialImpulse';
-export * from './tunerCreateTrialInputBlock';
-export * from './tunerCreateTrialLearnBlock';
-export * from './tunerSpaceDSPBlock';
 export * from './tunerSpaceImpulse';
-export * from './tunerSpaceInputBlock';
-export * from './tunerSpaceInputBlockWindow';
-export * from './tunerSpaceLearnBlock';
 export * from './tunerTrial';
 export * from './tunerTrialBlocks';
 export * from './updateJobRequest';
@@ -545,6 +547,9 @@ export * from './verifyOrganizationBucketResponseAllOf';
 export * from './verifyOrganizationBucketResponseAllOfFiles';
 export * from './verifyResetPasswordRequest';
 export * from './whitelabel';
+export * from './windowSettingsResponse';
+export * from './windowSettingsResponseAllOf';
+export * from './windowSettingsResponseAllOfWindowSettings';
 
 import localVarRequest = require('request');
 
@@ -586,6 +591,7 @@ import { AnomalyTrainedFeaturesResponseAllOfData } from './anomalyTrainedFeature
 import { AugmentationPolicyImageEnum } from './augmentationPolicyImageEnum';
 import { AugmentationPolicySpectrogram } from './augmentationPolicySpectrogram';
 import { AuthorizeThirdPartyRequest } from './authorizeThirdPartyRequest';
+import { AutotuneDspRequest } from './autotuneDspRequest';
 import { BoundingBox } from './boundingBox';
 import { BuildOnDeviceModelRequest } from './buildOnDeviceModelRequest';
 import { BuildOrganizationOnDeviceModelRequest } from './buildOrganizationOnDeviceModelRequest';
@@ -673,6 +679,9 @@ import { Download } from './download';
 import { DownloadPortalFileRequest } from './downloadPortalFileRequest';
 import { DownloadPortalFileResponse } from './downloadPortalFileResponse';
 import { DownloadPortalFileResponseAllOf } from './downloadPortalFileResponseAllOf';
+import { DspAutotunerResults } from './dspAutotunerResults';
+import { DspAutotunerResultsAllOf } from './dspAutotunerResultsAllOf';
+import { DspAutotunerResultsAllOfResults } from './dspAutotunerResultsAllOfResults';
 import { DspFeatureImportanceResponse } from './dspFeatureImportanceResponse';
 import { DspFeatureImportanceResponseAllOf } from './dspFeatureImportanceResponseAllOf';
 import { DspFeatureImportanceResponseAllOfFeatures } from './dspFeatureImportanceResponseAllOfFeatures';
@@ -795,7 +804,6 @@ import { KerasModelMetadataMetricsTflite } from './kerasModelMetadataMetricsTfli
 import { KerasModelTypeEnum } from './kerasModelTypeEnum';
 import { KerasResponse } from './kerasResponse';
 import { KerasResponseAllOf } from './kerasResponseAllOf';
-import { KerasResponseAllOfTransferLearningModels } from './kerasResponseAllOfTransferLearningModels';
 import { KerasVisualLayer } from './kerasVisualLayer';
 import { KerasVisualLayerType } from './kerasVisualLayerType';
 import { LastModificationDateResponse } from './lastModificationDateResponse';
@@ -889,11 +897,17 @@ import { OptimizeConfig } from './optimizeConfig';
 import { OptimizeConfigResponse } from './optimizeConfigResponse';
 import { OptimizeConfigResponseAllOf } from './optimizeConfigResponseAllOf';
 import { OptimizeConfigTargetDevice } from './optimizeConfigTargetDevice';
+import { OptimizeDSPParametersResponse } from './optimizeDSPParametersResponse';
+import { OptimizeDSPParametersResponseAllOf } from './optimizeDSPParametersResponseAllOf';
 import { OptimizeSpaceResponse } from './optimizeSpaceResponse';
+import { OptimizeSpaceResponseAllOf } from './optimizeSpaceResponseAllOf';
 import { OptimizeStateResponse } from './optimizeStateResponse';
 import { OptimizeStateResponseAllOf } from './optimizeStateResponseAllOf';
 import { OptimizeStateResponseAllOfStatus } from './optimizeStateResponseAllOfStatus';
 import { OptimizeStateResponseAllOfWorkers } from './optimizeStateResponseAllOfWorkers';
+import { OptimizeTransferLearningModelsResponse } from './optimizeTransferLearningModelsResponse';
+import { OptimizeTransferLearningModelsResponseAllOf } from './optimizeTransferLearningModelsResponseAllOf';
+import { OptimizeTransferLearningModelsResponseAllOfModels } from './optimizeTransferLearningModelsResponseAllOfModels';
 import { Organization } from './organization';
 import { OrganizationAddDataFileRequest } from './organizationAddDataFileRequest';
 import { OrganizationAddDataFolderRequest } from './organizationAddDataFolderRequest';
@@ -1007,7 +1021,6 @@ import { SetMemberDatasetsRequest } from './setMemberDatasetsRequest';
 import { SetMemberRoleRequest } from './setMemberRoleRequest';
 import { SetOptimizeSpaceRequest } from './setOptimizeSpaceRequest';
 import { SetOptimizeSpaceRequestAllOf } from './setOptimizeSpaceRequestAllOf';
-import { SetOptimizeSpaceRequestAllOfSpace } from './setOptimizeSpaceRequestAllOfSpace';
 import { SetOrganizationDataDatasetRequest } from './setOrganizationDataDatasetRequest';
 import { SetProjectComputeTimeRequest } from './setProjectComputeTimeRequest';
 import { SetProjectDspFileSizeRequest } from './setProjectDspFileSizeRequest';
@@ -1036,17 +1049,11 @@ import { ThirdPartyAuth } from './thirdPartyAuth';
 import { TrackObjectsRequest } from './trackObjectsRequest';
 import { TrackObjectsResponse } from './trackObjectsResponse';
 import { TrackObjectsResponseAllOf } from './trackObjectsResponseAllOf';
+import { TransferLearningModel } from './transferLearningModel';
 import { TransferOwnershipOrganizationRequest } from './transferOwnershipOrganizationRequest';
 import { TransformationBlockAdditionalMountPoint } from './transformationBlockAdditionalMountPoint';
-import { TunerCreateTrialDSPBlock } from './tunerCreateTrialDSPBlock';
 import { TunerCreateTrialImpulse } from './tunerCreateTrialImpulse';
-import { TunerCreateTrialInputBlock } from './tunerCreateTrialInputBlock';
-import { TunerCreateTrialLearnBlock } from './tunerCreateTrialLearnBlock';
-import { TunerSpaceDSPBlock } from './tunerSpaceDSPBlock';
 import { TunerSpaceImpulse } from './tunerSpaceImpulse';
-import { TunerSpaceInputBlock } from './tunerSpaceInputBlock';
-import { TunerSpaceInputBlockWindow } from './tunerSpaceInputBlockWindow';
-import { TunerSpaceLearnBlock } from './tunerSpaceLearnBlock';
 import { TunerTrial } from './tunerTrial';
 import { TunerTrialBlocks } from './tunerTrialBlocks';
 import { UpdateJobRequest } from './updateJobRequest';
@@ -1095,6 +1102,9 @@ import { VerifyOrganizationBucketResponseAllOf } from './verifyOrganizationBucke
 import { VerifyOrganizationBucketResponseAllOfFiles } from './verifyOrganizationBucketResponseAllOfFiles';
 import { VerifyResetPasswordRequest } from './verifyResetPasswordRequest';
 import { Whitelabel } from './whitelabel';
+import { WindowSettingsResponse } from './windowSettingsResponse';
+import { WindowSettingsResponseAllOf } from './windowSettingsResponseAllOf';
+import { WindowSettingsResponseAllOfWindowSettings } from './windowSettingsResponseAllOfWindowSettings';
 
 /* tslint:disable:no-unused-variable */
 let primitives = [
@@ -1136,6 +1146,8 @@ let enumsMap: {[index: string]: any} = {
     "GetDataExplorerSettingsResponseDimensionalityReductionRecommendationEnum": "GetDataExplorerSettingsResponseDimensionalityReductionRecommendationEnum",
     "GetDataExplorerSettingsResponseAllOfDimensionalityReductionRecommendationEnum": "GetDataExplorerSettingsResponseAllOfDimensionalityReductionRecommendationEnum",
     "GetJWTTokenRequestSsoTypeEnum": "GetJWTTokenRequestSsoTypeEnum",
+    "GetUserResponseTierEnum": "GetUserResponseTierEnum",
+    "GetUserResponseAllOfTierEnum": "GetUserResponseAllOfTierEnum",
     "ImpulseBlockVersionResizeModeEnum": "ImpulseBlockVersionResizeModeEnum",
     "ImpulseBlockVersionResizeMethodEnum": "ImpulseBlockVersionResizeMethodEnum",
     "ImpulseBlockVersionCropAnchorEnum": "ImpulseBlockVersionCropAnchorEnum",
@@ -1203,11 +1215,6 @@ let enumsMap: {[index: string]: any} = {
     "SetMemberRoleRequestRoleEnum": "SetMemberRoleRequestRoleEnum",
     "StartSamplingRequestCategoryEnum": "StartSamplingRequestCategoryEnum",
     "TransformationBlockAdditionalMountPointTypeEnum": "TransformationBlockAdditionalMountPointTypeEnum",
-    "TunerCreateTrialDSPBlockChannelsEnum": "TunerCreateTrialDSPBlockChannelsEnum",
-    "TunerCreateTrialInputBlockTypeEnum": "TunerCreateTrialInputBlockTypeEnum",
-    "TunerCreateTrialLearnBlockAugmentationPolicyImageEnum": "TunerCreateTrialLearnBlockAugmentationPolicyImageEnum",
-    "TunerCreateTrialLearnBlockModelEnum": "TunerCreateTrialLearnBlockModelEnum",
-    "TunerSpaceInputBlockTypeEnum": "TunerSpaceInputBlockTypeEnum",
     "UpdateOrganizationDeployBlockRequestCategoryEnum": "UpdateOrganizationDeployBlockRequestCategoryEnum",
     "UpdateOrganizationTransferLearningBlockRequestOperatesOnEnum": "UpdateOrganizationTransferLearningBlockRequestOperatesOnEnum",
     "UpdateOrganizationTransformationBlockRequestOperatesOnEnum": "UpdateOrganizationTransformationBlockRequestOperatesOnEnum",
@@ -1254,6 +1261,7 @@ let typeMap: {[index: string]: any} = {
     "AnomalyTrainedFeaturesResponseAllOfData": AnomalyTrainedFeaturesResponseAllOfData,
     "AugmentationPolicySpectrogram": AugmentationPolicySpectrogram,
     "AuthorizeThirdPartyRequest": AuthorizeThirdPartyRequest,
+    "AutotuneDspRequest": AutotuneDspRequest,
     "BoundingBox": BoundingBox,
     "BuildOnDeviceModelRequest": BuildOnDeviceModelRequest,
     "BuildOrganizationOnDeviceModelRequest": BuildOrganizationOnDeviceModelRequest,
@@ -1341,6 +1349,9 @@ let typeMap: {[index: string]: any} = {
     "DownloadPortalFileRequest": DownloadPortalFileRequest,
     "DownloadPortalFileResponse": DownloadPortalFileResponse,
     "DownloadPortalFileResponseAllOf": DownloadPortalFileResponseAllOf,
+    "DspAutotunerResults": DspAutotunerResults,
+    "DspAutotunerResultsAllOf": DspAutotunerResultsAllOf,
+    "DspAutotunerResultsAllOfResults": DspAutotunerResultsAllOfResults,
     "DspFeatureImportanceResponse": DspFeatureImportanceResponse,
     "DspFeatureImportanceResponseAllOf": DspFeatureImportanceResponseAllOf,
     "DspFeatureImportanceResponseAllOfFeatures": DspFeatureImportanceResponseAllOfFeatures,
@@ -1462,7 +1473,6 @@ let typeMap: {[index: string]: any} = {
     "KerasModelMetadataMetricsTflite": KerasModelMetadataMetricsTflite,
     "KerasResponse": KerasResponse,
     "KerasResponseAllOf": KerasResponseAllOf,
-    "KerasResponseAllOfTransferLearningModels": KerasResponseAllOfTransferLearningModels,
     "KerasVisualLayer": KerasVisualLayer,
     "LastModificationDateResponse": LastModificationDateResponse,
     "LastModificationDateResponseAllOf": LastModificationDateResponseAllOf,
@@ -1553,11 +1563,17 @@ let typeMap: {[index: string]: any} = {
     "OptimizeConfigResponse": OptimizeConfigResponse,
     "OptimizeConfigResponseAllOf": OptimizeConfigResponseAllOf,
     "OptimizeConfigTargetDevice": OptimizeConfigTargetDevice,
+    "OptimizeDSPParametersResponse": OptimizeDSPParametersResponse,
+    "OptimizeDSPParametersResponseAllOf": OptimizeDSPParametersResponseAllOf,
     "OptimizeSpaceResponse": OptimizeSpaceResponse,
+    "OptimizeSpaceResponseAllOf": OptimizeSpaceResponseAllOf,
     "OptimizeStateResponse": OptimizeStateResponse,
     "OptimizeStateResponseAllOf": OptimizeStateResponseAllOf,
     "OptimizeStateResponseAllOfStatus": OptimizeStateResponseAllOfStatus,
     "OptimizeStateResponseAllOfWorkers": OptimizeStateResponseAllOfWorkers,
+    "OptimizeTransferLearningModelsResponse": OptimizeTransferLearningModelsResponse,
+    "OptimizeTransferLearningModelsResponseAllOf": OptimizeTransferLearningModelsResponseAllOf,
+    "OptimizeTransferLearningModelsResponseAllOfModels": OptimizeTransferLearningModelsResponseAllOfModels,
     "Organization": Organization,
     "OrganizationAddDataFileRequest": OrganizationAddDataFileRequest,
     "OrganizationAddDataFolderRequest": OrganizationAddDataFolderRequest,
@@ -1671,7 +1687,6 @@ let typeMap: {[index: string]: any} = {
     "SetMemberRoleRequest": SetMemberRoleRequest,
     "SetOptimizeSpaceRequest": SetOptimizeSpaceRequest,
     "SetOptimizeSpaceRequestAllOf": SetOptimizeSpaceRequestAllOf,
-    "SetOptimizeSpaceRequestAllOfSpace": SetOptimizeSpaceRequestAllOfSpace,
     "SetOrganizationDataDatasetRequest": SetOrganizationDataDatasetRequest,
     "SetProjectComputeTimeRequest": SetProjectComputeTimeRequest,
     "SetProjectDspFileSizeRequest": SetProjectDspFileSizeRequest,
@@ -1700,17 +1715,11 @@ let typeMap: {[index: string]: any} = {
     "TrackObjectsRequest": TrackObjectsRequest,
     "TrackObjectsResponse": TrackObjectsResponse,
     "TrackObjectsResponseAllOf": TrackObjectsResponseAllOf,
+    "TransferLearningModel": TransferLearningModel,
     "TransferOwnershipOrganizationRequest": TransferOwnershipOrganizationRequest,
     "TransformationBlockAdditionalMountPoint": TransformationBlockAdditionalMountPoint,
-    "TunerCreateTrialDSPBlock": TunerCreateTrialDSPBlock,
     "TunerCreateTrialImpulse": TunerCreateTrialImpulse,
-    "TunerCreateTrialInputBlock": TunerCreateTrialInputBlock,
-    "TunerCreateTrialLearnBlock": TunerCreateTrialLearnBlock,
-    "TunerSpaceDSPBlock": TunerSpaceDSPBlock,
     "TunerSpaceImpulse": TunerSpaceImpulse,
-    "TunerSpaceInputBlock": TunerSpaceInputBlock,
-    "TunerSpaceInputBlockWindow": TunerSpaceInputBlockWindow,
-    "TunerSpaceLearnBlock": TunerSpaceLearnBlock,
     "TunerTrial": TunerTrial,
     "TunerTrialBlocks": TunerTrialBlocks,
     "UpdateJobRequest": UpdateJobRequest,
@@ -1759,6 +1768,9 @@ let typeMap: {[index: string]: any} = {
     "VerifyOrganizationBucketResponseAllOfFiles": VerifyOrganizationBucketResponseAllOfFiles,
     "VerifyResetPasswordRequest": VerifyResetPasswordRequest,
     "Whitelabel": Whitelabel,
+    "WindowSettingsResponse": WindowSettingsResponse,
+    "WindowSettingsResponseAllOf": WindowSettingsResponseAllOf,
+    "WindowSettingsResponseAllOfWindowSettings": WindowSettingsResponseAllOfWindowSettings,
 }
 
 export class ObjectSerializer {

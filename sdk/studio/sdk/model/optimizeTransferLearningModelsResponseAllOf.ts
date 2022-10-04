@@ -10,22 +10,22 @@
  * Do not edit the class manually.
  */
 
-import { OptimizeSpaceResponseAllOf } from './optimizeSpaceResponseAllOf';
+import { OptimizeTransferLearningModelsResponseAllOfModels } from './optimizeTransferLearningModelsResponseAllOfModels';
 
-export class SetOptimizeSpaceRequestAllOf {
-    'space'?: OptimizeSpaceResponseAllOf;
+export class OptimizeTransferLearningModelsResponseAllOf {
+    'models'?: OptimizeTransferLearningModelsResponseAllOfModels;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "space",
-            "baseName": "space",
-            "type": "OptimizeSpaceResponseAllOf"
+            "name": "models",
+            "baseName": "models",
+            "type": "OptimizeTransferLearningModelsResponseAllOfModels"
         }    ];
 
     static getAttributeTypeMap() {
-        return SetOptimizeSpaceRequestAllOf.attributeTypeMap;
+        return OptimizeTransferLearningModelsResponseAllOf.attributeTypeMap;
     }
 }
 

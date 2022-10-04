@@ -10,22 +10,24 @@
  * Do not edit the class manually.
  */
 
-import { OptimizeSpaceResponseAllOf } from './optimizeSpaceResponseAllOf';
 
-export class SetOptimizeSpaceRequestAllOf {
-    'space'?: OptimizeSpaceResponseAllOf;
+export class AutotuneDspRequest {
+    /**
+    * DSP block ID to autotune parameters of
+    */
+    'dspId': number;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "space",
-            "baseName": "space",
-            "type": "OptimizeSpaceResponseAllOf"
+            "name": "dspId",
+            "baseName": "dspId",
+            "type": "number"
         }    ];
 
     static getAttributeTypeMap() {
-        return SetOptimizeSpaceRequestAllOf.attributeTypeMap;
+        return AutotuneDspRequest.attributeTypeMap;
     }
 }
 

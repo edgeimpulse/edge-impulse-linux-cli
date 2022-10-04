@@ -27,8 +27,10 @@ export class AudioClassifier extends EventEmitter<{
     /**
      * Start the audio classifier
      * @param sliceLengthMs Slice length in milliseconds (runs inference every X ms.)
+     *                      this is ignored if the model has a fixed slice_size
+     *                      (true for all new models)
      */
-    async start(device: string, sliceLengthMs: number) {
+    async start(device: string, sliceLengthMs: number = 250) {
         let model = this._runner.getModel();
 
         if (model.modelParameters.sensorType !== 'microphone') {
@@ -50,7 +52,14 @@ export class AudioClassifier extends EventEmitter<{
         let fullFrameBuffer = Buffer.from([]);
 
         const fullFrameBytes = model.modelParameters.input_features_count * 2;
-        const sliceBytes = (sliceLengthMs / 1000) * model.modelParameters.frequency * 2;
+
+        let sliceBytes: number;
+        if (model.modelParameters.slice_size) {
+            sliceBytes = model.modelParameters.slice_size * 2;
+        }
+        else {
+            sliceBytes = (sliceLengthMs / 1000) * model.modelParameters.frequency * 2;
+        }
 
         let firstFrame = true;
 
@@ -86,7 +95,14 @@ export class AudioClassifier extends EventEmitter<{
 
                 if (this._stopped) return;
 
-                let classifyRes = await this._runner.classify(values);
+                let classifyRes;
+                if (model.modelParameters.use_continuous_mode && model.modelParameters.slice_size) {
+                    classifyRes = await this._runner.classifyContinuous(
+                        values.slice(values.length - model.modelParameters.slice_size));
+                    }
+                else {
+                    classifyRes = await this._runner.classify(values);
+                }
 
                 let timeSpent = Date.now() - now;
 

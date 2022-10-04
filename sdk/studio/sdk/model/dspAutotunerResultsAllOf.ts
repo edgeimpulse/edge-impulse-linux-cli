@@ -10,25 +10,22 @@
  * Do not edit the class manually.
  */
 
-import { TunerSpaceImpulse } from './tunerSpaceImpulse';
+import { DspAutotunerResultsAllOfResults } from './dspAutotunerResultsAllOfResults';
 
-export class SetOptimizeSpaceRequestAllOfSpace {
-    /**
-    * List of impulses specifying the EON Tuner search space
-    */
-    'impulse': Array<TunerSpaceImpulse>;
+export class DspAutotunerResultsAllOf {
+    'results': Array<DspAutotunerResultsAllOfResults>;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "impulse",
-            "baseName": "impulse",
-            "type": "Array<TunerSpaceImpulse>"
+            "name": "results",
+            "baseName": "results",
+            "type": "Array<DspAutotunerResultsAllOfResults>"
         }    ];
 
     static getAttributeTypeMap() {
-        return SetOptimizeSpaceRequestAllOfSpace.attributeTypeMap;
+        return DspAutotunerResultsAllOf.attributeTypeMap;
     }
 }
 

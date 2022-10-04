@@ -28,6 +28,8 @@ export type RunnerHelloResponseModelParameters = {
     sensor: number;
     labels: string[];
     model_type: 'classification' | 'object_detection' | 'constrained_object_detection';
+    slice_size: undefined | number;
+    use_continuous_mode: undefined | boolean;
 };
 
 export type RunnerHelloResponseProject = {
@@ -45,6 +47,10 @@ type RunnerHelloResponse = {
 
 type RunnerClassifyRequest = {
     classify: number[];
+};
+
+type RunnerClassifyContinuousRequest = {
+    classify_continuous: number[];
 };
 
 export type RunnerClassifyResponseSuccess = {
@@ -108,56 +114,66 @@ export class LinuxImpulseRunner {
             throw new Error('Runner does not exist: ' + this._path);
         }
 
+        let isSocket = (await fs.promises.stat(this._path)).isSocket();
+
         // if we have /dev/shm, use that (RAM backed, instead of SD card backed, better for wear)
         let osTmpDir = os.tmpdir();
         if (await this.exists('/dev/shm')) {
             osTmpDir = '/dev/shm';
         }
 
-        let tempDir = await fs.promises.mkdtemp(Path.join(osTmpDir, 'edge-impulse-cli'));
-        let socketPath = Path.join(tempDir, 'runner.sock');
-
-        this._runner = spawn(this._path, [ socketPath ]);
-
-        if (!this._runner.stdout) {
-            throw new Error('stdout is null');
+        let socketPath: string;
+        if (isSocket) {
+            socketPath = this._path;
         }
+        else {
+            let tempDir = await fs.promises.mkdtemp(Path.join(osTmpDir, 'edge-impulse-cli'));
+            socketPath = Path.join(tempDir, 'runner.sock');
 
-        const onStdout = (data: Buffer) => {
-            stdout += data.toString('utf-8');
-        };
+            // start the .eim file
+            this._runner = spawn(this._path, [ socketPath ]);
 
-        let stdout = '';
-        this._runner.stdout.on('data', onStdout);
-        if (this._runner.stderr) {
-            this._runner.stderr.on('data', onStdout);
-        }
-
-        let exitCode: number | undefined | null;
-
-        this._runner.on('exit', code => {
-            exitCode = code;
-            if (typeof code === 'number' && code !== 0) {
-                this._runnerEe.emit('error', 'Runner has exited with code ' + code);
+            if (!this._runner.stdout) {
+                throw new Error('stdout is null');
             }
-            this._runner = undefined;
-            this._helloResponse = undefined;
-            this._runnerEe.removeAllListeners();
-        });
 
-        while (typeof exitCode === 'undefined' && !await this.exists(socketPath)) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            const onStdout = (data: Buffer) => {
+                stdout += data.toString('utf-8');
+            };
+
+            let stdout = '';
+            this._runner.stdout.on('data', onStdout);
+            if (this._runner.stderr) {
+                this._runner.stderr.on('data', onStdout);
+            }
+
+            let exitCode: number | undefined | null;
+
+            this._runner.on('exit', code => {
+                exitCode = code;
+                if (typeof code === 'number' && code !== 0) {
+                    this._runnerEe.emit('error', 'Runner has exited with code ' + code);
+                }
+                this._runner = undefined;
+                this._helloResponse = undefined;
+                this._runnerEe.removeAllListeners();
+            });
+
+            while (typeof exitCode === 'undefined' && !await this.exists(socketPath)) {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+
+            if (typeof exitCode !== 'undefined') {
+                throw new Error('Failed to start runner (code: ' + exitCode + '): ' + stdout);
+            }
+
+            this._runner.stdout.off('data', onStdout);
+            if (this._runner.stderr) {
+                this._runner.stderr.off('data', onStdout);
+            }
         }
 
-        if (typeof exitCode !== 'undefined') {
-            throw new Error('Failed to start runner (code: ' + exitCode + '): ' + stdout);
-        }
-
-        this._runner.stdout.off('data', onStdout);
-        if (this._runner.stderr) {
-            this._runner.stderr.off('data', onStdout);
-        }
-
+        // attach to the socket
         let bracesOpen = 0;
         let bracesClosed = 0;
         let line = '';
@@ -268,6 +284,25 @@ export class LinuxImpulseRunner {
         };
     }
 
+    /**
+     * Classify data (continuous mode, pass in slice_size data)
+     * @param data An array of numbers, already formatted according to the rules in
+     *             https://docs.edgeimpulse.com/docs/running-your-impulse-locally-1
+     */
+    async classifyContinuous(data: number[]): Promise<RunnerClassifyResponseSuccess> {
+        let resp = await this.send<RunnerClassifyContinuousRequest, RunnerClassifyResponse>({
+            classify_continuous: data,
+        });
+        if (!resp.success) {
+            throw new Error(resp.error);
+        }
+        return {
+            result: resp.result,
+            timing: resp.timing,
+            debug: resp.debug
+        };
+    }
+
     private async sendHello() {
         let resp = await this.send<RunnerHelloRequest, RunnerHelloResponse>({ hello: 1 });
         if (!resp.success) {
@@ -314,19 +349,22 @@ export class LinuxImpulseRunner {
             }
 
             let msgId = ++this._id;
-            this._socket.write(JSON.stringify(Object.assign(msg, {
-                id: msgId
-            })) + '\n');
 
             const onData = (resp: { id: number }) => {
-                if (this._runner && resp.id === msgId) {
-                    this._runner.off('exit', onExit);
+                if (resp.id === msgId) {
+                    if (this._runner) {
+                        this._runner.off('exit', onExit);
+                    }
                     this._runnerEe.off('message', onData);
                     resolve(<U><unknown>resp);
                 }
             };
 
             this._runnerEe.on('message', onData);
+
+            this._socket.write(JSON.stringify(Object.assign(msg, {
+                id: msgId
+            })) + '\n');
 
             setTimeout(() => {
                 reject('No response within 5 seconds');

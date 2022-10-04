@@ -11,26 +11,26 @@
  */
 
 
-export class TunerSpaceInputBlockWindow {
-    'windowSizeMs'?: number;
-    'windowIncreaseMs'?: number;
+export class DspAutotunerResultsAllOfResults {
+    'key': string;
+    'value': string;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "windowSizeMs",
-            "baseName": "windowSizeMs",
-            "type": "number"
+            "name": "key",
+            "baseName": "key",
+            "type": "string"
         },
         {
-            "name": "windowIncreaseMs",
-            "baseName": "windowIncreaseMs",
-            "type": "number"
+            "name": "value",
+            "baseName": "value",
+            "type": "string"
         }    ];
 
     static getAttributeTypeMap() {
-        return TunerSpaceInputBlockWindow.attributeTypeMap;
+        return DspAutotunerResultsAllOfResults.attributeTypeMap;
     }
 }
 

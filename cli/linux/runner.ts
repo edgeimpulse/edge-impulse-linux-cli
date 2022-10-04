@@ -35,7 +35,8 @@ const packageVersion = (<{ version: string }>JSON.parse(fs.readFileSync(
 program
     .description('Edge Impulse Linux runner ' + packageVersion)
     .version(packageVersion)
-    .option('--model-file <file>', 'Specify model file, if not provided the model will be fetched from Edge Impulse')
+    .option('--model-file <file>', 'Specify model file (either path to .eim, or the socket on which the model is running), ' +
+        'if not provided the model will be fetched from Edge Impulse')
     .option('--api-key <key>', 'API key to authenticate with Edge Impulse (overrides current credentials)')
     .option('--download <file>', 'Just download the model and store it on the file system')
     .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand')
@@ -245,7 +246,7 @@ function getModelPath(projectId: number, version: number) {
                 process.exit(1);
             });
 
-            await audioClassifier.start(audioDevice, 250);
+            await audioClassifier.start(audioDevice);
 
             audioClassifier.on('result', (ev, timeMs, audioAsPcm) => {
                 if (!ev.result.classification) return;
