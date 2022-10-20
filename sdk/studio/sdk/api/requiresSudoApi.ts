@@ -947,11 +947,11 @@ export class RequiresSudoApi {
     /**
      * Deletes the white label with the given id.
      * @summary Deletes a white label
-     * @param whitelabelId Whitelabel ID
+     * @param whitelabelIdentifier Whitelabel ID
      */
-    public async deleteWhitelabel (whitelabelId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
-        const localVarPath = this.basePath + '/api/whitelabel/{whitelabelId}'
-            .replace('{' + 'whitelabelId' + '}', encodeURIComponent(String(whitelabelId)));
+    public async deleteWhitelabel (whitelabelIdentifier: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/whitelabel/{whitelabelIdentifier}'
+            .replace('{' + 'whitelabelIdentifier' + '}', encodeURIComponent(String(whitelabelIdentifier)));
         let localVarQueryParameters: any = {};
         let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
         const produces = ['application/json'];
@@ -963,9 +963,9 @@ export class RequiresSudoApi {
         }
         let localVarFormParams: any = {};
 
-        // verify required parameter 'whitelabelId' is not null or undefined
-        if (whitelabelId === null || whitelabelId === undefined) {
-            throw new Error('Required parameter whitelabelId was null or undefined when calling deleteWhitelabel.');
+        // verify required parameter 'whitelabelIdentifier' is not null or undefined
+        if (whitelabelIdentifier === null || whitelabelIdentifier === undefined) {
+            throw new Error('Required parameter whitelabelIdentifier was null or undefined when calling deleteWhitelabel.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
@@ -1024,11 +1024,11 @@ export class RequiresSudoApi {
     /**
      * Lists all possible DSP and ML blocks available for this white label.
      * @summary Get impulse blocks
-     * @param whitelabelId Whitelabel ID
+     * @param whitelabelIdentifier Whitelabel ID
      */
-    public async getAllImpulseBlocks (whitelabelId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GetImpulseBlocksResponse> {
-        const localVarPath = this.basePath + '/api/whitelabel/{whitelabelId}/impulse/blocks'
-            .replace('{' + 'whitelabelId' + '}', encodeURIComponent(String(whitelabelId)));
+    public async getAllImpulseBlocks (whitelabelIdentifier: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GetImpulseBlocksResponse> {
+        const localVarPath = this.basePath + '/api/whitelabel/{whitelabelIdentifier}/impulse/blocks'
+            .replace('{' + 'whitelabelIdentifier' + '}', encodeURIComponent(String(whitelabelIdentifier)));
         let localVarQueryParameters: any = {};
         let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
         const produces = ['application/json'];
@@ -1040,9 +1040,9 @@ export class RequiresSudoApi {
         }
         let localVarFormParams: any = {};
 
-        // verify required parameter 'whitelabelId' is not null or undefined
-        if (whitelabelId === null || whitelabelId === undefined) {
-            throw new Error('Required parameter whitelabelId was null or undefined when calling getAllImpulseBlocks.');
+        // verify required parameter 'whitelabelIdentifier' is not null or undefined
+        if (whitelabelIdentifier === null || whitelabelIdentifier === undefined) {
+            throw new Error('Required parameter whitelabelIdentifier was null or undefined when calling getAllImpulseBlocks.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
@@ -1241,11 +1241,11 @@ export class RequiresSudoApi {
     /**
      * Retrieve all the information about this white label.
      * @summary White label information
-     * @param whitelabelId Whitelabel ID
+     * @param whitelabelIdentifier Whitelabel ID
      */
-    public async getWhitelabel (whitelabelId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GetWhitelabelResponse> {
-        const localVarPath = this.basePath + '/api/whitelabel/{whitelabelId}'
-            .replace('{' + 'whitelabelId' + '}', encodeURIComponent(String(whitelabelId)));
+    public async getWhitelabel (whitelabelIdentifier: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GetWhitelabelResponse> {
+        const localVarPath = this.basePath + '/api/whitelabel/{whitelabelIdentifier}'
+            .replace('{' + 'whitelabelIdentifier' + '}', encodeURIComponent(String(whitelabelIdentifier)));
         let localVarQueryParameters: any = {};
         let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
         const produces = ['application/json'];
@@ -1257,9 +1257,9 @@ export class RequiresSudoApi {
         }
         let localVarFormParams: any = {};
 
-        // verify required parameter 'whitelabelId' is not null or undefined
-        if (whitelabelId === null || whitelabelId === undefined) {
-            throw new Error('Required parameter whitelabelId was null or undefined when calling getWhitelabel.');
+        // verify required parameter 'whitelabelIdentifier' is not null or undefined
+        if (whitelabelIdentifier === null || whitelabelIdentifier === undefined) {
+            throw new Error('Required parameter whitelabelIdentifier was null or undefined when calling getWhitelabel.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
@@ -1633,12 +1633,12 @@ export class RequiresSudoApi {
     /**
      * Update some or all of the deployment targets enabled for this white label.
      * @summary Update deployment targets
-     * @param whitelabelId Whitelabel ID
+     * @param whitelabelIdentifier Whitelabel ID
      * @param updateWhitelabelDeploymentTargetsRequest 
      */
-    public async updateDeploymentTargets (whitelabelId: number, updateWhitelabelDeploymentTargetsRequest: UpdateWhitelabelDeploymentTargetsRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
-        const localVarPath = this.basePath + '/api/whitelabel/{whitelabelId}/deploymentTargets'
-            .replace('{' + 'whitelabelId' + '}', encodeURIComponent(String(whitelabelId)));
+    public async updateDeploymentTargets (whitelabelIdentifier: number, updateWhitelabelDeploymentTargetsRequest: UpdateWhitelabelDeploymentTargetsRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/whitelabel/{whitelabelIdentifier}/deploymentTargets'
+            .replace('{' + 'whitelabelIdentifier' + '}', encodeURIComponent(String(whitelabelIdentifier)));
         let localVarQueryParameters: any = {};
         let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
         const produces = ['application/json'];
@@ -1650,9 +1650,9 @@ export class RequiresSudoApi {
         }
         let localVarFormParams: any = {};
 
-        // verify required parameter 'whitelabelId' is not null or undefined
-        if (whitelabelId === null || whitelabelId === undefined) {
-            throw new Error('Required parameter whitelabelId was null or undefined when calling updateDeploymentTargets.');
+        // verify required parameter 'whitelabelIdentifier' is not null or undefined
+        if (whitelabelIdentifier === null || whitelabelIdentifier === undefined) {
+            throw new Error('Required parameter whitelabelIdentifier was null or undefined when calling updateDeploymentTargets.');
         }
 
         // verify required parameter 'updateWhitelabelDeploymentTargetsRequest' is not null or undefined

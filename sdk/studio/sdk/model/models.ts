@@ -222,6 +222,8 @@ export * from './getUserNeedToSetPasswordResponseAllOf';
 export * from './getUserResponse';
 export * from './getUserResponseAllOf';
 export * from './getUserResponseAllOfOrganizations';
+export * from './getWhitelabelDomainResponse';
+export * from './getWhitelabelDomainResponseAllOf';
 export * from './getWhitelabelResponse';
 export * from './getWhitelabelResponseAllOf';
 export * from './hasDataExplorerFeaturesResponse';
@@ -777,6 +779,8 @@ import { GetUserNeedToSetPasswordResponseAllOf } from './getUserNeedToSetPasswor
 import { GetUserResponse } from './getUserResponse';
 import { GetUserResponseAllOf } from './getUserResponseAllOf';
 import { GetUserResponseAllOfOrganizations } from './getUserResponseAllOfOrganizations';
+import { GetWhitelabelDomainResponse } from './getWhitelabelDomainResponse';
+import { GetWhitelabelDomainResponseAllOf } from './getWhitelabelDomainResponseAllOf';
 import { GetWhitelabelResponse } from './getWhitelabelResponse';
 import { GetWhitelabelResponseAllOf } from './getWhitelabelResponseAllOf';
 import { HasDataExplorerFeaturesResponse } from './hasDataExplorerFeaturesResponse';
@@ -1207,6 +1211,7 @@ let enumsMap: {[index: string]: any} = {
     "PerformanceCalibrationParametersTypeEnum": "PerformanceCalibrationParametersTypeEnum",
     "ProfileTfLiteRequestReferenceModelEnum": "ProfileTfLiteRequestReferenceModelEnum",
     "ProjectLabelingMethodEnum": "ProjectLabelingMethodEnum",
+    "ProjectTierEnum": "ProjectTierEnum",
     "ProjectInfoResponseAllOfDeploySettingsSensorEnum": "ProjectInfoResponseAllOfDeploySettingsSensorEnum",
     "ProjectPublicDataProjectTypeEnum": "ProjectPublicDataProjectTypeEnum",
     "SampleBoundingBoxesTypeEnum": "SampleBoundingBoxesTypeEnum",
@@ -1447,6 +1452,8 @@ let typeMap: {[index: string]: any} = {
     "GetUserResponse": GetUserResponse,
     "GetUserResponseAllOf": GetUserResponseAllOf,
     "GetUserResponseAllOfOrganizations": GetUserResponseAllOfOrganizations,
+    "GetWhitelabelDomainResponse": GetWhitelabelDomainResponse,
+    "GetWhitelabelDomainResponseAllOf": GetWhitelabelDomainResponseAllOf,
     "GetWhitelabelResponse": GetWhitelabelResponse,
     "GetWhitelabelResponseAllOf": GetWhitelabelResponseAllOf,
     "HasDataExplorerFeaturesResponse": HasDataExplorerFeaturesResponse,

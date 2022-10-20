@@ -259,8 +259,8 @@ function getModelPath(projectId: number, version: number) {
                     c[k] = (<number>c[k]).toFixed(4);
                 }
                 console.log('classifyRes', timeMs + 'ms.', c);
-                if (ev.debug) {
-                    console.log('additionalInfo:', ev.debug);
+                if (ev.info) {
+                    console.log('additionalInfo:', ev.info);
                 }
             });
         }
@@ -298,8 +298,8 @@ function getModelPath(projectId: number, version: number) {
                 else if (ev.result.bounding_boxes) {
                     console.log('boundingBoxes', timeMs + 'ms.', JSON.stringify(ev.result.bounding_boxes));
                 }
-                if (ev.debug) {
-                    console.log('additionalInfo:', ev.debug);
+                if (ev.info) {
+                    console.log('additionalInfo:', ev.info);
                 }
             });
         }
@@ -465,6 +465,7 @@ function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier:
             modelType: model.modelParameters.model_type,
             result: result.result,
             timeMs: timeMs,
+            additionalInfo: result.info,
         });
     });
 

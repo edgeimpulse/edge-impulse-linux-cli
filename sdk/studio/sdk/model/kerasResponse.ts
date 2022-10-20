@@ -80,6 +80,10 @@ export class KerasResponse {
     'augmentationPolicyImage': AugmentationPolicyImageEnum;
     'augmentationPolicySpectrogram'?: AugmentationPolicySpectrogram;
     'transferLearningModels': Array<TransferLearningModel>;
+    /**
+    * Whether to profile the i8 model (might take a very long time)
+    */
+    'profileInt8': boolean;
 
     static discriminator: string | undefined = undefined;
 
@@ -183,6 +187,11 @@ export class KerasResponse {
             "name": "transferLearningModels",
             "baseName": "transferLearningModels",
             "type": "Array<TransferLearningModel>"
+        },
+        {
+            "name": "profileInt8",
+            "baseName": "profileInt8",
+            "type": "boolean"
         }    ];
 
     static getAttributeTypeMap() {

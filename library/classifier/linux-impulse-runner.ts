@@ -71,7 +71,7 @@ export type RunnerClassifyResponseSuccess = {
         classification: number;
         anomaly: number;
     },
-    debug?: string;
+    info?: string;
 };
 
 type RunnerClassifyResponse = ({
@@ -280,7 +280,7 @@ export class LinuxImpulseRunner {
         return {
             result: resp.result,
             timing: resp.timing,
-            debug: resp.debug
+            info: resp.info
         };
     }
 
@@ -299,7 +299,7 @@ export class LinuxImpulseRunner {
         return {
             result: resp.result,
             timing: resp.timing,
-            debug: resp.debug
+            info: resp.info
         };
     }
 
