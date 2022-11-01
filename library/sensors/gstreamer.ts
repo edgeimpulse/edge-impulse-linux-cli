@@ -516,6 +516,13 @@ export class GStreamer extends EventEmitter<{
             d.caps = c;
         }
 
+        // Query V4L2 devices prior to filtering
+        // TODO: Only should do this when this when gst-device-monitor is unsuitable e.g. unprivileged container
+        //       Also will need to handle unique modes that may no longer apply in container, e.g. rpi-bullseye disables
+        //       v4l2src pipelines
+        this._mode = 'default';
+        devices = devices.concat(await this.listV4l2Devices());
+
         devices = devices.filter(d => {
             return (d.deviceClass === 'Video/Source' ||
                 d.deviceClass === 'Source/Video' ||
@@ -546,6 +553,67 @@ export class GStreamer extends EventEmitter<{
         }, []);
 
         return mapped;
+    }
+
+    // v4l2-ctl may be used to discover devices in environments where gst-device-monitor does not have access to UDEV 
+    // (which it seems to require for discovery via v4l2deviceprovider) e.g. in containerized deployments
+    private async listV4l2Devices(): Promise<GStreamerDevice[]> {
+        let lines;
+
+        lines = (await this._spawnHelper('v4l2-ctl', ['--list-devices']))
+            .split('\n').filter(x => !!x).map(x => x.trim());
+
+        let devices: GStreamerDevice[] = [];
+
+        let currDevice: GStreamerDevice | undefined;
+
+        for (let l of lines) {
+            if (this._verbose) {
+                console.log(PREFIX, 'read line:\n'); 
+                console.log(PREFIX, l); 
+            }
+
+            if (l.indexOf('/dev/') > -1) {
+                currDevice = {
+                    name: '',
+                    deviceClass: 'Source/Video',
+                    rawCaps: [],
+                    inCapMode: false,
+                    id: l,
+                    caps: []
+                };
+                devices.push(currDevice);
+
+                if (this._verbose) {
+                    console.log(PREFIX, 'device found!: ', currDevice); 
+                }                
+            }
+        }
+
+        for (let d of devices) {
+            lines = (await this._spawnHelper('v4l2-ctl', ['--device', d.id, '--all']))
+                .split('\n').filter(x => !!x).map(x => x.trim());
+
+            let hasCap: boolean = false;
+            let hasJpeg: boolean = false;
+            for (let l of lines) {
+                hasCap = hasCap || l.indexOf('Format Video Capture') > -1;
+                hasJpeg = hasCap || l.indexOf('MJPG') > -1;
+
+                d.name = (l.match(/Card type        : ([^\n]+)/) || [])[1]
+            }
+
+            // TODO: find all resolutions and framerates
+            if (hasCap && hasJpeg) {
+                d.caps = [{
+                    type: 'image/jpeg',
+                    width: 640,
+                    height: 480,
+                    framerate: 25,
+                }];
+            }
+        }
+        return devices;
     }
 
     private async listNvarguscamerasrcDevices(): Promise<GStreamerDevice[]> {
