@@ -14,6 +14,7 @@
 export class ThemeColors {
     'primaryColor'?: string;
     'primaryColorRgb'?: Array<number>;
+    'primaryColorGradientEnd'?: string;
 
     static discriminator: string | undefined = undefined;
 
@@ -27,6 +28,11 @@ export class ThemeColors {
             "name": "primaryColorRgb",
             "baseName": "primaryColorRgb",
             "type": "Array<number>"
+        },
+        {
+            "name": "primaryColorGradientEnd",
+            "baseName": "primaryColorGradientEnd",
+            "type": "string"
         }    ];
 
     static getAttributeTypeMap() {

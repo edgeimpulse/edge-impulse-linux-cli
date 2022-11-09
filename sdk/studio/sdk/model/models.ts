@@ -112,6 +112,7 @@ export * from './deletePortalFileRequest';
 export * from './dependencyData';
 export * from './deploymentTarget';
 export * from './deploymentTargetBadge';
+export * from './deploymentTargetEngine';
 export * from './deploymentTargetsResponse';
 export * from './deploymentTargetsResponseAllOf';
 export * from './developmentKeys';
@@ -669,6 +670,7 @@ import { DeletePortalFileRequest } from './deletePortalFileRequest';
 import { DependencyData } from './dependencyData';
 import { DeploymentTarget } from './deploymentTarget';
 import { DeploymentTargetBadge } from './deploymentTargetBadge';
+import { DeploymentTargetEngine } from './deploymentTargetEngine';
 import { DeploymentTargetsResponse } from './deploymentTargetsResponse';
 import { DeploymentTargetsResponseAllOf } from './deploymentTargetsResponseAllOf';
 import { DevelopmentKeys } from './developmentKeys';
@@ -1133,8 +1135,6 @@ let enumsMap: {[index: string]: any} = {
     "AugmentationPolicySpectrogramFreqMaskingEnum": "AugmentationPolicySpectrogramFreqMaskingEnum",
     "AugmentationPolicySpectrogramTimeMaskingEnum": "AugmentationPolicySpectrogramTimeMaskingEnum",
     "AugmentationPolicySpectrogramGaussianNoiseEnum": "AugmentationPolicySpectrogramGaussianNoiseEnum",
-    "BuildOnDeviceModelRequestEngineEnum": "BuildOnDeviceModelRequestEngineEnum",
-    "BuildOrganizationOnDeviceModelRequestEngineEnum": "BuildOrganizationOnDeviceModelRequestEngineEnum",
     "CreateUserThirdPartyResponseStatusEnum": "CreateUserThirdPartyResponseStatusEnum",
     "CreateUserThirdPartyResponseAllOfStatusEnum": "CreateUserThirdPartyResponseAllOfStatusEnum",
     "DSPGroupItemShowIfOperatorEnum": "DSPGroupItemShowIfOperatorEnum",
@@ -1144,6 +1144,7 @@ let enumsMap: {[index: string]: any} = {
     "DataExplorerSettingsPresetEnum": "DataExplorerSettingsPresetEnum",
     "DataExplorerSettingsDimensionalityReductionTechniqueEnum": "DataExplorerSettingsDimensionalityReductionTechniqueEnum",
     "DeploymentTargetUiSectionEnum": "DeploymentTargetUiSectionEnum",
+    "DeploymentTargetEngine": "DeploymentTargetEngine",
     "FindSyntiantPosteriorRequestReferenceSetEnum": "FindSyntiantPosteriorRequestReferenceSetEnum",
     "GetDataExplorerSettingsResponsePresetEnum": "GetDataExplorerSettingsResponsePresetEnum",
     "GetDataExplorerSettingsResponseDimensionalityReductionTechniqueEnum": "GetDataExplorerSettingsResponseDimensionalityReductionTechniqueEnum",

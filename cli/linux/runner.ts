@@ -10,7 +10,7 @@ import { Config } from '../config';
 import { initCliApp, setupCliApp } from '../init-cli-app';
 import fs from 'fs';
 import os from 'os';
-import { RunnerDownloader } from './runner-downloader';
+import { RunnerDownloader, RunnerModelPath } from './runner-downloader';
 import { GStreamer } from '../../library/sensors/gstreamer';
 import { ICamera } from '../../library/sensors/icamera';
 import program from 'commander';
@@ -39,7 +39,9 @@ program
         'if not provided the model will be fetched from Edge Impulse')
     .option('--api-key <key>', 'API key to authenticate with Edge Impulse (overrides current credentials)')
     .option('--download <file>', 'Just download the model and store it on the file system')
-    .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand')
+    .option('--list-targets', 'List all supported targets and inference engines')
+    .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand (e.g. "runner-linux-aarch64")')
+    .option('--force-engine <engine>', 'Do not autodetect the inference engine, but set it by hand (e.g. "tflite")')
     .option('--clean', 'Clear credentials')
     .option('--silent', `Run in silent mode, don't prompt for credentials`)
     .option('--quantized', 'Download int8 quantized neural networks, rather than the float32 neural networks. ' +
@@ -62,6 +64,8 @@ const apiKeyArgv = <string | undefined>program.apiKey;
 const modelFileArgv = <string | undefined>program.modelFile;
 const downloadArgv = <string | undefined>program.download;
 const forceTargetArgv = <string | undefined>program.forceTarget;
+const forceEngineArgv = <string | undefined>program.forceEngine;
+const listTargetsArgv: boolean = !!program.listTargets;
 
 process.on('warning', e => console.warn(e.stack));
 
@@ -117,15 +121,16 @@ const onSignal = async () => {
 process.on('SIGHUP', onSignal);
 process.on('SIGINT', onSignal);
 
-function getModelPath(projectId: number, version: number) {
-    return Path.join(os.homedir(), '.ei-linux-runner', 'models', projectId + '',
-        'v' + version + (quantizedArgv ? '-quantized' : ''), 'model.eim');
-}
-
 // tslint:disable-next-line: no-floating-promises
 (async () => {
     try {
         let modelFile;
+
+        if (listTargetsArgv && modelFile) {
+            throw new Error('Cannot combine --list-targets and --model-file');
+        }
+
+        let modelPath: RunnerModelPath | undefined;
 
         // no model file passed in? then build / download the latest deployment...
         if (!modelFileArgv) {
@@ -137,16 +142,31 @@ function getModelPath(projectId: number, version: number) {
 
             await configFactory.setLinuxProjectId(projectId);
 
+            if (listTargetsArgv) {
+                const targets = await config.api.deployment.listDeploymentTargetsForProjectDataSources(projectId);
+                console.log('Listing all available targets');
+                console.log('-----------------------------');
+                for (let t of targets.targets.filter(x => x.format.startsWith('runner'))) {
+                    console.log(`target: ${t.format}, name: ${t.name}, supported engines: [${t.supportedEngines.join(', ')}]`);
+                }
+                console.log('');
+                console.log('You can force a target via "edge-impulse-linux-runner --force-target <target> [--force-engine <engine>]"');
+                process.exit(0);
+            }
+
             const downloader = new RunnerDownloader(projectId, quantizedArgv ? 'int8' : 'float32',
-                config, forceTargetArgv);
+                config, forceTargetArgv, forceEngineArgv);
             downloader.on('build-progress', msg => {
                 console.log(BUILD_PREFIX, msg);
             });
 
+            modelPath = new RunnerModelPath(projectId, quantizedArgv ? 'int8' : 'float32',
+                forceTargetArgv, forceEngineArgv);
+
             // no new version? and already downloaded? return that model
             let currVersion = await downloader.getLastDeploymentVersion();
-            if (currVersion && await checkFileExists(getModelPath(projectId, currVersion))) {
-                modelFile = getModelPath(projectId, currVersion);
+            if (currVersion && await checkFileExists(modelPath.getModelPath(currVersion))) {
+                modelFile = modelPath.getModelPath(currVersion);
                 console.log(RUNNER_PREFIX, 'Already have model', modelFile, 'not downloading...');
             }
             else {
@@ -182,8 +202,8 @@ function getModelPath(projectId: number, version: number) {
         const model = await runner.init();
 
         // if downloaded? then store...
-        if (!modelFileArgv) {
-            let file = getModelPath(model.project.id, model.project.deploy_version);
+        if (!modelFileArgv && modelPath) {
+            let file = modelPath.getModelPath(model.project.deploy_version);
             if (file !== modelFile) {
                 await fs.promises.mkdir(Path.dirname(file), { recursive: true });
                 await fs.promises.copyFile(modelFile, file);

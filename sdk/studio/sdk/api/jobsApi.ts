@@ -143,7 +143,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(autotuneDspRequest, "AutotuneDspRequest")
         };
@@ -237,7 +237,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(buildOnDeviceModelRequest, "BuildOnDeviceModelRequest")
         };
@@ -321,7 +321,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(buildOrganizationOnDeviceModelRequest, "BuildOrganizationOnDeviceModelRequest")
         };
@@ -411,7 +411,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -500,7 +500,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -584,7 +584,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -668,7 +668,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -745,7 +745,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -828,7 +828,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(generateFeaturesRequest, "GenerateFeaturesRequest")
         };
@@ -913,7 +913,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1002,7 +1002,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1099,7 +1099,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1183,7 +1183,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1265,7 +1265,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1367,7 +1367,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1469,7 +1469,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1552,7 +1552,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(setKerasParameterRequest, "SetKerasParameterRequest")
         };
@@ -1640,7 +1640,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1717,7 +1717,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1794,7 +1794,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1871,7 +1871,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -1955,7 +1955,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -2038,7 +2038,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(exportOriginalDataRequest, "ExportOriginalDataRequest")
         };
@@ -2122,7 +2122,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(startPerformanceCalibrationRequest, "StartPerformanceCalibrationRequest")
         };
@@ -2206,7 +2206,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(profileTfLiteRequest, "ProfileTfLiteRequest")
         };
@@ -2290,7 +2290,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(restoreProjectRequest, "RestoreProjectRequest")
         };
@@ -2374,7 +2374,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(restoreProjectFromPublicRequest, "RestoreProjectFromPublicRequest")
         };
@@ -2452,7 +2452,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
         };
 
@@ -2535,7 +2535,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(projectVersionRequest, "ProjectVersionRequest")
         };
@@ -2619,7 +2619,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(exportWavDataRequest, "ExportWavDataRequest")
         };
@@ -2710,7 +2710,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(startTrainingRequestAnomaly, "StartTrainingRequestAnomaly")
         };
@@ -2801,7 +2801,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(setKerasParameterRequest, "SetKerasParameterRequest")
         };
@@ -2892,7 +2892,7 @@ export class JobsApi {
             headers: localVarHeaderParams,
             uri: localVarPath,
             useQuerystring: this._useQuerystring,
-            agentOptions: (process.env.EI_HOST && process.env.EI_HOST !== "edgeimpulse.com") ? {keepAlive: true} : undefined,
+            agentOptions: {keepAlive: false},
             json: true,
             body: ObjectSerializer.serialize(updateJobRequest, "UpdateJobRequest")
         };

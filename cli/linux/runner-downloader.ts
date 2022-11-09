@@ -2,6 +2,9 @@ import { EdgeImpulseConfig } from "../config";
 import { EventEmitter } from 'tsee';
 import { spawnHelper } from "../../library/sensors/spawn-helper";
 import fs from 'fs';
+import * as models from '../../sdk/studio';
+import Path from 'path';
+import os from 'os';
 
 const BUILD_PREFIX = '\x1b[32m[BLD]\x1b[0m';
 
@@ -12,15 +15,18 @@ export class RunnerDownloader extends EventEmitter<{
     private _config: EdgeImpulseConfig;
     private _modelType: 'int8' | 'float32';
     private _forceTarget: string | undefined;
+    private _forceEngine: string | undefined;
 
     constructor(projectId: number, modelType: 'int8' | 'float32',
-                config: EdgeImpulseConfig, forceTarget: string | undefined) {
+                config: EdgeImpulseConfig, forceTarget: string | undefined,
+                forceEngine: string | undefined) {
         super();
 
         this._projectId = projectId;
         this._config = config;
         this._modelType = modelType;
         this._forceTarget = forceTarget;
+        this._forceEngine = forceEngine;
     }
 
     async getDownloadType() {
@@ -104,8 +110,26 @@ export class RunnerDownloader extends EventEmitter<{
     }
 
     private async buildModel(downloadType: string) {
+        // list all deploy targets
+        const dt = await this._config.api.deployment.listDeploymentTargetsForProjectDataSources(this._projectId);
+
+        let deployInfo = dt.targets.find(x => x.format === downloadType);
+        if (!deployInfo) {
+            throw new Error('Failed to find deployment type "' + downloadType + '", types found: ' +
+                JSON.stringify(dt.targets.map(x => x.format)));
+        }
+
+        let engine: models.DeploymentTargetEngine = deployInfo.preferredEngine;
+        if (this._forceEngine) {
+            if (!deployInfo.supportedEngines.find(x => x === this._forceEngine)) {
+                throw new Error('Engine type "' + this._forceEngine + '" is not supported for ' +
+                    '"' + downloadType + '", valid engines: ' + JSON.stringify(deployInfo.supportedEngines));
+            }
+            engine = <models.DeploymentTargetEngine>this._forceEngine;
+        }
+
         let buildRes = await this._config.api.jobs.buildOnDeviceModelJob(this._projectId, downloadType, {
-            engine: 'tflite',
+            engine: engine,
             modelType: this._modelType
         });
 
@@ -119,5 +143,37 @@ export class RunnerDownloader extends EventEmitter<{
         }, d => {
             console.log(BUILD_PREFIX, d.trim());
         });
+    }
+}
+
+export class RunnerModelPath {
+    private _projectId: number;
+    private _modelType: 'int8' | 'float32';
+    private _forceTarget: string | undefined;
+    private _forceEngine: string | undefined;
+
+    constructor(projectId: number, modelType: 'int8' | 'float32',
+                forceTarget: string | undefined,
+                forceEngine: string | undefined) {
+        this._projectId = projectId;
+        this._modelType = modelType;
+        this._forceTarget = forceTarget;
+        this._forceEngine = forceEngine;
+    }
+
+    getModelPath(version: number) {
+        let versionId = 'v' + version;
+        if (this._modelType === 'int8') {
+            versionId += '-quantized';
+        }
+        if (this._forceTarget) {
+            versionId += '-' + this._forceTarget;
+        }
+        if (this._forceEngine) {
+            versionId += '-' + this._forceEngine;
+        }
+
+        return Path.join(os.homedir(), '.ei-linux-runner', 'models', this._projectId + '',
+            versionId, 'model.eim');
     }
 }

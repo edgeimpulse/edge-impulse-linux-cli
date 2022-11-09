@@ -19,6 +19,10 @@ export class UpdateThemeColorsRequest {
     * Primary color in hex format
     */
     'primaryColor'?: string;
+    /**
+    * Primary color gradient end in hex format
+    */
+    'primaryColorGradientEnd'?: string;
 
     static discriminator: string | undefined = undefined;
 
@@ -26,6 +30,11 @@ export class UpdateThemeColorsRequest {
         {
             "name": "primaryColor",
             "baseName": "primaryColor",
+            "type": "string"
+        },
+        {
+            "name": "primaryColorGradientEnd",
+            "baseName": "primaryColorGradientEnd",
             "type": "string"
         }    ];
 

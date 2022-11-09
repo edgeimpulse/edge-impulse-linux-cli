@@ -23,10 +23,14 @@ import fs from 'fs';
         let runner = new LinuxImpulseRunner(process.argv[2]);
         let model = await runner.init();
 
+        const windowLengthMs = ((model.modelParameters.input_features_count /
+            model.modelParameters.frequency /
+            model.modelParameters.axis_count) * 1000);
+
         console.log('Starting the custom classifier for',
             model.project.owner + ' / ' + model.project.name, '(v' + model.project.deploy_version + ')');
         console.log('Parameters', 'freq', model.modelParameters.frequency + 'Hz',
-            'window length', ((model.modelParameters.input_features_count / model.modelParameters.frequency) * 1000) + 'ms.',
+            'window length', windowLengthMs + 'ms.',
             'classes', model.modelParameters.labels);
 
         // read the features file (comma separated numbers)

@@ -16,6 +16,7 @@ type RunnerHelloRequest = {
 };
 
 export type RunnerHelloResponseModelParameters = {
+    axis_count: number;
     frequency: number;
     has_anomaly: number;
     input_features_count: number;

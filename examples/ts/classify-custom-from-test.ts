@@ -1,5 +1,5 @@
-const { LinuxImpulseRunner } = require("../../build/library");
-const fs = require('fs');
+import { LinuxImpulseRunner } from "../../library";
+import fs from 'fs';
 
 // This script expects two arguments:
 // 1. The model file
@@ -34,12 +34,33 @@ const fs = require('fs');
             'classes', model.modelParameters.labels);
 
         // read the features file (comma separated numbers)
-        let features = (await fs.promises.readFile(process.argv[3], 'utf-8'))
+        let features = (<string>await fs.promises.readFile(process.argv[3], 'utf-8'))
             .trim().split(',').map(n => Number(n));
 
         // and classify the data, this should match the classification in the Studio
         let res = await runner.classify(features);
-        console.log('classification', res.result, 'timing', res.timing);
+
+        console.log('Begin output');
+        if (res.result.classification) {
+            let ret: number[] = [];
+            for (let k of Object.keys(res.result.classification)) {
+                ret.push(res.result.classification[k]);
+            }
+            if (typeof res.result.anomaly === 'number') {
+                ret.push(res.result.anomaly);
+            }
+            console.log('[' + ret.map(x => x.toFixed(5)).join(', ') + ']');
+        }
+        if (res.result.bounding_boxes) {
+            for (let bb of res.result.bounding_boxes) {
+                if (bb.value === 0) {
+                    continue;
+                }
+                console.log(`${bb.label} (${bb.value.toFixed(5)}) ` +
+                    `[ x: ${bb.x}, y: ${bb.y}, width: ${bb.width}, height: ${bb.height} ]`);
+            }
+        }
+        console.log('End output');
 
         // if you want to fill in data on the fly you can also do this; e.g. if you have 3-axis accelerometer
         // with 2 second window and 100Hz, then input_features_count=600, axis_count=3

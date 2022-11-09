@@ -74,6 +74,10 @@ export class KerasResponseAllOf {
     * Whether to profile the i8 model (might take a very long time)
     */
     'profileInt8': boolean;
+    /**
+    * If set, skips creating embeddings and measuring memory (used in tests)
+    */
+    'skipEmbeddingsAndMemory': boolean;
 
     static discriminator: string | undefined = undefined;
 
@@ -171,6 +175,11 @@ export class KerasResponseAllOf {
         {
             "name": "profileInt8",
             "baseName": "profileInt8",
+            "type": "boolean"
+        },
+        {
+            "name": "skipEmbeddingsAndMemory",
+            "baseName": "skipEmbeddingsAndMemory",
             "type": "boolean"
         }    ];
 
