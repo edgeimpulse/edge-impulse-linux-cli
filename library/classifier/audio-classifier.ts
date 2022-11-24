@@ -106,8 +106,13 @@ export class AudioClassifier extends EventEmitter<{
 
                 let timeSpent = Date.now() - now;
 
+                let timingMs = classifyRes.timing.dsp + classifyRes.timing.classification + classifyRes.timing.anomaly;
+                if (timingMs === 0) {
+                    timingMs = 1;
+                }
+
                 this.emit('result', classifyRes,
-                    classifyRes.timing.dsp + classifyRes.timing.classification + classifyRes.timing.anomaly,
+                    timingMs,
                     buffer);
             }
         };

@@ -243,6 +243,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 label: { label: data.label, type: 'label' },
                 boundingBoxes: undefined,
                 metadata: { }, // TODO get this from MgmtInterfaceSampleRequestSample
+                addDateId: true,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -295,6 +296,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 label: { label: data.label, type: 'label' },
                 boundingBoxes: undefined,
                 metadata: { }, // TODO get this from MgmtInterfaceSampleRequestSample
+                addDateId: true,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -371,6 +373,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 label: { label: data.label, type: 'label' },
                 boundingBoxes: undefined,
                 metadata: { }, // TODO get this from MgmtInterfaceSampleRequestSample
+                addDateId: true,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');

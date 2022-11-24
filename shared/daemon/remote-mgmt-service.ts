@@ -71,7 +71,8 @@ export interface RemoteMgmtConfig {
             getDevice(projectId: number, deviceId: string): Promise<{ success: boolean, error?: string, device?: { name: string; } }>;
         };
         whitelabels: {
-            getWhitelabel(whitelabelId: number | null): Promise<{ success: boolean, whitelabel?: { domain: string } }>;
+            // tslint:disable-next-line: max-line-length
+            getWhitelabelDomain(whitelabelId: number | null): Promise<{ success: boolean, domain?: string }>;
         }
     };
 }
@@ -310,9 +311,6 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
                     if (this._ws) {
                         this._ws.send(JSON.stringify(res5));
                     }
-
-                    restartSnapshotOnFinished = false;
-                    resetStateToSnapshotStreaming = false;
                 }
                 finally {
                     this._state = 'idle';
@@ -538,12 +536,12 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
                 const projectInfo = await this.getProjectInfo();
                 let studioUrl = this._eiConfig.endpoints.internal.api.replace('/v1', '');
                 if (projectInfo.whitelabelId) {
-                    const whitelabelRequest = await this._eiConfig.api.whitelabels.getWhitelabel(
+                    const whitelabelRes = await this._eiConfig.api.whitelabels.getWhitelabelDomain(
                         projectInfo.whitelabelId
                     );
-                    if (whitelabelRequest && whitelabelRequest.success && whitelabelRequest.whitelabel) {
+                    if (whitelabelRes.domain) {
                         const protocol = this._eiConfig.endpoints.internal.api.startsWith('https') ? 'https' : 'http';
-                        studioUrl = `${protocol}://${whitelabelRequest.whitelabel.domain}`;
+                        studioUrl = `${protocol}://${whitelabelRes.domain}`;
                     }
                 }
 

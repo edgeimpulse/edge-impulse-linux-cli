@@ -51,7 +51,7 @@ window.WebServer = async () => {
         let result = opts.result;
         let modelType = opts.modelType;
 
-        els.timePerInference.textContent = opts.timeMs.toFixed(3);
+        els.timePerInference.textContent = opts.timeMs;
         els.additionalInfo.textContent = opts.additionalInfo;
         els.timePerInferenceContainer.style.display = '';
         els.additionalInfoContainer.style.display = '';
