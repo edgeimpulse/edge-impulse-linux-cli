@@ -43,11 +43,7 @@ export class RunnerDownloader extends EventEmitter<{
             downloadType = 'runner-mac-x86_64';
         }
         else if (process.platform === 'linux') {
-            // AKD1000 is target independent (Python based)
-            if (fs.existsSync('/dev/akida0')) {
-                downloadType = 'runner-linux-akd1000';
-            }
-            else if (process.arch === 'arm') {
+            if (process.arch === 'arm') {
                 let uname = (await spawnHelper('uname', ['-m'])).trim();
                 if (uname !== 'armv7l') {
                     throw new Error('Unsupported architecture "' + uname + '", only ' +
@@ -65,12 +61,18 @@ export class RunnerDownloader extends EventEmitter<{
 
                 if (fs.existsSync("/dev/drpai0")) {
                     downloadType = 'runner-linux-aarch64-rzv2l';
+                } else if (fs.existsSync('/dev/akida0')) {
+                    downloadType = 'runner-linux-aarch64-akd1000';
                 } else {
                     downloadType = 'runner-linux-aarch64';
                 }
             }
             else if (process.arch === 'x64') {
-                downloadType = 'runner-linux-x86_64';
+                if (fs.existsSync('/dev/akida0')) {
+                    downloadType = 'runner-linux-aarch64-akd1000';
+                } else {
+                    downloadType = 'runner-linux-x86_64';
+                }
             }
             else {
                 throw new Error('Unsupported architecture "' + process.arch + '", only ' +
