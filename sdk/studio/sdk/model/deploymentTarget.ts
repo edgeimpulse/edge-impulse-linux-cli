@@ -52,6 +52,7 @@ export class DeploymentTarget {
     'supportedEngines': Array<DeploymentTargetEngine>;
     'preferredEngine': DeploymentTargetEngine;
     'url'?: string;
+    'docsUrl': string;
 
     static discriminator: string | undefined = undefined;
 
@@ -155,6 +156,11 @@ export class DeploymentTarget {
             "name": "url",
             "baseName": "url",
             "type": "string"
+        },
+        {
+            "name": "docsUrl",
+            "baseName": "docsUrl",
+            "type": "string"
         }    ];
 
     static getAttributeTypeMap() {
@@ -163,5 +169,5 @@ export class DeploymentTarget {
 }
 
 
-export type DeploymentTargetUiSectionEnum = 'library' | 'firmware' | 'mobile';
-export const DeploymentTargetUiSectionEnumValues: string[] = ['library', 'firmware', 'mobile'];
+export type DeploymentTargetUiSectionEnum = 'library' | 'firmware' | 'mobile' | 'hidden';
+export const DeploymentTargetUiSectionEnumValues: string[] = ['library', 'firmware', 'mobile', 'hidden'];

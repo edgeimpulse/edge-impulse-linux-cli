@@ -22,6 +22,7 @@ import http = require('http');
 import { AutotuneDspRequest } from '../model/autotuneDspRequest';
 import { BuildOnDeviceModelRequest } from '../model/buildOnDeviceModelRequest';
 import { BuildOrganizationOnDeviceModelRequest } from '../model/buildOrganizationOnDeviceModelRequest';
+import { DeployPretrainedModelRequest } from '../model/deployPretrainedModelRequest';
 import { ExportOriginalDataRequest } from '../model/exportOriginalDataRequest';
 import { ExportWavDataRequest } from '../model/exportWavDataRequest';
 import { GenerateFeaturesRequest } from '../model/generateFeaturesRequest';
@@ -58,10 +59,65 @@ export enum JobsApiApiKeys {
     JWTHttpHeaderAuthentication,
 }
 
+type buildOnDeviceModelJobQueryParams = {
+    type: string,
+};
+
+type cancelJobQueryParams = {
+    forceCancel?: string,
+};
+
+type downloadJobsLogsQueryParams = {
+    limit?: number,
+    logLevel?: 'error' | 'warn' | 'info' | 'debug',
+};
+
+type getJobsLogsQueryParams = {
+    limit?: number,
+    logLevel?: 'error' | 'warn' | 'info' | 'debug',
+};
+
+type getJobsSummaryQueryParams = {
+    startDate: Date,
+    endDate: Date,
+};
+
+type listActiveJobsQueryParams = {
+    rootOnly?: boolean,
+};
+
+type listAllJobsQueryParams = {
+    startDate?: Date,
+    endDate?: Date,
+    limit?: number,
+    offset?: number,
+    rootOnly?: boolean,
+};
+
+type listFinishedJobsQueryParams = {
+    startDate?: Date,
+    endDate?: Date,
+    limit?: number,
+    offset?: number,
+    rootOnly?: boolean,
+};
+
+type setTunerPrimaryJobQueryParams = {
+    trialId: string,
+};
+
+
+export type JobsApiOpts = {
+    extraHeaders?: {
+        [name: string]: string
+    },
+};
+
 export class JobsApi {
     protected _basePath = defaultBasePath;
     protected defaultHeaders : any = {};
     protected _useQuerystring : boolean = false;
+    protected _opts : JobsApiOpts = { };
 
     protected authentications = {
         'default': <Authentication>new VoidAuth(),
@@ -70,8 +126,8 @@ export class JobsApi {
         'JWTHttpHeaderAuthentication': new ApiKeyAuth('header', 'x-jwt-token'),
     }
 
-    constructor(basePath?: string);
-    constructor(basePathOrUsername: string, password?: string, basePath?: string) {
+    constructor(basePath?: string, opts?: JobsApiOpts);
+    constructor(basePathOrUsername: string, opts?: JobsApiOpts, password?: string, basePath?: string) {
         if (password) {
             if (basePath) {
                 this.basePath = basePath;
@@ -81,6 +137,8 @@ export class JobsApi {
                 this.basePath = basePathOrUsername
             }
         }
+
+        this.opts = opts ?? { };
     }
 
     set useQuerystring(value: boolean) {
@@ -95,6 +153,14 @@ export class JobsApi {
         return this._basePath;
     }
 
+    set opts(opts: JobsApiOpts) {
+        this._opts = opts;
+    }
+
+    get opts() {
+        return this._opts;
+    }
+
     public setDefaultAuthentication(auth: Authentication) {
         this.authentications.default = auth;
     }
@@ -102,6 +168,7 @@ export class JobsApi {
     public setApiKey(key: JobsApiApiKeys, value: string | undefined) {
         (this.authentications as any)[JobsApiApiKeys[key]].apiKey = value;
     }
+
 
     /**
      * Autotune DSP block parameters. Updates are streamed over the websocket API.
@@ -113,7 +180,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/autotune-dsp'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -124,16 +193,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling autotuneDspJob.');
         }
 
         // verify required parameter 'autotuneDspRequest' is not null or undefined
+
+
         if (autotuneDspRequest === null || autotuneDspRequest === undefined) {
             throw new Error('Required parameter autotuneDspRequest was null or undefined when calling autotuneDspJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -187,6 +261,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Generate code to run the impulse on an embedded device. When this step is complete use `downloadBuild` to download the artefacts.  Updates are streamed over the websocket API.
      * @summary Build on-device model
@@ -194,11 +269,13 @@ export class JobsApi {
      * @param type The name of the built target. You can find this by listing all deployment targets through &#x60;listDeploymentTargetsForProject&#x60; (via &#x60;GET /v1/api/{projectId}/deployment/targets&#x60;) and see the &#x60;format&#x60; type.
      * @param buildOnDeviceModelRequest 
      */
-    public async buildOnDeviceModelJob (projectId: number, type: string, buildOnDeviceModelRequest: BuildOnDeviceModelRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<StartJobResponse> {
+    public async buildOnDeviceModelJob (projectId: number, buildOnDeviceModelRequest: BuildOnDeviceModelRequest, queryParams: buildOnDeviceModelJobQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<StartJobResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/build-ondevice-model'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -209,25 +286,32 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling buildOnDeviceModelJob.');
         }
 
         // verify required parameter 'type' is not null or undefined
-        if (type === null || type === undefined) {
-            throw new Error('Required parameter type was null or undefined when calling buildOnDeviceModelJob.');
+
+        if (queryParams.type === null || queryParams.type === undefined) {
+            throw new Error('Required parameter queryParams.type was null or undefined when calling buildOnDeviceModelJob.');
         }
 
+
         // verify required parameter 'buildOnDeviceModelRequest' is not null or undefined
+
+
         if (buildOnDeviceModelRequest === null || buildOnDeviceModelRequest === undefined) {
             throw new Error('Required parameter buildOnDeviceModelRequest was null or undefined when calling buildOnDeviceModelJob.');
         }
 
-        if (type !== undefined) {
-            localVarQueryParameters['type'] = ObjectSerializer.serialize(type, "string");
+        if (queryParams.type !== undefined) {
+            localVarQueryParameters['type'] = ObjectSerializer.serialize(queryParams.type, "string");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -281,6 +365,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Generate code to run the impulse on an embedded device using an organizational deployment block. When this step is complete use `downloadBuild` to download the artefacts.  Updates are streamed over the websocket API.
      * @summary Build organizational on-device model
@@ -291,7 +376,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/build-ondevice-model/organization'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -302,16 +389,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling buildOrganizationOnDeviceModelJob.');
         }
 
         // verify required parameter 'buildOrganizationOnDeviceModelRequest' is not null or undefined
+
+
         if (buildOrganizationOnDeviceModelRequest === null || buildOrganizationOnDeviceModelRequest === undefined) {
             throw new Error('Required parameter buildOrganizationOnDeviceModelRequest was null or undefined when calling buildOrganizationOnDeviceModelJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -365,6 +457,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Cancel a running job.
      * @summary Cancel job
@@ -372,12 +465,14 @@ export class JobsApi {
      * @param jobId Job ID
      * @param forceCancel If set to \&#39;true\&#39;, we won\&#39;t wait for the job cluster to cancel the job, and will mark the job as finished.
      */
-    public async cancelJob (projectId: number, jobId: number, forceCancel?: string, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+    public async cancelJob (projectId: number, jobId: number, queryParams: cancelJobQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/{jobId}/cancel'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'jobId' + '}', encodeURIComponent(String(jobId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -388,20 +483,25 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling cancelJob.');
         }
 
         // verify required parameter 'jobId' is not null or undefined
+
+
         if (jobId === null || jobId === undefined) {
             throw new Error('Required parameter jobId was null or undefined when calling cancelJob.');
         }
 
-        if (forceCancel !== undefined) {
-            localVarQueryParameters['forceCancel'] = ObjectSerializer.serialize(forceCancel, "string");
+        if (queryParams.forceCancel !== undefined) {
+            localVarQueryParameters['forceCancel'] = ObjectSerializer.serialize(queryParams.forceCancel, "string");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -454,6 +554,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Download the logs for a job (as a text file).
      * @summary Download logs
@@ -462,12 +563,14 @@ export class JobsApi {
      * @param limit Maximum number of results
      * @param logLevel Log level (error, warn, info, debug)
      */
-    public async downloadJobsLogs (projectId: number, jobId: number, limit?: number, logLevel?: 'error' | 'warn' | 'info' | 'debug', options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<string> {
+    public async downloadJobsLogs (projectId: number, jobId: number, queryParams: downloadJobsLogsQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<string> {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/{jobId}/stdout/download'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'jobId' + '}', encodeURIComponent(String(jobId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['text/plain'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -478,24 +581,29 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling downloadJobsLogs.');
         }
 
         // verify required parameter 'jobId' is not null or undefined
+
+
         if (jobId === null || jobId === undefined) {
             throw new Error('Required parameter jobId was null or undefined when calling downloadJobsLogs.');
         }
 
-        if (limit !== undefined) {
-            localVarQueryParameters['limit'] = ObjectSerializer.serialize(limit, "number");
+        if (queryParams.limit !== undefined) {
+            localVarQueryParameters['limit'] = ObjectSerializer.serialize(queryParams.limit, "number");
         }
 
-        if (logLevel !== undefined) {
-            localVarQueryParameters['logLevel'] = ObjectSerializer.serialize(logLevel, "'error' | 'warn' | 'info' | 'debug'");
+        if (queryParams.logLevel !== undefined) {
+            localVarQueryParameters['logLevel'] = ObjectSerializer.serialize(queryParams.logLevel, "'error' | 'warn' | 'info' | 'debug'");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -548,6 +656,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Export the training pipeline of a Keras block. Updates are streamed over the websocket API.
      * @summary Export Keras block
@@ -559,7 +668,9 @@ export class JobsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'learnId' + '}', encodeURIComponent(String(learnId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -570,16 +681,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling exportKerasBlock.');
         }
 
         // verify required parameter 'learnId' is not null or undefined
+
+
         if (learnId === null || learnId === undefined) {
             throw new Error('Required parameter learnId was null or undefined when calling exportKerasBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -632,6 +748,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Export the data of a Keras block (already split in train/validate data). Updates are streamed over the websocket API.
      * @summary Export Keras block data
@@ -643,7 +760,9 @@ export class JobsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'learnId' + '}', encodeURIComponent(String(learnId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -654,16 +773,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling exportKerasBlockData.');
         }
 
         // verify required parameter 'learnId' is not null or undefined
+
+
         if (learnId === null || learnId === undefined) {
             throw new Error('Required parameter learnId was null or undefined when calling exportKerasBlockData.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -716,6 +840,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Generate features for the data explorer
      * @summary Generate data explorer features
@@ -725,7 +850,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/data-explorer-features'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -736,11 +863,14 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling generateDataExplorerFeatures.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -793,6 +923,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Take the raw training set and generate features from them. Updates are streamed over the websocket API.
      * @summary Generate features
@@ -803,7 +934,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/generate-features'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -814,16 +947,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling generateFeaturesJob.');
         }
 
         // verify required parameter 'generateFeaturesRequest' is not null or undefined
+
+
         if (generateFeaturesRequest === null || generateFeaturesRequest === undefined) {
             throw new Error('Required parameter generateFeaturesRequest was null or undefined when calling generateFeaturesJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -877,6 +1015,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Get the status for a job.
      * @summary Get job status
@@ -888,7 +1027,9 @@ export class JobsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'jobId' + '}', encodeURIComponent(String(jobId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -899,16 +1040,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getJobStatus.');
         }
 
         // verify required parameter 'jobId' is not null or undefined
+
+
         if (jobId === null || jobId === undefined) {
             throw new Error('Required parameter jobId was null or undefined when calling getJobStatus.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -961,6 +1107,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Get the logs for a job.
      * @summary Get logs
@@ -969,12 +1116,14 @@ export class JobsApi {
      * @param limit Maximum number of results
      * @param logLevel Log level (error, warn, info, debug)
      */
-    public async getJobsLogs (projectId: number, jobId: number, limit?: number, logLevel?: 'error' | 'warn' | 'info' | 'debug', options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<LogStdoutResponse> {
+    public async getJobsLogs (projectId: number, jobId: number, queryParams: getJobsLogsQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<LogStdoutResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/{jobId}/stdout'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'jobId' + '}', encodeURIComponent(String(jobId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -985,24 +1134,29 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getJobsLogs.');
         }
 
         // verify required parameter 'jobId' is not null or undefined
+
+
         if (jobId === null || jobId === undefined) {
             throw new Error('Required parameter jobId was null or undefined when calling getJobsLogs.');
         }
 
-        if (limit !== undefined) {
-            localVarQueryParameters['limit'] = ObjectSerializer.serialize(limit, "number");
+        if (queryParams.limit !== undefined) {
+            localVarQueryParameters['limit'] = ObjectSerializer.serialize(queryParams.limit, "number");
         }
 
-        if (logLevel !== undefined) {
-            localVarQueryParameters['logLevel'] = ObjectSerializer.serialize(logLevel, "'error' | 'warn' | 'info' | 'debug'");
+        if (queryParams.logLevel !== undefined) {
+            localVarQueryParameters['logLevel'] = ObjectSerializer.serialize(queryParams.logLevel, "'error' | 'warn' | 'info' | 'debug'");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1055,6 +1209,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Get a summary of jobs, grouped by key. Used to report to users how much compute they\'ve used.
      * @summary Job summary
@@ -1062,11 +1217,13 @@ export class JobsApi {
      * @param startDate Start date
      * @param endDate End date
      */
-    public async getJobsSummary (projectId: number, startDate: Date, endDate: Date, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<JobSummaryResponse> {
+    public async getJobsSummary (projectId: number, queryParams: getJobsSummaryQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<JobSummaryResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/summary'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1077,29 +1234,36 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getJobsSummary.');
         }
 
         // verify required parameter 'startDate' is not null or undefined
-        if (startDate === null || startDate === undefined) {
-            throw new Error('Required parameter startDate was null or undefined when calling getJobsSummary.');
+
+        if (queryParams.startDate === null || queryParams.startDate === undefined) {
+            throw new Error('Required parameter queryParams.startDate was null or undefined when calling getJobsSummary.');
         }
+
 
         // verify required parameter 'endDate' is not null or undefined
-        if (endDate === null || endDate === undefined) {
-            throw new Error('Required parameter endDate was null or undefined when calling getJobsSummary.');
+
+        if (queryParams.endDate === null || queryParams.endDate === undefined) {
+            throw new Error('Required parameter queryParams.endDate was null or undefined when calling getJobsSummary.');
         }
 
-        if (startDate !== undefined) {
-            localVarQueryParameters['startDate'] = ObjectSerializer.serialize(startDate, "Date");
+
+        if (queryParams.startDate !== undefined) {
+            localVarQueryParameters['startDate'] = ObjectSerializer.serialize(queryParams.startDate, "Date");
         }
 
-        if (endDate !== undefined) {
-            localVarQueryParameters['endDate'] = ObjectSerializer.serialize(endDate, "Date");
+        if (queryParams.endDate !== undefined) {
+            localVarQueryParameters['endDate'] = ObjectSerializer.serialize(queryParams.endDate, "Date");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1152,9 +1316,10 @@ export class JobsApi {
             });
         });
     }
+
     /**
-     * Get the results from a job started from startProfileTfliteJob.
-     * @summary Get TFLite profile result
+     * Get the results from a job started from startProfileTfliteJob (via a GET request).
+     * @summary Get TFLite profile result (GET)
      * @param projectId Project ID
      * @param jobId Job ID
      */
@@ -1163,7 +1328,9 @@ export class JobsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'jobId' + '}', encodeURIComponent(String(jobId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1174,16 +1341,113 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getProfileTfliteJobResult.');
         }
 
         // verify required parameter 'jobId' is not null or undefined
+
+
         if (jobId === null || jobId === undefined) {
             throw new Error('Required parameter jobId was null or undefined when calling getProfileTfliteJobResult.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<ProfileTfLiteResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "ProfileTfLiteResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Get the results from a job started from startProfileTfliteJob (via a POST request).
+     * @summary Get TFLite profile result (POST)
+     * @param projectId Project ID
+     * @param jobId Job ID
+     */
+    public async getProfileTfliteJobResultViaPostRequest (projectId: number, jobId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ProfileTfLiteResponse> {
+        const localVarPath = this.basePath + '/api/{projectId}/jobs/profile-tflite/{jobId}/result'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
+            .replace('{' + 'jobId' + '}', encodeURIComponent(String(jobId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling getProfileTfliteJobResultViaPostRequest.');
+        }
+
+        // verify required parameter 'jobId' is not null or undefined
+
+
+        if (jobId === null || jobId === undefined) {
+            throw new Error('Required parameter jobId was null or undefined when calling getProfileTfliteJobResultViaPostRequest.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1236,17 +1500,20 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Get all active jobs for this project
      * @summary List active jobs
      * @param projectId Project ID
      * @param rootOnly Whether to exclude jobs with a parent ID (so jobs started as part of another job)
      */
-    public async listActiveJobs (projectId: number, rootOnly?: boolean, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListJobsResponse> {
+    public async listActiveJobs (projectId: number, queryParams: listActiveJobsQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListJobsResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/jobs'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1257,15 +1524,18 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listActiveJobs.');
         }
 
-        if (rootOnly !== undefined) {
-            localVarQueryParameters['rootOnly'] = ObjectSerializer.serialize(rootOnly, "boolean");
+        if (queryParams.rootOnly !== undefined) {
+            localVarQueryParameters['rootOnly'] = ObjectSerializer.serialize(queryParams.rootOnly, "boolean");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1318,6 +1588,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Get all jobs for this project
      * @summary List all jobs
@@ -1328,11 +1599,13 @@ export class JobsApi {
      * @param offset Offset in results, can be used in conjunction with LimitResultsParameter to implement paging.
      * @param rootOnly Whether to exclude jobs with a parent ID (so jobs started as part of another job)
      */
-    public async listAllJobs (projectId: number, startDate?: Date, endDate?: Date, limit?: number, offset?: number, rootOnly?: boolean, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListJobsResponse> {
+    public async listAllJobs (projectId: number, queryParams: listAllJobsQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListJobsResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/all'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1343,31 +1616,34 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listAllJobs.');
         }
 
-        if (startDate !== undefined) {
-            localVarQueryParameters['startDate'] = ObjectSerializer.serialize(startDate, "Date");
+        if (queryParams.startDate !== undefined) {
+            localVarQueryParameters['startDate'] = ObjectSerializer.serialize(queryParams.startDate, "Date");
         }
 
-        if (endDate !== undefined) {
-            localVarQueryParameters['endDate'] = ObjectSerializer.serialize(endDate, "Date");
+        if (queryParams.endDate !== undefined) {
+            localVarQueryParameters['endDate'] = ObjectSerializer.serialize(queryParams.endDate, "Date");
         }
 
-        if (limit !== undefined) {
-            localVarQueryParameters['limit'] = ObjectSerializer.serialize(limit, "number");
+        if (queryParams.limit !== undefined) {
+            localVarQueryParameters['limit'] = ObjectSerializer.serialize(queryParams.limit, "number");
         }
 
-        if (offset !== undefined) {
-            localVarQueryParameters['offset'] = ObjectSerializer.serialize(offset, "number");
+        if (queryParams.offset !== undefined) {
+            localVarQueryParameters['offset'] = ObjectSerializer.serialize(queryParams.offset, "number");
         }
 
-        if (rootOnly !== undefined) {
-            localVarQueryParameters['rootOnly'] = ObjectSerializer.serialize(rootOnly, "boolean");
+        if (queryParams.rootOnly !== undefined) {
+            localVarQueryParameters['rootOnly'] = ObjectSerializer.serialize(queryParams.rootOnly, "boolean");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1420,6 +1696,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Get all finished jobs for this project
      * @summary List finished jobs
@@ -1430,11 +1707,13 @@ export class JobsApi {
      * @param offset Offset in results, can be used in conjunction with LimitResultsParameter to implement paging.
      * @param rootOnly Whether to exclude jobs with a parent ID (so jobs started as part of another job)
      */
-    public async listFinishedJobs (projectId: number, startDate?: Date, endDate?: Date, limit?: number, offset?: number, rootOnly?: boolean, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListJobsResponse> {
+    public async listFinishedJobs (projectId: number, queryParams: listFinishedJobsQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListJobsResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/history'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1445,31 +1724,34 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listFinishedJobs.');
         }
 
-        if (startDate !== undefined) {
-            localVarQueryParameters['startDate'] = ObjectSerializer.serialize(startDate, "Date");
+        if (queryParams.startDate !== undefined) {
+            localVarQueryParameters['startDate'] = ObjectSerializer.serialize(queryParams.startDate, "Date");
         }
 
-        if (endDate !== undefined) {
-            localVarQueryParameters['endDate'] = ObjectSerializer.serialize(endDate, "Date");
+        if (queryParams.endDate !== undefined) {
+            localVarQueryParameters['endDate'] = ObjectSerializer.serialize(queryParams.endDate, "Date");
         }
 
-        if (limit !== undefined) {
-            localVarQueryParameters['limit'] = ObjectSerializer.serialize(limit, "number");
+        if (queryParams.limit !== undefined) {
+            localVarQueryParameters['limit'] = ObjectSerializer.serialize(queryParams.limit, "number");
         }
 
-        if (offset !== undefined) {
-            localVarQueryParameters['offset'] = ObjectSerializer.serialize(offset, "number");
+        if (queryParams.offset !== undefined) {
+            localVarQueryParameters['offset'] = ObjectSerializer.serialize(queryParams.offset, "number");
         }
 
-        if (rootOnly !== undefined) {
-            localVarQueryParameters['rootOnly'] = ObjectSerializer.serialize(rootOnly, "boolean");
+        if (queryParams.rootOnly !== undefined) {
+            localVarQueryParameters['rootOnly'] = ObjectSerializer.serialize(queryParams.rootOnly, "boolean");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1522,6 +1804,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Evaluates optimal model architecture
      * @summary Optimize model
@@ -1532,7 +1815,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/optimize'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1543,16 +1828,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling optimizeJob.');
         }
 
         // verify required parameter 'setKerasParameterRequest' is not null or undefined
+
+
         if (setKerasParameterRequest === null || setKerasParameterRequest === undefined) {
             throw new Error('Required parameter setKerasParameterRequest was null or undefined when calling optimizeJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1606,17 +1896,20 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Sets EON tuner primary model
      * @summary Sets EON tuner primary model
      * @param projectId Project ID
      * @param trialId trial ID
      */
-    public async setTunerPrimaryJob (projectId: number, trialId: string, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<StartJobResponse> {
+    public async setTunerPrimaryJob (projectId: number, queryParams: setTunerPrimaryJobQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<StartJobResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/set-tuner-primary-job'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1627,20 +1920,25 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling setTunerPrimaryJob.');
         }
 
         // verify required parameter 'trialId' is not null or undefined
-        if (trialId === null || trialId === undefined) {
-            throw new Error('Required parameter trialId was null or undefined when calling setTunerPrimaryJob.');
+
+        if (queryParams.trialId === null || queryParams.trialId === undefined) {
+            throw new Error('Required parameter queryParams.trialId was null or undefined when calling setTunerPrimaryJob.');
         }
 
-        if (trialId !== undefined) {
-            localVarQueryParameters['trialId'] = ObjectSerializer.serialize(trialId, "string");
+
+        if (queryParams.trialId !== undefined) {
+            localVarQueryParameters['trialId'] = ObjectSerializer.serialize(queryParams.trialId, "string");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1693,6 +1991,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Classifies all items in the testing dataset against the current impulse. Updates are streamed over the websocket API.
      * @summary Classify
@@ -1702,7 +2001,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/classify'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1713,11 +2014,14 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startClassifyJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1770,6 +2074,99 @@ export class JobsApi {
             });
         });
     }
+
+    /**
+     * Takes in a TFLite file and builds the model and SDK. Updates are streamed over the websocket API (or can be retrieved through the /stdout endpoint). Use getProfileTfliteJobResult to get the results when the job is completed.
+     * @summary Deploy pretrained model
+     * @param projectId Project ID
+     * @param deployPretrainedModelRequest 
+     */
+    public async startDeployPretrainedModelJob (projectId: number, deployPretrainedModelRequest: DeployPretrainedModelRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<StartJobResponse> {
+        const localVarPath = this.basePath + '/api/{projectId}/jobs/deploy-pretrained-model'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling startDeployPretrainedModelJob.');
+        }
+
+        // verify required parameter 'deployPretrainedModelRequest' is not null or undefined
+
+
+        if (deployPretrainedModelRequest === null || deployPretrainedModelRequest === undefined) {
+            throw new Error('Required parameter deployPretrainedModelRequest was null or undefined when calling startDeployPretrainedModelJob.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'POST',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+            body: ObjectSerializer.serialize(deployPretrainedModelRequest, "DeployPretrainedModelRequest")
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<StartJobResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "StartJobResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
     /**
      * Evaluates every variant of the current impulse. Updates are streamed over the websocket API.
      * @summary Evaluate
@@ -1779,7 +2176,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/evaluate'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1790,11 +2189,14 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startEvaluateJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1847,6 +2249,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Add keywords and noise data to a project (for getting started guide)
      * @summary Add keywords and noise
@@ -1856,7 +2259,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/keywords-noise'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1867,11 +2272,14 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startKeywordsNoiseJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1924,6 +2332,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Make a version of a project public. This makes all data and state available (read-only) on a public URL, and allows users to clone this project.
      * @summary Make a version public
@@ -1935,7 +2344,9 @@ export class JobsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'versionId' + '}', encodeURIComponent(String(versionId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1946,16 +2357,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startMakeVersionPublicJob.');
         }
 
         // verify required parameter 'versionId' is not null or undefined
+
+
         if (versionId === null || versionId === undefined) {
             throw new Error('Required parameter versionId was null or undefined when calling startMakeVersionPublicJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2008,6 +2424,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Export all the data in the project as it was uploaded to Edge Impulse.  Updates are streamed over the websocket API.
      * @summary Export original data
@@ -2018,7 +2435,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/export/original'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2029,16 +2448,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startOriginalExportJob.');
         }
 
         // verify required parameter 'exportOriginalDataRequest' is not null or undefined
+
+
         if (exportOriginalDataRequest === null || exportOriginalDataRequest === undefined) {
             throw new Error('Required parameter exportOriginalDataRequest was null or undefined when calling startOriginalExportJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2092,6 +2516,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Simulates real world usage and returns performance metrics.
      * @summary Performance Calibration
@@ -2102,7 +2527,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/performance-calibration'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2113,16 +2540,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startPerformanceCalibrationJob.');
         }
 
         // verify required parameter 'startPerformanceCalibrationRequest' is not null or undefined
+
+
         if (startPerformanceCalibrationRequest === null || startPerformanceCalibrationRequest === undefined) {
             throw new Error('Required parameter startPerformanceCalibrationRequest was null or undefined when calling startPerformanceCalibrationJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2176,6 +2608,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Takes in a TFLite model and returns the latency, RAM and ROM used for this model. Updates are streamed over the websocket API (or can be retrieved through the /stdout endpoint). Use getProfileTfliteJobResult to get the results when the job is completed.
      * @summary Profile TFLite model
@@ -2186,7 +2619,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/profile-tflite'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2197,16 +2632,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startProfileTfliteJob.');
         }
 
         // verify required parameter 'profileTfLiteRequest' is not null or undefined
+
+
         if (profileTfLiteRequest === null || profileTfLiteRequest === undefined) {
             throw new Error('Required parameter profileTfLiteRequest was null or undefined when calling startProfileTfliteJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2260,6 +2700,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Restore a project to a certain version. This can only applied to a project without data, and will overwrite your impulse and all settings.
      * @summary Restore project to version
@@ -2270,7 +2711,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/restore'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2281,16 +2724,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startRestoreJob.');
         }
 
         // verify required parameter 'restoreProjectRequest' is not null or undefined
+
+
         if (restoreProjectRequest === null || restoreProjectRequest === undefined) {
             throw new Error('Required parameter restoreProjectRequest was null or undefined when calling startRestoreJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2344,6 +2792,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Restore a project to a certain public version. This can only applied to a project without data, and will overwrite your impulse and all settings.
      * @summary Restore project to public version
@@ -2354,7 +2803,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/restore/from-public'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2365,16 +2816,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startRestoreJobFromPublic.');
         }
 
         // verify required parameter 'restoreProjectFromPublicRequest' is not null or undefined
+
+
         if (restoreProjectFromPublicRequest === null || restoreProjectFromPublicRequest === undefined) {
             throw new Error('Required parameter restoreProjectFromPublicRequest was null or undefined when calling startRestoreJobFromPublic.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2428,6 +2884,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Retrains the current impulse with the last known parameters. Updates are streamed over the websocket API.
      * @summary Retrain
@@ -2437,7 +2894,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/retrain'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2448,11 +2907,14 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startRetrainJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2505,6 +2967,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Create a new version of the project. This stores all data and configuration offsite. If you have access to the enterprise version of Edge Impulse you can store your data in your own storage buckets (only through JWT token authentication).
      * @summary Version project
@@ -2515,7 +2978,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/version'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2526,16 +2991,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startVersionJob.');
         }
 
         // verify required parameter 'projectVersionRequest' is not null or undefined
+
+
         if (projectVersionRequest === null || projectVersionRequest === undefined) {
             throw new Error('Required parameter projectVersionRequest was null or undefined when calling startVersionJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2589,6 +3059,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Export all the data in the project in WAV format.  Updates are streamed over the websocket API.
      * @summary Export data as WAV
@@ -2599,7 +3070,9 @@ export class JobsApi {
         const localVarPath = this.basePath + '/api/{projectId}/jobs/export/wav'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2610,16 +3083,21 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling startWavExportJob.');
         }
 
         // verify required parameter 'exportWavDataRequest' is not null or undefined
+
+
         if (exportWavDataRequest === null || exportWavDataRequest === undefined) {
             throw new Error('Required parameter exportWavDataRequest was null or undefined when calling startWavExportJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2673,8 +3151,9 @@ export class JobsApi {
             });
         });
     }
+
     /**
-     * Take the output from a DSP block and train an anomaly detection model using K-means. Updates are streamed over the websocket API.
+     * Take the output from a DSP block and train an anomaly detection model using K-means or GMM. Updates are streamed over the websocket API.
      * @summary Train model (Anomaly)
      * @param projectId Project ID
      * @param learnId Learn Block ID, use the impulse functions to retrieve the ID
@@ -2685,7 +3164,9 @@ export class JobsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'learnId' + '}', encodeURIComponent(String(learnId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2696,21 +3177,28 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling trainAnomalyJob.');
         }
 
         // verify required parameter 'learnId' is not null or undefined
+
+
         if (learnId === null || learnId === undefined) {
             throw new Error('Required parameter learnId was null or undefined when calling trainAnomalyJob.');
         }
 
         // verify required parameter 'startTrainingRequestAnomaly' is not null or undefined
+
+
         if (startTrainingRequestAnomaly === null || startTrainingRequestAnomaly === undefined) {
             throw new Error('Required parameter startTrainingRequestAnomaly was null or undefined when calling trainAnomalyJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2764,6 +3252,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Take the output from a DSP block and train a neural network using Keras. Updates are streamed over the websocket API.
      * @summary Train model (Keras)
@@ -2776,7 +3265,9 @@ export class JobsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'learnId' + '}', encodeURIComponent(String(learnId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2787,21 +3278,28 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling trainKerasJob.');
         }
 
         // verify required parameter 'learnId' is not null or undefined
+
+
         if (learnId === null || learnId === undefined) {
             throw new Error('Required parameter learnId was null or undefined when calling trainKerasJob.');
         }
 
         // verify required parameter 'setKerasParameterRequest' is not null or undefined
+
+
         if (setKerasParameterRequest === null || setKerasParameterRequest === undefined) {
             throw new Error('Required parameter setKerasParameterRequest was null or undefined when calling trainKerasJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2855,6 +3353,7 @@ export class JobsApi {
             });
         });
     }
+
     /**
      * Update a job.
      * @summary Update job
@@ -2867,7 +3366,9 @@ export class JobsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'jobId' + '}', encodeURIComponent(String(jobId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2878,21 +3379,28 @@ export class JobsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling updateJob.');
         }
 
         // verify required parameter 'jobId' is not null or undefined
+
+
         if (jobId === null || jobId === undefined) {
             throw new Error('Required parameter jobId was null or undefined when calling updateJob.');
         }
 
         // verify required parameter 'updateJobRequest' is not null or undefined
+
+
         if (updateJobRequest === null || updateJobRequest === undefined) {
             throw new Error('Required parameter updateJobRequest was null or undefined when calling updateJob.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 

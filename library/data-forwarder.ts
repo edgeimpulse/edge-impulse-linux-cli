@@ -150,27 +150,6 @@ export class DataForwarder {
 
             let category = opts.category;
 
-            // if category is split we calculate the md5 hash of the buffer
-            // then look at the first char in the string that's not f
-            // then split 0..b => training, rest => test for a 80/20 split
-            if (category === 'split') {
-                let hash = crypto.createHash('md5').update(dataBuffer).digest('hex');
-                while (hash.length > 0 && hash[0] === 'f') {
-                    hash = hash.substr(1);
-                }
-                if (hash.length === 0) {
-                    return rej('Failed to calculate MD5 hash of buffer');
-                }
-                let firstHashChar = hash[0];
-
-                if (['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b' ].indexOf(firstHashChar) > -1) {
-                    category = 'training';
-                }
-                else {
-                    category = 'testing';
-                }
-            }
-
             // now upload the buffer to Edge Impulse
             request.post(
                 this._options.ingestionHost + '/api/' + category + '/data', {

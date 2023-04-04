@@ -10,9 +10,10 @@
  * Do not edit the class manually.
  */
 
-import { GetUserResponseAllOfOrganizations } from './getUserResponseAllOfOrganizations';
+import { GetUserResponseAllOfWhitelabels } from './getUserResponseAllOfWhitelabels';
 import { Project } from './project';
-import { ProjectInfoResponseAllOfExperiments } from './projectInfoResponseAllOfExperiments';
+import { UserExperiment } from './userExperiment';
+import { UserOrganization } from './userOrganization';
 
 export class GetUserResponseAllOf {
     'email': string;
@@ -20,12 +21,12 @@ export class GetUserResponseAllOf {
     /**
     * Organizations that the user is a member of. Only filled when requesting information about yourself.
     */
-    'organizations': Array<GetUserResponseAllOfOrganizations>;
+    'organizations': Array<UserOrganization>;
     'projects': Array<Project>;
     /**
     * Experiments the user has access to. Enabling experiments can only be done through a JWT token.
     */
-    'experiments': Array<ProjectInfoResponseAllOfExperiments>;
+    'experiments': Array<UserExperiment>;
     /**
     * Whether this is an ephemeral evaluation account.
     */
@@ -42,6 +43,10 @@ export class GetUserResponseAllOf {
     * The user account tier.
     */
     'tier': GetUserResponseAllOfTierEnum;
+    /**
+    * List of white labels the user is a member of
+    */
+    'whitelabels'?: Array<GetUserResponseAllOfWhitelabels>;
 
     static discriminator: string | undefined = undefined;
 
@@ -59,7 +64,7 @@ export class GetUserResponseAllOf {
         {
             "name": "organizations",
             "baseName": "organizations",
-            "type": "Array<GetUserResponseAllOfOrganizations>"
+            "type": "Array<UserOrganization>"
         },
         {
             "name": "projects",
@@ -69,7 +74,7 @@ export class GetUserResponseAllOf {
         {
             "name": "experiments",
             "baseName": "experiments",
-            "type": "Array<ProjectInfoResponseAllOfExperiments>"
+            "type": "Array<UserExperiment>"
         },
         {
             "name": "evaluation",
@@ -90,6 +95,11 @@ export class GetUserResponseAllOf {
             "name": "tier",
             "baseName": "tier",
             "type": "GetUserResponseAllOfTierEnum"
+        },
+        {
+            "name": "whitelabels",
+            "baseName": "whitelabels",
+            "type": "Array<GetUserResponseAllOfWhitelabels>"
         }    ];
 
     static getAttributeTypeMap() {

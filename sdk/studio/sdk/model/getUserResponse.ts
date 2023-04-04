@@ -12,11 +12,12 @@
 
 import { GenericApiResponse } from './genericApiResponse';
 import { GetUserResponseAllOf } from './getUserResponseAllOf';
-import { GetUserResponseAllOfOrganizations } from './getUserResponseAllOfOrganizations';
+import { GetUserResponseAllOfWhitelabels } from './getUserResponseAllOfWhitelabels';
 import { Project } from './project';
-import { ProjectInfoResponseAllOfExperiments } from './projectInfoResponseAllOfExperiments';
 import { StaffInfo } from './staffInfo';
 import { User } from './user';
+import { UserExperiment } from './userExperiment';
+import { UserOrganization } from './userOrganization';
 
 export class GetUserResponse {
     /**
@@ -32,20 +33,22 @@ export class GetUserResponse {
     'name': string;
     'photo'?: string;
     'created': Date;
+    'lastSeen'?: Date;
     'staffInfo': StaffInfo;
     'pending': boolean;
     'lastTosAcceptanceDate'?: Date;
+    'jobTitle'?: string;
     'email': string;
     'activated': boolean;
     /**
     * Organizations that the user is a member of. Only filled when requesting information about yourself.
     */
-    'organizations': Array<GetUserResponseAllOfOrganizations>;
+    'organizations': Array<UserOrganization>;
     'projects': Array<Project>;
     /**
     * Experiments the user has access to. Enabling experiments can only be done through a JWT token.
     */
-    'experiments': Array<ProjectInfoResponseAllOfExperiments>;
+    'experiments': Array<UserExperiment>;
     /**
     * Whether this is an ephemeral evaluation account.
     */
@@ -62,6 +65,10 @@ export class GetUserResponse {
     * The user account tier.
     */
     'tier': GetUserResponseTierEnum;
+    /**
+    * List of white labels the user is a member of
+    */
+    'whitelabels'?: Array<GetUserResponseAllOfWhitelabels>;
 
     static discriminator: string | undefined = undefined;
 
@@ -102,6 +109,11 @@ export class GetUserResponse {
             "type": "Date"
         },
         {
+            "name": "lastSeen",
+            "baseName": "lastSeen",
+            "type": "Date"
+        },
+        {
             "name": "staffInfo",
             "baseName": "staffInfo",
             "type": "StaffInfo"
@@ -117,6 +129,11 @@ export class GetUserResponse {
             "type": "Date"
         },
         {
+            "name": "jobTitle",
+            "baseName": "jobTitle",
+            "type": "string"
+        },
+        {
             "name": "email",
             "baseName": "email",
             "type": "string"
@@ -129,7 +146,7 @@ export class GetUserResponse {
         {
             "name": "organizations",
             "baseName": "organizations",
-            "type": "Array<GetUserResponseAllOfOrganizations>"
+            "type": "Array<UserOrganization>"
         },
         {
             "name": "projects",
@@ -139,7 +156,7 @@ export class GetUserResponse {
         {
             "name": "experiments",
             "baseName": "experiments",
-            "type": "Array<ProjectInfoResponseAllOfExperiments>"
+            "type": "Array<UserExperiment>"
         },
         {
             "name": "evaluation",
@@ -160,6 +177,11 @@ export class GetUserResponse {
             "name": "tier",
             "baseName": "tier",
             "type": "GetUserResponseTierEnum"
+        },
+        {
+            "name": "whitelabels",
+            "baseName": "whitelabels",
+            "type": "Array<GetUserResponseAllOfWhitelabels>"
         }    ];
 
     static getAttributeTypeMap() {

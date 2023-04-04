@@ -6,7 +6,7 @@ import http from 'http';
 import https from 'https';
 import encodeLabel from '../shared/encoding';
 import Path from 'path';
-import { ExportInputBoundingBox } from '../shared/bounding-box-file-types';
+import { ExportInputBoundingBox, ExportUploaderInfoFileCategory } from '../shared/bounding-box-file-types';
 
 const keepAliveAgentHttp = new http.Agent({ keepAlive: true });
 const keepAliveAgentHttps = new https.Agent({ keepAlive: true });
@@ -33,7 +33,7 @@ export async function upload(opts: {
     allowDuplicates: boolean,
     apiKey: string,
     config: EdgeImpulseConfig,
-    category: string | undefined,
+    category: ExportUploaderInfoFileCategory | undefined,
     boundingBoxes: ExportInputBoundingBox[] | undefined,
     metadata: { [k: string]: string } | undefined,
     addDateId: boolean,
@@ -46,6 +46,7 @@ export async function upload(opts: {
 
     let headers: { [k: string]: string} = {
         'x-api-key': opts.apiKey,
+        'x-upload-source': 'EDGE_IMPULSE_CLI_UPLOADER',
         'Connection': 'keep-alive'
     };
 
@@ -70,32 +71,13 @@ export async function upload(opts: {
         headers['x-add-date-id'] = '1';
     }
 
+    headers['x-device-type'] = 'EDGE_IMPULSE_CLI';
+
     let agent = opts.config.endpoints.internal.ingestion.indexOf('https:') === 0 ?
         keepAliveAgentHttps :
         keepAliveAgentHttp;
 
     let category = opts.category;
-
-    // if category is split we calculate the md5 hash of the buffer
-    // then look at the first char in the string that's not f
-    // then split 0..b => training, rest => test for a 80/20 split
-    if (category === 'split') {
-        let hash = crypto.createHash('md5').update(opts.buffer).digest('hex');
-        while (hash.length > 0 && hash[0] === 'f') {
-            hash = hash.substr(1);
-        }
-        if (hash.length === 0) {
-            throw new Error('Failed to calculate MD5 hash of buffer');
-        }
-        let firstHashChar = hash[0];
-
-        if (['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b' ].indexOf(firstHashChar) > -1) {
-            category = 'training';
-        }
-        else {
-            category = 'testing';
-        }
-    }
 
     const form = new FormData();
     form.append('data', opts.buffer, {

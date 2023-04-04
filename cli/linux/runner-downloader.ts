@@ -89,7 +89,7 @@ export class RunnerDownloader extends EventEmitter<{
         let downloadType = await this.getDownloadType();
 
         let deployInfo = await this._config.api.deployment.getDeployment(
-            this._projectId, downloadType, this._modelType);
+            this._projectId, { type: downloadType, modelType: this._modelType });
 
         return deployInfo.hasDeployment && typeof deployInfo.version === 'number' ?
             deployInfo.version :
@@ -100,14 +100,14 @@ export class RunnerDownloader extends EventEmitter<{
         let downloadType = await this.getDownloadType();
 
         let deployInfo = await this._config.api.deployment.getDeployment(
-            this._projectId, downloadType, this._modelType);
+            this._projectId, { type: downloadType, modelType: this._modelType });
 
         if (!deployInfo.hasDeployment) {
             await this.buildModel(downloadType);
         }
 
         let deployment = await this._config.api.deployment.downloadBuild(
-            this._projectId, downloadType, this._modelType);
+            this._projectId, { type: downloadType, modelType: this._modelType });
         return deployment;
     }
 
@@ -130,10 +130,10 @@ export class RunnerDownloader extends EventEmitter<{
             engine = <models.DeploymentTargetEngine>this._forceEngine;
         }
 
-        let buildRes = await this._config.api.jobs.buildOnDeviceModelJob(this._projectId, downloadType, {
+        let buildRes = await this._config.api.jobs.buildOnDeviceModelJob(this._projectId, {
             engine: engine,
             modelType: this._modelType
-        });
+        }, { type: downloadType });
 
         let jobId = buildRes.id;
         this.emit('build-progress', 'Created build job with ID ' + jobId);

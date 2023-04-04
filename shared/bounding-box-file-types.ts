@@ -25,3 +25,29 @@ export function parseBoundingBoxLabels(jsonFile: string) {
     }
     return data;
 }
+
+export type ExportUploaderInfoFileCategory = 'training' | 'testing' | 'split';
+
+export interface ExportUploaderInfoFile {
+    path: string;
+    category: ExportUploaderInfoFileCategory;
+    label: { type: 'unlabeled' } | { type: 'label', label: string };
+    metadata: { [k: string]: string } | undefined;
+    boundingBoxes: ExportInputBoundingBox[] | undefined;
+}
+
+export interface ExportUploaderInfoFileV1 {
+    version: 1;
+    files: ExportUploaderInfoFile[];
+}
+
+export function parseUploaderInfo(jsonFile: string) {
+    let data = <ExportUploaderInfoFileV1>JSON.parse(jsonFile);
+    if (data.version !== 1) {
+        throw new Error('Invalid version');
+    }
+    if (!Array.isArray(data.files)) {
+        throw new Error('files is not an array');
+    }
+    return data;
+}
