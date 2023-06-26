@@ -67,7 +67,7 @@ export class GStreamer extends EventEmitter<{
 
         if (await this.exists('/etc/os-release')) {
             let x = await fs.promises.readFile('/etc/os-release', 'utf-8');
-            if (x.indexOf('bullseye') > -1) {
+            if ((x.indexOf('bullseye') > -1) && (x.indexOf('ID=raspbian') > -1)) {
                 this._mode = 'rpi-bullseye';
             }
         }
