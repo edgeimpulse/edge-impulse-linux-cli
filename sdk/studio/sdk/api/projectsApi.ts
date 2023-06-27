@@ -22,10 +22,9 @@ import http = require('http');
 import { AddApiKeyRequest } from '../model/addApiKeyRequest';
 import { AddCollaboratorRequest } from '../model/addCollaboratorRequest';
 import { AddHmacKeyRequest } from '../model/addHmacKeyRequest';
-import { AddNoteRequest } from '../model/addNoteRequest';
-import { CreateNoteResponse } from '../model/createNoteResponse';
 import { CreateProjectRequest } from '../model/createProjectRequest';
 import { CreateProjectResponse } from '../model/createProjectResponse';
+import { DevelopmentBoardsResponse } from '../model/developmentBoardsResponse';
 import { DevelopmentKeysResponse } from '../model/developmentKeysResponse';
 import { GenericApiResponse } from '../model/genericApiResponse';
 import { GetNotesResponse } from '../model/getNotesResponse';
@@ -41,13 +40,12 @@ import { ProjectDataAxesSummaryResponse } from '../model/projectDataAxesSummaryR
 import { ProjectDataIntervalResponse } from '../model/projectDataIntervalResponse';
 import { ProjectDownloadsResponse } from '../model/projectDownloadsResponse';
 import { ProjectInfoResponse } from '../model/projectInfoResponse';
+import { ProjectInfoSummaryResponse } from '../model/projectInfoSummaryResponse';
 import { RemoveCollaboratorRequest } from '../model/removeCollaboratorRequest';
 import { SetProjectComputeTimeRequest } from '../model/setProjectComputeTimeRequest';
 import { SetProjectDspFileSizeRequest } from '../model/setProjectDspFileSizeRequest';
 import { SocketTokenResponse } from '../model/socketTokenResponse';
 import { TransferOwnershipOrganizationRequest } from '../model/transferOwnershipOrganizationRequest';
-import { UpdateNoteRequest } from '../model/updateNoteRequest';
-import { UpdateNoteResponse } from '../model/updateNoteResponse';
 import { UpdateProjectRequest } from '../model/updateProjectRequest';
 import { UpdateProjectTagsRequest } from '../model/updateProjectTagsRequest';
 import { UpdateVersionRequest } from '../model/updateVersionRequest';
@@ -70,10 +68,33 @@ export enum ProjectsApiApiKeys {
     JWTHttpHeaderAuthentication,
 }
 
+type getProjectDataAxesSummaryQueryParams = {
+    includeDisabled?: boolean,
+    includeNotProcessed?: boolean,
+};
+
+type listPublicProjectsQueryParams = {
+    limit?: number,
+    offset?: number,
+    project?: string,
+};
+
+type uploadReadmeImageFormParams = {
+    image: RequestFile,
+};
+
+
+export type ProjectsApiOpts = {
+    extraHeaders?: {
+        [name: string]: string
+    },
+};
+
 export class ProjectsApi {
     protected _basePath = defaultBasePath;
     protected defaultHeaders : any = {};
     protected _useQuerystring : boolean = false;
+    protected _opts : ProjectsApiOpts = { };
 
     protected authentications = {
         'default': <Authentication>new VoidAuth(),
@@ -82,8 +103,8 @@ export class ProjectsApi {
         'JWTHttpHeaderAuthentication': new ApiKeyAuth('header', 'x-jwt-token'),
     }
 
-    constructor(basePath?: string);
-    constructor(basePathOrUsername: string, password?: string, basePath?: string) {
+    constructor(basePath?: string, opts?: ProjectsApiOpts);
+    constructor(basePathOrUsername: string, opts?: ProjectsApiOpts, password?: string, basePath?: string) {
         if (password) {
             if (basePath) {
                 this.basePath = basePath;
@@ -93,6 +114,8 @@ export class ProjectsApi {
                 this.basePath = basePathOrUsername
             }
         }
+
+        this.opts = opts ?? { };
     }
 
     set useQuerystring(value: boolean) {
@@ -107,6 +130,14 @@ export class ProjectsApi {
         return this._basePath;
     }
 
+    set opts(opts: ProjectsApiOpts) {
+        this._opts = opts;
+    }
+
+    get opts() {
+        return this._opts;
+    }
+
     public setDefaultAuthentication(auth: Authentication) {
         this.authentications.default = auth;
     }
@@ -114,6 +145,7 @@ export class ProjectsApi {
     public setApiKey(key: ProjectsApiApiKeys, value: string | undefined) {
         (this.authentications as any)[ProjectsApiApiKeys[key]].apiKey = value;
     }
+
 
     /**
      * Add a collaborator to a project.
@@ -125,7 +157,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/collaborators/add'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -136,16 +170,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling addCollaborator.');
         }
 
         // verify required parameter 'addCollaboratorRequest' is not null or undefined
+
+
         if (addCollaboratorRequest === null || addCollaboratorRequest === undefined) {
             throw new Error('Required parameter addCollaboratorRequest was null or undefined when calling addCollaborator.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -199,90 +238,7 @@ export class ProjectsApi {
             });
         });
     }
-    /**
-     * Add a note to a project.
-     * @summary Add note
-     * @param projectId Project ID
-     * @param addNoteRequest 
-     */
-    public async addNote (projectId: number, addNoteRequest: AddNoteRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<CreateNoteResponse> {
-        const localVarPath = this.basePath + '/api/{projectId}/notes/add'
-            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
-        let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
-        const produces = ['application/json'];
-        // give precedence to 'application/json'
-        if (produces.indexOf('application/json') >= 0) {
-            localVarHeaderParams.Accept = 'application/json';
-        } else {
-            localVarHeaderParams.Accept = produces.join(',');
-        }
-        let localVarFormParams: any = {};
 
-        // verify required parameter 'projectId' is not null or undefined
-        if (projectId === null || projectId === undefined) {
-            throw new Error('Required parameter projectId was null or undefined when calling addNote.');
-        }
-
-        // verify required parameter 'addNoteRequest' is not null or undefined
-        if (addNoteRequest === null || addNoteRequest === undefined) {
-            throw new Error('Required parameter addNoteRequest was null or undefined when calling addNote.');
-        }
-
-        (<any>Object).assign(localVarHeaderParams, options.headers);
-
-        let localVarUseFormData = false;
-
-        let localVarRequestOptions: localVarRequest.Options = {
-            method: 'POST',
-            qs: localVarQueryParameters,
-            headers: localVarHeaderParams,
-            uri: localVarPath,
-            useQuerystring: this._useQuerystring,
-            agentOptions: {keepAlive: false},
-            json: true,
-            body: ObjectSerializer.serialize(addNoteRequest, "AddNoteRequest")
-        };
-
-        let authenticationPromise = Promise.resolve();
-        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
-
-        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
-
-        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
-
-        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
-        return authenticationPromise.then(() => {
-            if (Object.keys(localVarFormParams).length) {
-                if (localVarUseFormData) {
-                    (<any>localVarRequestOptions).formData = localVarFormParams;
-                } else {
-                    localVarRequestOptions.form = localVarFormParams;
-                }
-            }
-            return new Promise<CreateNoteResponse>((resolve, reject) => {
-                localVarRequest(localVarRequestOptions, (error, response, body) => {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        body = ObjectSerializer.deserialize(body, "CreateNoteResponse");
-
-                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
-
-                        if (typeof body.success === 'boolean' && !body.success) {
-                            reject(new Error(body.error || errString));
-                        }
-                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
-                            resolve(body);
-                        }
-                        else {
-                            reject(errString);
-                        }
-                    }
-                });
-            });
-        });
-    }
     /**
      * Add an API key. If you set `developmentKey` to `true` this flag will be removed from the current development API key.
      * @summary Add API key
@@ -293,7 +249,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/apikeys'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -304,16 +262,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling addProjectApiKey.');
         }
 
         // verify required parameter 'addApiKeyRequest' is not null or undefined
+
+
         if (addApiKeyRequest === null || addApiKeyRequest === undefined) {
             throw new Error('Required parameter addApiKeyRequest was null or undefined when calling addProjectApiKey.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -367,6 +330,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Add an HMAC key. If you set `developmentKey` to `true` this flag will be removed from the current development HMAC key.
      * @summary Add HMAC key
@@ -377,7 +341,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/hmackeys'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -388,16 +354,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling addProjectHmacKey.');
         }
 
         // verify required parameter 'addHmacKeyRequest' is not null or undefined
+
+
         if (addHmacKeyRequest === null || addHmacKeyRequest === undefined) {
             throw new Error('Required parameter addHmacKeyRequest was null or undefined when calling addProjectHmacKey.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -451,6 +422,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Create a new project. This API can only be called using a JWT token.
      * @summary Create new project
@@ -459,7 +431,9 @@ export class ProjectsApi {
     public async createProject (createProjectRequest: CreateProjectRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<CreateProjectResponse> {
         const localVarPath = this.basePath + '/api/projects/create';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -470,11 +444,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'createProjectRequest' is not null or undefined
+
+
         if (createProjectRequest === null || createProjectRequest === undefined) {
             throw new Error('Required parameter createProjectRequest was null or undefined when calling createProject.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -528,6 +505,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Remove the current project, and all data associated with it. This is irrevocable!
      * @summary Remove project
@@ -537,7 +515,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -548,11 +528,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling deleteProject.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -605,6 +588,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Delete a version. This does not delete the version from cold storage.
      * @summary Delete versions
@@ -616,7 +600,9 @@ export class ProjectsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'versionId' + '}', encodeURIComponent(String(versionId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -627,16 +613,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling deleteVersion.');
         }
 
         // verify required parameter 'versionId' is not null or undefined
+
+
         if (versionId === null || versionId === undefined) {
             throw new Error('Required parameter versionId was null or undefined when calling deleteVersion.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -689,6 +680,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Get all notes in project.
      * @summary Get notes
@@ -698,7 +690,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/notes'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -709,11 +703,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getNotes.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -766,16 +763,21 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Get a list of axes that are present in the training data.
      * @summary Get data axes summary
      * @param projectId Project ID
+     * @param includeDisabled Whether to include disabled samples. Defaults to true
+     * @param includeNotProcessed Whether to include non-processed samples. Defaults to true
      */
-    public async getProjectDataAxesSummary (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ProjectDataAxesSummaryResponse> {
+    public async getProjectDataAxesSummary (projectId: number, queryParams: getProjectDataAxesSummaryQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ProjectDataAxesSummaryResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/data-axes'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -786,11 +788,22 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getProjectDataAxesSummary.');
         }
 
+        if (queryParams.includeDisabled !== undefined) {
+            localVarQueryParameters['includeDisabled'] = ObjectSerializer.serialize(queryParams.includeDisabled, "boolean");
+        }
+
+        if (queryParams.includeNotProcessed !== undefined) {
+            localVarQueryParameters['includeNotProcessed'] = ObjectSerializer.serialize(queryParams.includeNotProcessed, "boolean");
+        }
+
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -843,6 +856,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * List all information about this project.
      * @summary Project information
@@ -852,7 +866,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -863,11 +879,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getProjectInfo.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -920,16 +939,19 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
-     * Get the last modification date for a project (will be upped when data is modified, or when an impulse is trained)
-     * @summary Last modification
+     * List a summary about this project - available for public projects.
+     * @summary Public project information
      * @param projectId Project ID
      */
-    public async getProjectLastModificationDate (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<LastModificationDateResponse> {
-        const localVarPath = this.basePath + '/api/{projectId}/last-modification'
+    public async getProjectInfoSummary (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ProjectInfoSummaryResponse> {
+        const localVarPath = this.basePath + '/api/{projectId}/public-info'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -940,11 +962,97 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling getProjectInfoSummary.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<ProjectInfoSummaryResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "ProjectInfoSummaryResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Get the last modification date for a project (will be upped when data is modified, or when an impulse is trained)
+     * @summary Last modification
+     * @param projectId Project ID
+     */
+    public async getProjectLastModificationDate (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<LastModificationDateResponse> {
+        const localVarPath = this.basePath + '/api/{projectId}/last-modification'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getProjectLastModificationDate.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -997,6 +1105,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Get the interval of the training data; if multiple intervals are present, the interval of the longest data item is returned.
      * @summary Get the interval (in ms) of the training data
@@ -1006,7 +1115,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/data-interval'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1017,11 +1128,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getProjectRecommendedDataInterval.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1074,6 +1188,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Get a token to authenticate with the web socket interface.
      * @summary Get socket token
@@ -1083,7 +1198,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/socket-token'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1094,11 +1211,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling getSocketToken.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1151,6 +1271,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * This clears out *all data in your project*, and is irrevocable. This function is only available through a JWT token, and is not available to all users.
      * @summary Launch getting started wizard
@@ -1160,7 +1281,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/launch-getting-started'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1171,11 +1294,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling launchGettingStartedWizard.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1228,16 +1354,19 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
-     * Retrieve the development API and HMAC keys for a project. These keys are specifically marked to be used during development. These keys can be `undefined` if no development keys are set.
-     * @summary Get development keys
+     * List all development boards for a project
+     * @summary Development boards
      * @param projectId Project ID
      */
-    public async listDevkeys (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<DevelopmentKeysResponse> {
-        const localVarPath = this.basePath + '/api/{projectId}/devkeys'
+    public async listDevelopmentBoards (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<DevelopmentBoardsResponse> {
+        const localVarPath = this.basePath + '/api/{projectId}/development-boards'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1248,11 +1377,97 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling listDevelopmentBoards.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<DevelopmentBoardsResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "DevelopmentBoardsResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Retrieve the development API and HMAC keys for a project. These keys are specifically marked to be used during development. These keys can be `undefined` if no development keys are set.
+     * @summary Get development keys
+     * @param projectId Project ID
+     */
+    public async listDevkeys (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<DevelopmentKeysResponse> {
+        const localVarPath = this.basePath + '/api/{projectId}/devkeys'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listDevkeys.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1305,6 +1520,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Retrieve the downloads for a project.
      * @summary Get downloads
@@ -1314,7 +1530,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/downloads'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1325,11 +1543,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listDownloads.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1382,6 +1603,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Get a list of all emails sent by Edge Impulse regarding this project.
      * @summary List emails
@@ -1391,7 +1613,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/emails'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1402,11 +1626,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listEmails.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1459,6 +1686,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Retrieve all API keys. This does **not** return the full API key, but only a portion (for security purposes). The development key will be returned in full, as it\'ll be set in devices and is thus not private.
      * @summary Get API keys
@@ -1468,7 +1696,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/apikeys'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1479,11 +1709,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listProjectApiKeys.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1536,6 +1769,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Retrieve all HMAC keys.
      * @summary Get HMAC keys
@@ -1545,7 +1779,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/hmackeys'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1556,11 +1792,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listProjectHmacKeys.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1613,6 +1852,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Retrieve list of active projects. If authenticating using JWT token this lists all the projects the user has access to, if authenticating using an API key, this only lists that project.
      * @summary List active projects
@@ -1620,7 +1860,9 @@ export class ProjectsApi {
     public async listProjects (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListProjectsResponse> {
         const localVarPath = this.basePath + '/api/projects';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1631,6 +1873,7 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1683,6 +1926,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Retrieve the list of all public projects. You don\'t need any authentication for this method.
      * @summary List public projects
@@ -1690,10 +1934,12 @@ export class ProjectsApi {
      * @param offset Offset in results, can be used in conjunction with LimitResultsParameter to implement paging.
      * @param project Only include projects that contain this string
      */
-    public async listPublicProjects (limit?: number, offset?: number, project?: string, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListPublicProjectsResponse> {
+    public async listPublicProjects (queryParams: listPublicProjectsQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListPublicProjectsResponse> {
         const localVarPath = this.basePath + '/api/projects/public';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1703,19 +1949,20 @@ export class ProjectsApi {
         }
         let localVarFormParams: any = {};
 
-        if (limit !== undefined) {
-            localVarQueryParameters['limit'] = ObjectSerializer.serialize(limit, "number");
+        if (queryParams.limit !== undefined) {
+            localVarQueryParameters['limit'] = ObjectSerializer.serialize(queryParams.limit, "number");
         }
 
-        if (offset !== undefined) {
-            localVarQueryParameters['offset'] = ObjectSerializer.serialize(offset, "number");
+        if (queryParams.offset !== undefined) {
+            localVarQueryParameters['offset'] = ObjectSerializer.serialize(queryParams.offset, "number");
         }
 
-        if (project !== undefined) {
-            localVarQueryParameters['project'] = ObjectSerializer.serialize(project, "string");
+        if (queryParams.project !== undefined) {
+            localVarQueryParameters['project'] = ObjectSerializer.serialize(queryParams.project, "string");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1762,6 +2009,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Get all public versions for this project. You don\'t need any authentication for this function.
      * @summary List public versions
@@ -1771,7 +2019,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/versions/public'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1782,11 +2032,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listPublicVersions.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1833,6 +2086,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Get all versions for this project.
      * @summary List versions
@@ -1842,7 +2096,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/versions'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1853,11 +2109,14 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling listVersions.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1910,6 +2169,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Make a public version private.
      * @summary Make version private
@@ -1921,7 +2181,9 @@ export class ProjectsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'versionId' + '}', encodeURIComponent(String(versionId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1932,16 +2194,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling makeVersionPrivate.');
         }
 
         // verify required parameter 'versionId' is not null or undefined
+
+
         if (versionId === null || versionId === undefined) {
             throw new Error('Required parameter versionId was null or undefined when calling makeVersionPrivate.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1994,6 +2261,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Remove a collaborator to a project. Note that you cannot invoke this function if only a single collaborator is present.
      * @summary Remove collaborator
@@ -2004,7 +2272,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/collaborators/remove'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2015,16 +2285,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling removeCollaborator.');
         }
 
         // verify required parameter 'removeCollaboratorRequest' is not null or undefined
+
+
         if (removeCollaboratorRequest === null || removeCollaboratorRequest === undefined) {
             throw new Error('Required parameter removeCollaboratorRequest was null or undefined when calling removeCollaborator.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2078,90 +2353,7 @@ export class ProjectsApi {
             });
         });
     }
-    /**
-     * Remove a note from a project.
-     * @summary Remove note
-     * @param projectId Project ID
-     * @param noteId Note ID
-     */
-    public async removeNote (projectId: number, noteId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
-        const localVarPath = this.basePath + '/api/{projectId}/notes/{noteId}/remove'
-            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
-            .replace('{' + 'noteId' + '}', encodeURIComponent(String(noteId)));
-        let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
-        const produces = ['application/json'];
-        // give precedence to 'application/json'
-        if (produces.indexOf('application/json') >= 0) {
-            localVarHeaderParams.Accept = 'application/json';
-        } else {
-            localVarHeaderParams.Accept = produces.join(',');
-        }
-        let localVarFormParams: any = {};
 
-        // verify required parameter 'projectId' is not null or undefined
-        if (projectId === null || projectId === undefined) {
-            throw new Error('Required parameter projectId was null or undefined when calling removeNote.');
-        }
-
-        // verify required parameter 'noteId' is not null or undefined
-        if (noteId === null || noteId === undefined) {
-            throw new Error('Required parameter noteId was null or undefined when calling removeNote.');
-        }
-
-        (<any>Object).assign(localVarHeaderParams, options.headers);
-
-        let localVarUseFormData = false;
-
-        let localVarRequestOptions: localVarRequest.Options = {
-            method: 'DELETE',
-            qs: localVarQueryParameters,
-            headers: localVarHeaderParams,
-            uri: localVarPath,
-            useQuerystring: this._useQuerystring,
-            agentOptions: {keepAlive: false},
-            json: true,
-        };
-
-        let authenticationPromise = Promise.resolve();
-        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
-
-        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
-
-        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
-
-        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
-        return authenticationPromise.then(() => {
-            if (Object.keys(localVarFormParams).length) {
-                if (localVarUseFormData) {
-                    (<any>localVarRequestOptions).formData = localVarFormParams;
-                } else {
-                    localVarRequestOptions.form = localVarFormParams;
-                }
-            }
-            return new Promise<GenericApiResponse>((resolve, reject) => {
-                localVarRequest(localVarRequestOptions, (error, response, body) => {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
-
-                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
-
-                        if (typeof body.success === 'boolean' && !body.success) {
-                            reject(new Error(body.error || errString));
-                        }
-                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
-                            resolve(body);
-                        }
-                        else {
-                            reject(errString);
-                        }
-                    }
-                });
-            });
-        });
-    }
     /**
      * Revoke an API key. Note that if you revoke the development API key some services (such as automatic provisioning of devices through the serial daemon) will no longer work.
      * @summary Revoke API key
@@ -2173,7 +2365,9 @@ export class ProjectsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'apiKeyId' + '}', encodeURIComponent(String(apiKeyId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2184,16 +2378,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling revokeProjectApiKey.');
         }
 
         // verify required parameter 'apiKeyId' is not null or undefined
+
+
         if (apiKeyId === null || apiKeyId === undefined) {
             throw new Error('Required parameter apiKeyId was null or undefined when calling revokeProjectApiKey.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2246,6 +2445,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Revoke an HMAC key. Note that if you revoke the development key some services (such as automatic provisioning of devices through the serial daemon) will no longer work.
      * @summary Remove HMAC key
@@ -2257,7 +2457,9 @@ export class ProjectsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'hmacId' + '}', encodeURIComponent(String(hmacId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2268,16 +2470,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling revokeProjectHmacKey.');
         }
 
         // verify required parameter 'hmacId' is not null or undefined
+
+
         if (hmacId === null || hmacId === undefined) {
             throw new Error('Required parameter hmacId was null or undefined when calling revokeProjectHmacKey.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2330,6 +2537,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Change the job compute time limit for the project. This function is only available through a JWT token, and is not available to all users.
      * @summary Set compute time limit
@@ -2340,7 +2548,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/compute-time-limit'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2351,16 +2561,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling setProjectComputeTimeLimit.');
         }
 
         // verify required parameter 'setProjectComputeTimeRequest' is not null or undefined
+
+
         if (setProjectComputeTimeRequest === null || setProjectComputeTimeRequest === undefined) {
             throw new Error('Required parameter setProjectComputeTimeRequest was null or undefined when calling setProjectComputeTimeLimit.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2414,6 +2629,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Change the DSP file size limit for the project. This function is only available through a JWT token, and is not available to all users.
      * @summary Set DSP file size limit
@@ -2424,7 +2640,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/dsp-file-size-limit'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2435,16 +2653,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling setProjectFileSizeLimit.');
         }
 
         // verify required parameter 'setProjectDspFileSizeRequest' is not null or undefined
+
+
         if (setProjectDspFileSizeRequest === null || setProjectDspFileSizeRequest === undefined) {
             throw new Error('Required parameter setProjectDspFileSizeRequest was null or undefined when calling setProjectFileSizeLimit.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2498,6 +2721,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Transfer ownership of a project to another user.
      * @summary Transfer ownership (user)
@@ -2508,7 +2732,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/collaborators/transfer-ownership'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2519,16 +2745,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling transferOwnership.');
         }
 
         // verify required parameter 'addCollaboratorRequest' is not null or undefined
+
+
         if (addCollaboratorRequest === null || addCollaboratorRequest === undefined) {
             throw new Error('Required parameter addCollaboratorRequest was null or undefined when calling transferOwnership.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2582,6 +2813,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Transfer ownership of a project to another organization.
      * @summary Transfer ownership (organization)
@@ -2592,7 +2824,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/collaborators/transfer-ownership-org'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2603,16 +2837,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling transferOwnershipOrganization.');
         }
 
         // verify required parameter 'transferOwnershipOrganizationRequest' is not null or undefined
+
+
         if (transferOwnershipOrganizationRequest === null || transferOwnershipOrganizationRequest === undefined) {
             throw new Error('Required parameter transferOwnershipOrganizationRequest was null or undefined when calling transferOwnershipOrganization.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2666,97 +2905,7 @@ export class ProjectsApi {
             });
         });
     }
-    /**
-     * Update a note from a project.
-     * @summary Update note
-     * @param projectId Project ID
-     * @param noteId Note ID
-     * @param updateNoteRequest 
-     */
-    public async updateNote (projectId: number, noteId: number, updateNoteRequest: UpdateNoteRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<UpdateNoteResponse> {
-        const localVarPath = this.basePath + '/api/{projectId}/notes/{noteId}/update'
-            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
-            .replace('{' + 'noteId' + '}', encodeURIComponent(String(noteId)));
-        let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
-        const produces = ['application/json'];
-        // give precedence to 'application/json'
-        if (produces.indexOf('application/json') >= 0) {
-            localVarHeaderParams.Accept = 'application/json';
-        } else {
-            localVarHeaderParams.Accept = produces.join(',');
-        }
-        let localVarFormParams: any = {};
 
-        // verify required parameter 'projectId' is not null or undefined
-        if (projectId === null || projectId === undefined) {
-            throw new Error('Required parameter projectId was null or undefined when calling updateNote.');
-        }
-
-        // verify required parameter 'noteId' is not null or undefined
-        if (noteId === null || noteId === undefined) {
-            throw new Error('Required parameter noteId was null or undefined when calling updateNote.');
-        }
-
-        // verify required parameter 'updateNoteRequest' is not null or undefined
-        if (updateNoteRequest === null || updateNoteRequest === undefined) {
-            throw new Error('Required parameter updateNoteRequest was null or undefined when calling updateNote.');
-        }
-
-        (<any>Object).assign(localVarHeaderParams, options.headers);
-
-        let localVarUseFormData = false;
-
-        let localVarRequestOptions: localVarRequest.Options = {
-            method: 'POST',
-            qs: localVarQueryParameters,
-            headers: localVarHeaderParams,
-            uri: localVarPath,
-            useQuerystring: this._useQuerystring,
-            agentOptions: {keepAlive: false},
-            json: true,
-            body: ObjectSerializer.serialize(updateNoteRequest, "UpdateNoteRequest")
-        };
-
-        let authenticationPromise = Promise.resolve();
-        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
-
-        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
-
-        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
-
-        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
-        return authenticationPromise.then(() => {
-            if (Object.keys(localVarFormParams).length) {
-                if (localVarUseFormData) {
-                    (<any>localVarRequestOptions).formData = localVarFormParams;
-                } else {
-                    localVarRequestOptions.form = localVarFormParams;
-                }
-            }
-            return new Promise<UpdateNoteResponse>((resolve, reject) => {
-                localVarRequest(localVarRequestOptions, (error, response, body) => {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        body = ObjectSerializer.deserialize(body, "UpdateNoteResponse");
-
-                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
-
-                        if (typeof body.success === 'boolean' && !body.success) {
-                            reject(new Error(body.error || errString));
-                        }
-                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
-                            resolve(body);
-                        }
-                        else {
-                            reject(errString);
-                        }
-                    }
-                });
-            });
-        });
-    }
     /**
      * Update project properties such as name and logo.
      * @summary Update project
@@ -2767,7 +2916,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2778,16 +2929,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling updateProject.');
         }
 
         // verify required parameter 'updateProjectRequest' is not null or undefined
+
+
         if (updateProjectRequest === null || updateProjectRequest === undefined) {
             throw new Error('Required parameter updateProjectRequest was null or undefined when calling updateProject.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2841,6 +2997,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Update the list of project tags.
      * @summary Update tags
@@ -2851,7 +3008,9 @@ export class ProjectsApi {
         const localVarPath = this.basePath + '/api/{projectId}/tags'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2862,16 +3021,21 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling updateProjectTags.');
         }
 
         // verify required parameter 'updateProjectTagsRequest' is not null or undefined
+
+
         if (updateProjectTagsRequest === null || updateProjectTagsRequest === undefined) {
             throw new Error('Required parameter updateProjectTagsRequest was null or undefined when calling updateProjectTags.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -2925,6 +3089,7 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Updates a version, this only updates fields that were set in the body.
      * @summary Update version
@@ -2937,7 +3102,9 @@ export class ProjectsApi {
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'versionId' + '}', encodeURIComponent(String(versionId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -2948,21 +3115,28 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling updateVersion.');
         }
 
         // verify required parameter 'versionId' is not null or undefined
+
+
         if (versionId === null || versionId === undefined) {
             throw new Error('Required parameter versionId was null or undefined when calling updateVersion.');
         }
 
         // verify required parameter 'updateVersionRequest' is not null or undefined
+
+
         if (updateVersionRequest === null || updateVersionRequest === undefined) {
             throw new Error('Required parameter updateVersionRequest was null or undefined when calling updateVersion.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -3016,17 +3190,20 @@ export class ProjectsApi {
             });
         });
     }
+
     /**
      * Uploads an image to the user CDN and returns the path.
      * @summary Upload image for readme
      * @param projectId Project ID
      * @param image 
      */
-    public async uploadReadmeImage (projectId: number, image: RequestFile, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<UploadReadmeImageResponse> {
+    public async uploadReadmeImage (projectId: number, params: uploadReadmeImageFormParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<UploadReadmeImageResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/readme/upload-image'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -3037,21 +3214,26 @@ export class ProjectsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling uploadReadmeImage.');
         }
 
         // verify required parameter 'image' is not null or undefined
-        if (image === null || image === undefined) {
-            throw new Error('Required parameter image was null or undefined when calling uploadReadmeImage.');
+        if (params.image === null || params.image === undefined) {
+            throw new Error('Required parameter params.image was null or undefined when calling uploadReadmeImage.');
         }
 
+
+
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
-        if (image !== undefined) {
-            localVarFormParams['image'] = image;
+        if (params.image !== undefined) {
+            localVarFormParams['image'] = params.image;
         }
         localVarUseFormData = true;
 

@@ -449,7 +449,9 @@ let isExiting = false;
         }
 
         const linuxDevice = new LinuxDevice(camera, config, devKeys);
-        const remoteMgmt = new RemoteMgmt(projectId, devKeys, config, linuxDevice,
+        const remoteMgmt = new RemoteMgmt(projectId, devKeys, Object.assign({
+            command: <'edge-impulse-linux'>'edge-impulse-linux',
+        }, config), linuxDevice,
             url => new Websocket(url),
             async (currName) => {
                 let nameDevice = <{ nameDevice: string }>await inquirer.prompt([{

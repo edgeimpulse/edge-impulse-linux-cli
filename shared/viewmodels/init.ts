@@ -38,6 +38,11 @@ export enum PageType {
     SetPasswordSuccess = 36,
     DataSources = 37,
     CreateDeveloperProfile = 38,
+    DeveloperProfile = 39,
+    AccountSettings = 40,
+    UploadCsv = 41,
+    PretrainedModel = 42,
+    DeploymentBeta = 43,
     OrganizationDashboard = 90,
     OrganizationUsers = 91,
     OrganizationKeys = 92,
@@ -56,6 +61,7 @@ export enum PageType {
     OrganizationSettings = 105,
     OrganizationDatasets = 106,
     OrganizationJobs = 107,
+    OrganizationDataHub = 108,
     UploadPortal = 200,
 }
 
@@ -110,6 +116,12 @@ export interface ClientInitStudioOptions {
     isAdmin: boolean;
     isObjectDetection: boolean;
     user: ClientInitUser | undefined;
+    docsUrl: string;
+    urls: {
+        mobileClient?: string;
+        mobileClientComputer?: string;
+        mobileClientInference?: string;
+    };
 }
 
 export interface ClientInitOrganizationOptions {
@@ -130,6 +142,7 @@ export interface ClientInitOrganizationOptions {
     user: ClientInitUser | undefined;
     themeId: number;
     whitelabelId: number | undefined;
+    docsUrl: string;
 }
 
 export interface ClientInitOrganizationPortalOptions {

@@ -18,9 +18,11 @@ export class User {
     'name': string;
     'photo'?: string;
     'created': Date;
+    'lastSeen'?: Date;
     'staffInfo': StaffInfo;
     'pending': boolean;
     'lastTosAcceptanceDate'?: Date;
+    'jobTitle'?: string;
 
     static discriminator: string | undefined = undefined;
 
@@ -51,6 +53,11 @@ export class User {
             "type": "Date"
         },
         {
+            "name": "lastSeen",
+            "baseName": "lastSeen",
+            "type": "Date"
+        },
+        {
             "name": "staffInfo",
             "baseName": "staffInfo",
             "type": "StaffInfo"
@@ -64,6 +71,11 @@ export class User {
             "name": "lastTosAcceptanceDate",
             "baseName": "lastTosAcceptanceDate",
             "type": "Date"
+        },
+        {
+            "name": "jobTitle",
+            "baseName": "jobTitle",
+            "type": "string"
         }    ];
 
     static getAttributeTypeMap() {

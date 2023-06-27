@@ -176,7 +176,8 @@ process.on('SIGINT', onSignal);
                 let tmpDir = await fs.promises.mkdtemp(Path.join(os.tmpdir(), 'ei-' + Date.now()));
                 tmpDir = Path.join(os.tmpdir(), tmpDir);
                 await fs.promises.mkdir(tmpDir, { recursive: true });
-                modelFile = Path.join(tmpDir, await downloader.getDownloadType());
+                let ret = await downloader.getDownloadType();
+                modelFile = Path.join(tmpDir, ret[0]);
                 await fs.promises.writeFile(modelFile, deployment);
                 await fs.promises.chmod(modelFile, 0o755);
 

@@ -44,10 +44,18 @@ export enum OrganizationPortalsApiApiKeys {
     JWTHttpHeaderAuthentication,
 }
 
+
+export type OrganizationPortalsApiOpts = {
+    extraHeaders?: {
+        [name: string]: string
+    },
+};
+
 export class OrganizationPortalsApi {
     protected _basePath = defaultBasePath;
     protected defaultHeaders : any = {};
     protected _useQuerystring : boolean = false;
+    protected _opts : OrganizationPortalsApiOpts = { };
 
     protected authentications = {
         'default': <Authentication>new VoidAuth(),
@@ -56,8 +64,8 @@ export class OrganizationPortalsApi {
         'JWTHttpHeaderAuthentication': new ApiKeyAuth('header', 'x-jwt-token'),
     }
 
-    constructor(basePath?: string);
-    constructor(basePathOrUsername: string, password?: string, basePath?: string) {
+    constructor(basePath?: string, opts?: OrganizationPortalsApiOpts);
+    constructor(basePathOrUsername: string, opts?: OrganizationPortalsApiOpts, password?: string, basePath?: string) {
         if (password) {
             if (basePath) {
                 this.basePath = basePath;
@@ -67,6 +75,8 @@ export class OrganizationPortalsApi {
                 this.basePath = basePathOrUsername
             }
         }
+
+        this.opts = opts ?? { };
     }
 
     set useQuerystring(value: boolean) {
@@ -81,6 +91,14 @@ export class OrganizationPortalsApi {
         return this._basePath;
     }
 
+    set opts(opts: OrganizationPortalsApiOpts) {
+        this._opts = opts;
+    }
+
+    get opts() {
+        return this._opts;
+    }
+
     public setDefaultAuthentication(auth: Authentication) {
         this.authentications.default = auth;
     }
@@ -88,6 +106,7 @@ export class OrganizationPortalsApi {
     public setApiKey(key: OrganizationPortalsApiApiKeys, value: string | undefined) {
         (this.authentications as any)[OrganizationPortalsApiApiKeys[key]].apiKey = value;
     }
+
 
     /**
      * Creates a new upload portal for the organization.
@@ -99,7 +118,9 @@ export class OrganizationPortalsApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/portals/create'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -110,16 +131,21 @@ export class OrganizationPortalsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling createOrganizationPortal.');
         }
 
         // verify required parameter 'createOrganizationPortalRequest' is not null or undefined
+
+
         if (createOrganizationPortalRequest === null || createOrganizationPortalRequest === undefined) {
             throw new Error('Required parameter createOrganizationPortalRequest was null or undefined when calling createOrganizationPortal.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -173,6 +199,7 @@ export class OrganizationPortalsApi {
             });
         });
     }
+
     /**
      * Deletes an upload portal for the organization.
      * @summary Delete upload portal
@@ -184,7 +211,9 @@ export class OrganizationPortalsApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -195,16 +224,21 @@ export class OrganizationPortalsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling deleteOrganizationPortal.');
         }
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling deleteOrganizationPortal.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -257,6 +291,7 @@ export class OrganizationPortalsApi {
             });
         });
     }
+
     /**
      * Retrieve a single upload portals identified by ID.
      * @summary Retrieve upload portal information
@@ -268,7 +303,9 @@ export class OrganizationPortalsApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -279,16 +316,21 @@ export class OrganizationPortalsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling getOrganizationPortal.');
         }
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling getOrganizationPortal.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -341,6 +383,7 @@ export class OrganizationPortalsApi {
             });
         });
     }
+
     /**
      * Retrieve all configured upload portals.
      * @summary List upload portals
@@ -350,7 +393,9 @@ export class OrganizationPortalsApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/portals'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -361,11 +406,14 @@ export class OrganizationPortalsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling listOrganizationPortals.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -418,6 +466,7 @@ export class OrganizationPortalsApi {
             });
         });
     }
+
     /**
      * Rotates the token for an upload portal.
      * @summary Rotate upload portal token
@@ -429,7 +478,9 @@ export class OrganizationPortalsApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -440,16 +491,21 @@ export class OrganizationPortalsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling rotateOrganizationPortalToken.');
         }
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling rotateOrganizationPortalToken.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -502,6 +558,7 @@ export class OrganizationPortalsApi {
             });
         });
     }
+
     /**
      * Updates an upload portal for the organization.
      * @summary Update upload portal
@@ -514,7 +571,9 @@ export class OrganizationPortalsApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -525,21 +584,28 @@ export class OrganizationPortalsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling updateOrganizationPortal.');
         }
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling updateOrganizationPortal.');
         }
 
         // verify required parameter 'createOrganizationPortalRequest' is not null or undefined
+
+
         if (createOrganizationPortalRequest === null || createOrganizationPortalRequest === undefined) {
             throw new Error('Required parameter createOrganizationPortalRequest was null or undefined when calling updateOrganizationPortal.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -593,6 +659,7 @@ export class OrganizationPortalsApi {
             });
         });
     }
+
     /**
      * Retrieve a subset of files from the portal, to be used in the data source wizard.
      * @summary Verify upload portal information
@@ -604,7 +671,9 @@ export class OrganizationPortalsApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -615,16 +684,21 @@ export class OrganizationPortalsApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling verifyOrganizationPortal.');
         }
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling verifyOrganizationPortal.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 

@@ -19,9 +19,22 @@ import localVarRequest = require('request');
 import http = require('http');
 
 /* tslint:disable:no-unused-locals */
+import { AdminAddOrUpdateSSODomainIdPsRequest } from '../model/adminAddOrUpdateSSODomainIdPsRequest';
+import { AdminAddProjectUserRequest } from '../model/adminAddProjectUserRequest';
+import { AdminCreateOrganizationRequest } from '../model/adminCreateOrganizationRequest';
+import { AdminGetMetricsResponse } from '../model/adminGetMetricsResponse';
+import { AdminGetOrganizationsResponse } from '../model/adminGetOrganizationsResponse';
+import { AdminGetSSODomainIdPsResponse } from '../model/adminGetSSODomainIdPsResponse';
+import { AdminGetSSOSettingsResponse } from '../model/adminGetSSOSettingsResponse';
 import { AdminGetUserIdsResponse } from '../model/adminGetUserIdsResponse';
 import { AdminGetUserMetricsResponse } from '../model/adminGetUserMetricsResponse';
+import { AdminGetUserResponse } from '../model/adminGetUserResponse';
+import { AdminGetUsersResponse } from '../model/adminGetUsersResponse';
+import { AdminListProjectsResponse } from '../model/adminListProjectsResponse';
+import { AdminOrganizationInfoResponse } from '../model/adminOrganizationInfoResponse';
+import { AdminUpdateOrganizationRequest } from '../model/adminUpdateOrganizationRequest';
 import { AdminUpdateUserRequest } from '../model/adminUpdateUserRequest';
+import { CreateOrganizationResponse } from '../model/createOrganizationResponse';
 import { CreateThirdPartyAuthRequest } from '../model/createThirdPartyAuthRequest';
 import { CreateThirdPartyAuthResponse } from '../model/createThirdPartyAuthResponse';
 import { CreateWhitelabelRequest } from '../model/createWhitelabelRequest';
@@ -31,11 +44,12 @@ import { GenericApiResponse } from '../model/genericApiResponse';
 import { GetAllThirdPartyAuthResponse } from '../model/getAllThirdPartyAuthResponse';
 import { GetAllWhitelabelsResponse } from '../model/getAllWhitelabelsResponse';
 import { GetImpulseBlocksResponse } from '../model/getImpulseBlocksResponse';
-import { GetUserResponse } from '../model/getUserResponse';
 import { GetWhitelabelResponse } from '../model/getWhitelabelResponse';
 import { ListEmailResponse } from '../model/listEmailResponse';
+import { ProjectInfoResponse } from '../model/projectInfoResponse';
 import { SetProjectComputeTimeRequest } from '../model/setProjectComputeTimeRequest';
 import { SetProjectDspFileSizeRequest } from '../model/setProjectDspFileSizeRequest';
+import { UpdateProjectRequest } from '../model/updateProjectRequest';
 import { UpdateThirdPartyAuthRequest } from '../model/updateThirdPartyAuthRequest';
 import { UpdateWhitelabelDeploymentTargetsRequest } from '../model/updateWhitelabelDeploymentTargetsRequest';
 
@@ -56,10 +70,60 @@ export enum RequiresSudoApiApiKeys {
     JWTHttpHeaderAuthentication,
 }
 
+type adminDeleteOrganizationQueryParams = {
+    fullDeletion?: boolean,
+};
+
+type adminDeleteUserQueryParams = {
+    fullDeletion?: boolean,
+};
+
+type adminFindUserQueryParams = {
+    query: string,
+};
+
+type adminGetOrganizationsQueryParams = {
+    active?: number,
+    sort?: string,
+    limit?: number,
+    offset?: number,
+    search?: string,
+};
+
+type adminGetProjectsQueryParams = {
+    active?: number,
+    sort?: string,
+    limit?: number,
+    offset?: number,
+    search?: string,
+};
+
+type adminGetUsersQueryParams = {
+    active?: number,
+    tier?: 'free' | 'pro' | 'enterprise',
+    fields?: string,
+    sort?: string,
+    limit?: number,
+    offset?: number,
+    search?: string,
+};
+
+type uploadKerasFilesFormParams = {
+    zip: RequestFile,
+};
+
+
+export type RequiresSudoApiOpts = {
+    extraHeaders?: {
+        [name: string]: string
+    },
+};
+
 export class RequiresSudoApi {
     protected _basePath = defaultBasePath;
     protected defaultHeaders : any = {};
     protected _useQuerystring : boolean = false;
+    protected _opts : RequiresSudoApiOpts = { };
 
     protected authentications = {
         'default': <Authentication>new VoidAuth(),
@@ -68,8 +132,8 @@ export class RequiresSudoApi {
         'JWTHttpHeaderAuthentication': new ApiKeyAuth('header', 'x-jwt-token'),
     }
 
-    constructor(basePath?: string);
-    constructor(basePathOrUsername: string, password?: string, basePath?: string) {
+    constructor(basePath?: string, opts?: RequiresSudoApiOpts);
+    constructor(basePathOrUsername: string, opts?: RequiresSudoApiOpts, password?: string, basePath?: string) {
         if (password) {
             if (basePath) {
                 this.basePath = basePath;
@@ -79,6 +143,8 @@ export class RequiresSudoApi {
                 this.basePath = basePathOrUsername
             }
         }
+
+        this.opts = opts ?? { };
     }
 
     set useQuerystring(value: boolean) {
@@ -93,6 +159,14 @@ export class RequiresSudoApi {
         return this._basePath;
     }
 
+    set opts(opts: RequiresSudoApiOpts) {
+        this._opts = opts;
+    }
+
+    get opts() {
+        return this._opts;
+    }
+
     public setDefaultAuthentication(auth: Authentication) {
         this.authentications.default = auth;
     }
@@ -101,16 +175,20 @@ export class RequiresSudoApi {
         (this.authentications as any)[RequiresSudoApiApiKeys[key]].apiKey = value;
     }
 
+
     /**
-     * Admin-only API to add the current user to a project.
-     * @summary Add current user to a project
-     * @param adminProjectId Project ID
+     * Admin-only API to set the list of identity provider for a given domain.
+     * @summary Add or update SSO settings for a domain
+     * @param domainName Email domain name
+     * @param adminAddOrUpdateSSODomainIdPsRequest 
      */
-    public async adminAddUserToProject (adminProjectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
-        const localVarPath = this.basePath + '/api/admin/projects/{adminProjectId}/add'
-            .replace('{' + 'adminProjectId' + '}', encodeURIComponent(String(adminProjectId)));
+    public async adminAddOrUpdateSSODomainIdPs (domainName: string, adminAddOrUpdateSSODomainIdPsRequest: AdminAddOrUpdateSSODomainIdPsRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/sso/{domainName}'
+            .replace('{' + 'domainName' + '}', encodeURIComponent(String(domainName)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -120,12 +198,191 @@ export class RequiresSudoApi {
         }
         let localVarFormParams: any = {};
 
-        // verify required parameter 'adminProjectId' is not null or undefined
-        if (adminProjectId === null || adminProjectId === undefined) {
-            throw new Error('Required parameter adminProjectId was null or undefined when calling adminAddUserToProject.');
+        // verify required parameter 'domainName' is not null or undefined
+
+
+        if (domainName === null || domainName === undefined) {
+            throw new Error('Required parameter domainName was null or undefined when calling adminAddOrUpdateSSODomainIdPs.');
+        }
+
+        // verify required parameter 'adminAddOrUpdateSSODomainIdPsRequest' is not null or undefined
+
+
+        if (adminAddOrUpdateSSODomainIdPsRequest === null || adminAddOrUpdateSSODomainIdPsRequest === undefined) {
+            throw new Error('Required parameter adminAddOrUpdateSSODomainIdPsRequest was null or undefined when calling adminAddOrUpdateSSODomainIdPs.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'PUT',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+            body: ObjectSerializer.serialize(adminAddOrUpdateSSODomainIdPsRequest, "AdminAddOrUpdateSSODomainIdPsRequest")
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<GenericApiResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to add a user to a project. If no user is provided, the current user is used.
+     * @summary Add user to a project
+     * @param projectId Project ID
+     * @param adminAddProjectUserRequest 
+     */
+    public async adminAddUserToProject (projectId: number, adminAddProjectUserRequest?: AdminAddProjectUserRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/projects/{projectId}/members'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling adminAddUserToProject.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'POST',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+            body: ObjectSerializer.serialize(adminAddProjectUserRequest, "AdminAddProjectUserRequest")
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<GenericApiResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * DEPRECATED. Admin-only API to add the current user to a project.
+     * @summary Add current user to a project
+     * @param projectId Project ID
+     */
+    public async adminAddUserToProjectDeprecated (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/projects/{projectId}/add'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling adminAddUserToProjectDeprecated.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -178,15 +435,443 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
-     * Admin-only API to find a user by username or email address.
+     * Admin-only API to create a new organization.
+     * @summary Create a new organization
+     * @param adminCreateOrganizationRequest 
+     */
+    public async adminCreateOrganization (adminCreateOrganizationRequest: AdminCreateOrganizationRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<CreateOrganizationResponse> {
+        const localVarPath = this.basePath + '/api/admin/organizations';
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'adminCreateOrganizationRequest' is not null or undefined
+
+
+        if (adminCreateOrganizationRequest === null || adminCreateOrganizationRequest === undefined) {
+            throw new Error('Required parameter adminCreateOrganizationRequest was null or undefined when calling adminCreateOrganization.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'POST',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+            body: ObjectSerializer.serialize(adminCreateOrganizationRequest, "AdminCreateOrganizationRequest")
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<CreateOrganizationResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "CreateOrganizationResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to delete an organization. If `fullDeletion` is set, it deletes the organization\'s identifiable information and files. Otherwise, it soft deletes the organization by setting its `delete_date` value.
+     * @summary Delete an organization
+     * @param organizationId Organization ID
+     * @param fullDeletion Set to true for full deletion
+     */
+    public async adminDeleteOrganization (organizationId: number, queryParams: adminDeleteOrganizationQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/organizations/{organizationId}'
+            .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'organizationId' is not null or undefined
+
+
+        if (organizationId === null || organizationId === undefined) {
+            throw new Error('Required parameter organizationId was null or undefined when calling adminDeleteOrganization.');
+        }
+
+        if (queryParams.fullDeletion !== undefined) {
+            localVarQueryParameters['fullDeletion'] = ObjectSerializer.serialize(queryParams.fullDeletion, "boolean");
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'DELETE',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<GenericApiResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to delete a project.
+     * @summary Delete a project
+     * @param projectId Project ID
+     */
+    public async adminDeleteProject (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/projects/{projectId}'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling adminDeleteProject.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'DELETE',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<GenericApiResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to delete the list of identity providers for a given domain.
+     * @summary Delete SSO settings for a domain
+     * @param domainName Email domain name
+     */
+    public async adminDeleteSSODomainIdPs (domainName: string, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/sso/{domainName}'
+            .replace('{' + 'domainName' + '}', encodeURIComponent(String(domainName)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'domainName' is not null or undefined
+
+
+        if (domainName === null || domainName === undefined) {
+            throw new Error('Required parameter domainName was null or undefined when calling adminDeleteSSODomainIdPs.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'DELETE',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<GenericApiResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to delete a user. If `fullDeletion` is set, it deletes the user\'s identifiable information and files. Otherwise, it soft deletes the user by setting it\'s `delete_date` value.
+     * @summary Delete a user
+     * @param userId User ID
+     * @param fullDeletion Set to true for full deletion
+     */
+    public async adminDeleteUser (userId: number, queryParams: adminDeleteUserQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/users/{userId}'
+            .replace('{' + 'userId' + '}', encodeURIComponent(String(userId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'userId' is not null or undefined
+
+
+        if (userId === null || userId === undefined) {
+            throw new Error('Required parameter userId was null or undefined when calling adminDeleteUser.');
+        }
+
+        if (queryParams.fullDeletion !== undefined) {
+            localVarQueryParameters['fullDeletion'] = ObjectSerializer.serialize(queryParams.fullDeletion, "boolean");
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'DELETE',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<GenericApiResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * DEPRECATED. Admin-only API to find a user by username or email address.
      * @summary Find a user
      * @param query Part of e-mail address or username
      */
-    public async adminFindUser (query: string, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<FindUserResponse> {
+    public async adminFindUser (queryParams: adminFindUserQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<FindUserResponse> {
         const localVarPath = this.basePath + '/api/admin/find-user';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -197,15 +882,18 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'query' is not null or undefined
-        if (query === null || query === undefined) {
-            throw new Error('Required parameter query was null or undefined when calling adminFindUser.');
+
+        if (queryParams.query === null || queryParams.query === undefined) {
+            throw new Error('Required parameter queryParams.query was null or undefined when calling adminFindUser.');
         }
 
-        if (query !== undefined) {
-            localVarQueryParameters['query'] = ObjectSerializer.serialize(query, "string");
+
+        if (queryParams.query !== undefined) {
+            localVarQueryParameters['query'] = ObjectSerializer.serialize(queryParams.query, "string");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -258,14 +946,17 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
-     * Admin-only API to get list of all users that have been active in the past 30 days.
+     * DEPRECATED. Admin-only API to get list of all users that have been active in the past 30 days.
      * @summary Get all user IDs (active last 30 days)
      */
     public async adminGetAllActiveUserIds (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminGetUserIdsResponse> {
         const localVarPath = this.basePath + '/api/admin/users-ids/active';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -276,6 +967,7 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -328,14 +1020,17 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
-     * Admin-only API to get list of all users.
+     * DEPRECATED. Admin-only API to get list of all users.
      * @summary Get all user IDs
      */
     public async adminGetAllUserIds (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminGetUserIdsResponse> {
         const localVarPath = this.basePath + '/api/admin/users-ids';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -346,6 +1041,7 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -398,16 +1094,614 @@ export class RequiresSudoApi {
             });
         });
     }
+
+    /**
+     * Admin-only API to get global metrics.
+     * @summary Get global metrics
+     */
+    public async adminGetMetrics (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminGetMetricsResponse> {
+        const localVarPath = this.basePath + '/api/admin/metrics';
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<AdminGetMetricsResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "AdminGetMetricsResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to list all information about this organization.
+     * @summary Organization information
+     * @param organizationId Organization ID
+     */
+    public async adminGetOrganizationInfo (organizationId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminOrganizationInfoResponse> {
+        const localVarPath = this.basePath + '/api/admin/organizations/{organizationId}'
+            .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'organizationId' is not null or undefined
+
+
+        if (organizationId === null || organizationId === undefined) {
+            throw new Error('Required parameter organizationId was null or undefined when calling adminGetOrganizationInfo.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<AdminOrganizationInfoResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "AdminOrganizationInfoResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to get the list of all organizations.
+     * @summary Get all organizations
+     * @param active Whether to search for entities (users, orgs) active in the last X days
+     * @param sort Fields and order to sort query by
+     * @param limit Maximum number of results
+     * @param offset Offset in results, can be used in conjunction with LimitResultsParameter to implement paging.
+     * @param search Search query
+     */
+    public async adminGetOrganizations (queryParams: adminGetOrganizationsQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminGetOrganizationsResponse> {
+        const localVarPath = this.basePath + '/api/admin/organizations';
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        if (queryParams.active !== undefined) {
+            localVarQueryParameters['active'] = ObjectSerializer.serialize(queryParams.active, "number");
+        }
+
+        if (queryParams.sort !== undefined) {
+            localVarQueryParameters['sort'] = ObjectSerializer.serialize(queryParams.sort, "string");
+        }
+
+        if (queryParams.limit !== undefined) {
+            localVarQueryParameters['limit'] = ObjectSerializer.serialize(queryParams.limit, "number");
+        }
+
+        if (queryParams.offset !== undefined) {
+            localVarQueryParameters['offset'] = ObjectSerializer.serialize(queryParams.offset, "number");
+        }
+
+        if (queryParams.search !== undefined) {
+            localVarQueryParameters['search'] = ObjectSerializer.serialize(queryParams.search, "string");
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<AdminGetOrganizationsResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "AdminGetOrganizationsResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to get project information.
+     * @summary Get project
+     * @param projectId Project ID
+     */
+    public async adminGetProject (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ProjectInfoResponse> {
+        const localVarPath = this.basePath + '/api/admin/projects/{projectId}'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling adminGetProject.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<ProjectInfoResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "ProjectInfoResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to get the list of all projects.
+     * @summary Get all projects
+     * @param active Whether to search for entities (users, orgs) active in the last X days
+     * @param sort Fields and order to sort query by
+     * @param limit Maximum number of results
+     * @param offset Offset in results, can be used in conjunction with LimitResultsParameter to implement paging.
+     * @param search Search query
+     */
+    public async adminGetProjects (queryParams: adminGetProjectsQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminListProjectsResponse> {
+        const localVarPath = this.basePath + '/api/admin/projects';
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        if (queryParams.active !== undefined) {
+            localVarQueryParameters['active'] = ObjectSerializer.serialize(queryParams.active, "number");
+        }
+
+        if (queryParams.sort !== undefined) {
+            localVarQueryParameters['sort'] = ObjectSerializer.serialize(queryParams.sort, "string");
+        }
+
+        if (queryParams.limit !== undefined) {
+            localVarQueryParameters['limit'] = ObjectSerializer.serialize(queryParams.limit, "number");
+        }
+
+        if (queryParams.offset !== undefined) {
+            localVarQueryParameters['offset'] = ObjectSerializer.serialize(queryParams.offset, "number");
+        }
+
+        if (queryParams.search !== undefined) {
+            localVarQueryParameters['search'] = ObjectSerializer.serialize(queryParams.search, "string");
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<AdminListProjectsResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "AdminListProjectsResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to get the list of identity providers enabled for a given domain.
+     * @summary Get SSO settings for a domain
+     * @param domainName Email domain name
+     */
+    public async adminGetSSODomainIdPs (domainName: string, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminGetSSODomainIdPsResponse> {
+        const localVarPath = this.basePath + '/api/admin/sso/{domainName}'
+            .replace('{' + 'domainName' + '}', encodeURIComponent(String(domainName)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'domainName' is not null or undefined
+
+
+        if (domainName === null || domainName === undefined) {
+            throw new Error('Required parameter domainName was null or undefined when calling adminGetSSODomainIdPs.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<AdminGetSSODomainIdPsResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "AdminGetSSODomainIdPsResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to get the SSO settings.
+     * @summary Get SSO settings
+     */
+    public async adminGetSSOSettings (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminGetSSOSettingsResponse> {
+        const localVarPath = this.basePath + '/api/admin/sso';
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<AdminGetSSOSettingsResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "AdminGetSSOSettingsResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
     /**
      * Admin-only API to get information about a user.
      * @summary Get user
      * @param userId User ID
      */
-    public async adminGetUser (userId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GetUserResponse> {
+    public async adminGetUser (userId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminGetUserResponse> {
         const localVarPath = this.basePath + '/api/admin/users/{userId}'
             .replace('{' + 'userId' + '}', encodeURIComponent(String(userId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -418,11 +1712,14 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'userId' is not null or undefined
+
+
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling adminGetUser.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -452,12 +1749,12 @@ export class RequiresSudoApi {
                     localVarRequestOptions.form = localVarFormParams;
                 }
             }
-            return new Promise<GetUserResponse>((resolve, reject) => {
+            return new Promise<AdminGetUserResponse>((resolve, reject) => {
                 localVarRequest(localVarRequestOptions, (error, response, body) => {
                     if (error) {
                         reject(error);
                     } else {
-                        body = ObjectSerializer.deserialize(body, "GetUserResponse");
+                        body = ObjectSerializer.deserialize(body, "AdminGetUserResponse");
 
                         const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
 
@@ -475,6 +1772,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Admin-only API to get marketing metrics about a user.
      * @summary Get user metrics
@@ -484,7 +1782,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/admin/users/{userId}/metrics'
             .replace('{' + 'userId' + '}', encodeURIComponent(String(userId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -495,11 +1795,14 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'userId' is not null or undefined
+
+
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling adminGetUserMetrics.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -552,16 +1855,24 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
-     * Admin-only API to remove the current user from a project.
-     * @summary Remove current user from a project
-     * @param adminProjectId Project ID
+     * Admin-only API to get the list of all registered users.
+     * @summary Get all users
+     * @param active Whether to search for entities (users, orgs) active in the last X days
+     * @param tier Whether to search for free, pro or enterprise entities (users, projects)
+     * @param fields Comma separated list of fields to fetch in a query
+     * @param sort Fields and order to sort query by
+     * @param limit Maximum number of results
+     * @param offset Offset in results, can be used in conjunction with LimitResultsParameter to implement paging.
+     * @param search Search query
      */
-    public async adminRemoveUserFromProject (adminProjectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
-        const localVarPath = this.basePath + '/api/admin/projects/{adminProjectId}/remove'
-            .replace('{' + 'adminProjectId' + '}', encodeURIComponent(String(adminProjectId)));
+    public async adminGetUsers (queryParams: adminGetUsersQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminGetUsersResponse> {
+        const localVarPath = this.basePath + '/api/admin/users';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -571,12 +1882,211 @@ export class RequiresSudoApi {
         }
         let localVarFormParams: any = {};
 
-        // verify required parameter 'adminProjectId' is not null or undefined
-        if (adminProjectId === null || adminProjectId === undefined) {
-            throw new Error('Required parameter adminProjectId was null or undefined when calling adminRemoveUserFromProject.');
+        if (queryParams.active !== undefined) {
+            localVarQueryParameters['active'] = ObjectSerializer.serialize(queryParams.active, "number");
+        }
+
+        if (queryParams.tier !== undefined) {
+            localVarQueryParameters['tier'] = ObjectSerializer.serialize(queryParams.tier, "'free' | 'pro' | 'enterprise'");
+        }
+
+        if (queryParams.fields !== undefined) {
+            localVarQueryParameters['fields'] = ObjectSerializer.serialize(queryParams.fields, "string");
+        }
+
+        if (queryParams.sort !== undefined) {
+            localVarQueryParameters['sort'] = ObjectSerializer.serialize(queryParams.sort, "string");
+        }
+
+        if (queryParams.limit !== undefined) {
+            localVarQueryParameters['limit'] = ObjectSerializer.serialize(queryParams.limit, "number");
+        }
+
+        if (queryParams.offset !== undefined) {
+            localVarQueryParameters['offset'] = ObjectSerializer.serialize(queryParams.offset, "number");
+        }
+
+        if (queryParams.search !== undefined) {
+            localVarQueryParameters['search'] = ObjectSerializer.serialize(queryParams.search, "string");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<AdminGetUsersResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "AdminGetUsersResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to remove a user from a project.
+     * @summary Remove user from a project
+     * @param projectId Project ID
+     * @param userId User ID
+     */
+    public async adminRemoveUserFromProject (projectId: number, userId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/projects/{projectId}/members/{userId}'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
+            .replace('{' + 'userId' + '}', encodeURIComponent(String(userId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling adminRemoveUserFromProject.');
+        }
+
+        // verify required parameter 'userId' is not null or undefined
+
+
+        if (userId === null || userId === undefined) {
+            throw new Error('Required parameter userId was null or undefined when calling adminRemoveUserFromProject.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'DELETE',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<GenericApiResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * DEPRECATED. Admin-only API to remove the current user from a project.
+     * @summary Remove current user from a project
+     * @param projectId Project ID
+     */
+    public async adminRemoveUserFromProjectDeprecated (projectId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/projects/{projectId}/remove'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling adminRemoveUserFromProjectDeprecated.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -629,9 +2139,194 @@ export class RequiresSudoApi {
             });
         });
     }
+
+    /**
+     * Admin-only API to update organization properties such as name and logo.
+     * @summary Update organization
+     * @param organizationId Organization ID
+     * @param adminUpdateOrganizationRequest 
+     */
+    public async adminUpdateOrganization (organizationId: number, adminUpdateOrganizationRequest: AdminUpdateOrganizationRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/organizations/{organizationId}'
+            .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'organizationId' is not null or undefined
+
+
+        if (organizationId === null || organizationId === undefined) {
+            throw new Error('Required parameter organizationId was null or undefined when calling adminUpdateOrganization.');
+        }
+
+        // verify required parameter 'adminUpdateOrganizationRequest' is not null or undefined
+
+
+        if (adminUpdateOrganizationRequest === null || adminUpdateOrganizationRequest === undefined) {
+            throw new Error('Required parameter adminUpdateOrganizationRequest was null or undefined when calling adminUpdateOrganization.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'POST',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+            body: ObjectSerializer.serialize(adminUpdateOrganizationRequest, "AdminUpdateOrganizationRequest")
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<GenericApiResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Admin-only API to update project properties.
+     * @summary Update project
+     * @param projectId Project ID
+     * @param updateProjectRequest 
+     */
+    public async adminUpdateProject (projectId: number, updateProjectRequest: UpdateProjectRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+        const localVarPath = this.basePath + '/api/admin/projects/{projectId}'
+            .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        const produces = ['application/json'];
+        // give precedence to 'application/json'
+        if (produces.indexOf('application/json') >= 0) {
+            localVarHeaderParams.Accept = 'application/json';
+        } else {
+            localVarHeaderParams.Accept = produces.join(',');
+        }
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'projectId' is not null or undefined
+
+
+        if (projectId === null || projectId === undefined) {
+            throw new Error('Required parameter projectId was null or undefined when calling adminUpdateProject.');
+        }
+
+        // verify required parameter 'updateProjectRequest' is not null or undefined
+
+
+        if (updateProjectRequest === null || updateProjectRequest === undefined) {
+            throw new Error('Required parameter updateProjectRequest was null or undefined when calling adminUpdateProject.');
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'POST',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+            body: ObjectSerializer.serialize(updateProjectRequest, "UpdateProjectRequest")
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<GenericApiResponse>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
     /**
      * Admin-only API to update user properties.
-     * @summary Get user
+     * @summary Update user
      * @param userId User ID
      * @param adminUpdateUserRequest 
      */
@@ -639,7 +2334,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/admin/users/{userId}'
             .replace('{' + 'userId' + '}', encodeURIComponent(String(userId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -650,16 +2347,21 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'userId' is not null or undefined
+
+
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling adminUpdateUser.');
         }
 
         // verify required parameter 'adminUpdateUserRequest' is not null or undefined
+
+
         if (adminUpdateUserRequest === null || adminUpdateUserRequest === undefined) {
             throw new Error('Required parameter adminUpdateUserRequest was null or undefined when calling adminUpdateUser.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -713,6 +2415,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Create a new third party authentication partner
      * @summary Create third party auth
@@ -721,7 +2424,9 @@ export class RequiresSudoApi {
     public async createThirdPartyAuth (createThirdPartyAuthRequest: CreateThirdPartyAuthRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<CreateThirdPartyAuthResponse> {
         const localVarPath = this.basePath + '/api/third-party-auth';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -732,11 +2437,14 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'createThirdPartyAuthRequest' is not null or undefined
+
+
         if (createThirdPartyAuthRequest === null || createThirdPartyAuthRequest === undefined) {
             throw new Error('Required parameter createThirdPartyAuthRequest was null or undefined when calling createThirdPartyAuth.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -790,6 +2498,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Create a new white label
      * @summary Create a new white label
@@ -798,7 +2507,9 @@ export class RequiresSudoApi {
     public async createWhitelabel (createWhitelabelRequest: CreateWhitelabelRequest, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<CreateWhitelabelResponse> {
         const localVarPath = this.basePath + '/api/whitelabels';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -809,11 +2520,14 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'createWhitelabelRequest' is not null or undefined
+
+
         if (createWhitelabelRequest === null || createWhitelabelRequest === undefined) {
             throw new Error('Required parameter createWhitelabelRequest was null or undefined when calling createWhitelabel.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -867,6 +2581,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Delete a third party authentication partner
      * @summary Delete third party auth
@@ -876,7 +2591,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/third-party-auth/{authId}'
             .replace('{' + 'authId' + '}', encodeURIComponent(String(authId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -887,11 +2604,14 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'authId' is not null or undefined
+
+
         if (authId === null || authId === undefined) {
             throw new Error('Required parameter authId was null or undefined when calling deleteThirdPartyAuth.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -944,6 +2664,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Deletes the white label with the given id.
      * @summary Deletes a white label
@@ -953,7 +2674,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/whitelabel/{whitelabelIdentifier}'
             .replace('{' + 'whitelabelIdentifier' + '}', encodeURIComponent(String(whitelabelIdentifier)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -964,11 +2687,14 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'whitelabelIdentifier' is not null or undefined
+
+
         if (whitelabelIdentifier === null || whitelabelIdentifier === undefined) {
             throw new Error('Required parameter whitelabelIdentifier was null or undefined when calling deleteWhitelabel.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1021,6 +2747,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Lists all possible DSP and ML blocks available for this white label.
      * @summary Get impulse blocks
@@ -1030,7 +2757,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/whitelabel/{whitelabelIdentifier}/impulse/blocks'
             .replace('{' + 'whitelabelIdentifier' + '}', encodeURIComponent(String(whitelabelIdentifier)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1041,11 +2770,14 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'whitelabelIdentifier' is not null or undefined
+
+
         if (whitelabelIdentifier === null || whitelabelIdentifier === undefined) {
             throw new Error('Required parameter whitelabelIdentifier was null or undefined when calling getAllImpulseBlocks.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1098,6 +2830,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Get information about all third party authentication partners
      * @summary Get all third party auth
@@ -1105,7 +2838,9 @@ export class RequiresSudoApi {
     public async getAllThirdPartyAuth (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GetAllThirdPartyAuthResponse> {
         const localVarPath = this.basePath + '/api/third-party-auth';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1116,6 +2851,7 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1168,6 +2904,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Retrieve the list of registered white labels.
      * @summary List the registered white labels
@@ -1175,7 +2912,9 @@ export class RequiresSudoApi {
     public async getAllWhitelabels (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GetAllWhitelabelsResponse> {
         const localVarPath = this.basePath + '/api/whitelabels';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1186,6 +2925,7 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1238,6 +2978,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Retrieve all the information about this white label.
      * @summary White label information
@@ -1247,7 +2988,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/whitelabel/{whitelabelIdentifier}'
             .replace('{' + 'whitelabelIdentifier' + '}', encodeURIComponent(String(whitelabelIdentifier)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1258,11 +3001,14 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'whitelabelIdentifier' is not null or undefined
+
+
         if (whitelabelIdentifier === null || whitelabelIdentifier === undefined) {
             throw new Error('Required parameter whitelabelIdentifier was null or undefined when calling getWhitelabel.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1315,6 +3061,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Get a list of all emails sent by Edge Impulse to the current user. This function is only available through a JWT token, and is not available for all users.
      * @summary List emails
@@ -1322,7 +3069,9 @@ export class RequiresSudoApi {
     public async listEmailsCurrentUser (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListEmailResponse> {
         const localVarPath = this.basePath + '/api/user/emails';
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1333,6 +3082,7 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1385,6 +3135,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Get a list of all emails sent by Edge Impulse to a user. This function is only available through a JWT token, and is not available for all users.
      * @summary List emails
@@ -1394,7 +3145,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/users/{userId}/emails'
             .replace('{' + 'userId' + '}', encodeURIComponent(String(userId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1405,11 +3158,14 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'userId' is not null or undefined
+
+
         if (userId === null || userId === undefined) {
             throw new Error('Required parameter userId was null or undefined when calling listEmailsUser.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1462,6 +3218,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Change the job compute time limit for the project. This function is only available through a JWT token, and is not available to all users.
      * @summary Set compute time limit
@@ -1472,7 +3229,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/{projectId}/compute-time-limit'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1483,16 +3242,21 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling setProjectComputeTimeLimit.');
         }
 
         // verify required parameter 'setProjectComputeTimeRequest' is not null or undefined
+
+
         if (setProjectComputeTimeRequest === null || setProjectComputeTimeRequest === undefined) {
             throw new Error('Required parameter setProjectComputeTimeRequest was null or undefined when calling setProjectComputeTimeLimit.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1546,6 +3310,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Change the DSP file size limit for the project. This function is only available through a JWT token, and is not available to all users.
      * @summary Set DSP file size limit
@@ -1556,7 +3321,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/{projectId}/dsp-file-size-limit'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1567,16 +3334,21 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling setProjectFileSizeLimit.');
         }
 
         // verify required parameter 'setProjectDspFileSizeRequest' is not null or undefined
+
+
         if (setProjectDspFileSizeRequest === null || setProjectDspFileSizeRequest === undefined) {
             throw new Error('Required parameter setProjectDspFileSizeRequest was null or undefined when calling setProjectFileSizeLimit.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1630,6 +3402,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Update some or all of the deployment targets enabled for this white label.
      * @summary Update deployment targets
@@ -1640,7 +3413,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/whitelabel/{whitelabelIdentifier}/deploymentTargets'
             .replace('{' + 'whitelabelIdentifier' + '}', encodeURIComponent(String(whitelabelIdentifier)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1651,16 +3426,21 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'whitelabelIdentifier' is not null or undefined
+
+
         if (whitelabelIdentifier === null || whitelabelIdentifier === undefined) {
             throw new Error('Required parameter whitelabelIdentifier was null or undefined when calling updateDeploymentTargets.');
         }
 
         // verify required parameter 'updateWhitelabelDeploymentTargetsRequest' is not null or undefined
+
+
         if (updateWhitelabelDeploymentTargetsRequest === null || updateWhitelabelDeploymentTargetsRequest === undefined) {
             throw new Error('Required parameter updateWhitelabelDeploymentTargetsRequest was null or undefined when calling updateDeploymentTargets.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1714,6 +3494,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Update a third party authentication partner
      * @summary Update third party auth
@@ -1724,7 +3505,9 @@ export class RequiresSudoApi {
         const localVarPath = this.basePath + '/api/third-party-auth/{authId}'
             .replace('{' + 'authId' + '}', encodeURIComponent(String(authId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1735,16 +3518,21 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'authId' is not null or undefined
+
+
         if (authId === null || authId === undefined) {
             throw new Error('Required parameter authId was null or undefined when calling updateThirdPartyAuth.');
         }
 
         // verify required parameter 'updateThirdPartyAuthRequest' is not null or undefined
+
+
         if (updateThirdPartyAuthRequest === null || updateThirdPartyAuthRequest === undefined) {
             throw new Error('Required parameter updateThirdPartyAuthRequest was null or undefined when calling updateThirdPartyAuth.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1798,6 +3586,7 @@ export class RequiresSudoApi {
             });
         });
     }
+
     /**
      * Replace Keras block files with the contents of a zip. This is an internal API.
      * @summary Upload Keras files
@@ -1805,12 +3594,14 @@ export class RequiresSudoApi {
      * @param learnId Learn Block ID, use the impulse functions to retrieve the ID
      * @param zip 
      */
-    public async uploadKerasFiles (projectId: number, learnId: number, zip: RequestFile, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+    public async uploadKerasFiles (projectId: number, learnId: number, params: uploadKerasFilesFormParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
         const localVarPath = this.basePath + '/api/{projectId}/training/keras/{learnId}/files'
             .replace('{' + 'projectId' + '}', encodeURIComponent(String(projectId)))
             .replace('{' + 'learnId' + '}', encodeURIComponent(String(learnId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1821,26 +3612,33 @@ export class RequiresSudoApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'projectId' is not null or undefined
+
+
         if (projectId === null || projectId === undefined) {
             throw new Error('Required parameter projectId was null or undefined when calling uploadKerasFiles.');
         }
 
         // verify required parameter 'learnId' is not null or undefined
+
+
         if (learnId === null || learnId === undefined) {
             throw new Error('Required parameter learnId was null or undefined when calling uploadKerasFiles.');
         }
 
         // verify required parameter 'zip' is not null or undefined
-        if (zip === null || zip === undefined) {
-            throw new Error('Required parameter zip was null or undefined when calling uploadKerasFiles.');
+        if (params.zip === null || params.zip === undefined) {
+            throw new Error('Required parameter params.zip was null or undefined when calling uploadKerasFiles.');
         }
 
+
+
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
-        if (zip !== undefined) {
-            localVarFormParams['zip'] = zip;
+        if (params.zip !== undefined) {
+            localVarFormParams['zip'] = params.zip;
         }
         localVarUseFormData = true;
 

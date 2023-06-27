@@ -43,10 +43,30 @@ export enum OrganizationPipelinesApiApiKeys {
     JWTHttpHeaderAuthentication,
 }
 
+type listArchivedOrganizationPipelinesQueryParams = {
+    projectId?: number,
+};
+
+type listOrganizationPipelinesQueryParams = {
+    projectId?: number,
+};
+
+type runOrganizationPipelineQueryParams = {
+    ignoreLastSuccessfulRun?: boolean,
+};
+
+
+export type OrganizationPipelinesApiOpts = {
+    extraHeaders?: {
+        [name: string]: string
+    },
+};
+
 export class OrganizationPipelinesApi {
     protected _basePath = defaultBasePath;
     protected defaultHeaders : any = {};
     protected _useQuerystring : boolean = false;
+    protected _opts : OrganizationPipelinesApiOpts = { };
 
     protected authentications = {
         'default': <Authentication>new VoidAuth(),
@@ -55,8 +75,8 @@ export class OrganizationPipelinesApi {
         'JWTHttpHeaderAuthentication': new ApiKeyAuth('header', 'x-jwt-token'),
     }
 
-    constructor(basePath?: string);
-    constructor(basePathOrUsername: string, password?: string, basePath?: string) {
+    constructor(basePath?: string, opts?: OrganizationPipelinesApiOpts);
+    constructor(basePathOrUsername: string, opts?: OrganizationPipelinesApiOpts, password?: string, basePath?: string) {
         if (password) {
             if (basePath) {
                 this.basePath = basePath;
@@ -66,6 +86,8 @@ export class OrganizationPipelinesApi {
                 this.basePath = basePathOrUsername
             }
         }
+
+        this.opts = opts ?? { };
     }
 
     set useQuerystring(value: boolean) {
@@ -80,6 +102,14 @@ export class OrganizationPipelinesApi {
         return this._basePath;
     }
 
+    set opts(opts: OrganizationPipelinesApiOpts) {
+        this._opts = opts;
+    }
+
+    get opts() {
+        return this._opts;
+    }
+
     public setDefaultAuthentication(auth: Authentication) {
         this.authentications.default = auth;
     }
@@ -87,6 +117,7 @@ export class OrganizationPipelinesApi {
     public setApiKey(key: OrganizationPipelinesApiApiKeys, value: string | undefined) {
         (this.authentications as any)[OrganizationPipelinesApiApiKeys[key]].apiKey = value;
     }
+
 
     /**
      * Create an organizational pipelines
@@ -98,7 +129,9 @@ export class OrganizationPipelinesApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/pipelines'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -109,16 +142,21 @@ export class OrganizationPipelinesApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling createOrganizationPipeline.');
         }
 
         // verify required parameter 'organizationUpdatePipelineBody' is not null or undefined
+
+
         if (organizationUpdatePipelineBody === null || organizationUpdatePipelineBody === undefined) {
             throw new Error('Required parameter organizationUpdatePipelineBody was null or undefined when calling createOrganizationPipeline.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -172,6 +210,7 @@ export class OrganizationPipelinesApi {
             });
         });
     }
+
     /**
      * Delete an organizational pipelines
      * @summary Delete pipeline
@@ -183,7 +222,9 @@ export class OrganizationPipelinesApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'pipelineId' + '}', encodeURIComponent(String(pipelineId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -194,16 +235,21 @@ export class OrganizationPipelinesApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling deleteOrganizationPipeline.');
         }
 
         // verify required parameter 'pipelineId' is not null or undefined
+
+
         if (pipelineId === null || pipelineId === undefined) {
             throw new Error('Required parameter pipelineId was null or undefined when calling deleteOrganizationPipeline.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -256,6 +302,7 @@ export class OrganizationPipelinesApi {
             });
         });
     }
+
     /**
      * Retrieve an organizational pipelines
      * @summary Get pipeline
@@ -267,7 +314,9 @@ export class OrganizationPipelinesApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'pipelineId' + '}', encodeURIComponent(String(pipelineId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -278,16 +327,21 @@ export class OrganizationPipelinesApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling getOrganizationPipeline.');
         }
 
         // verify required parameter 'pipelineId' is not null or undefined
+
+
         if (pipelineId === null || pipelineId === undefined) {
             throw new Error('Required parameter pipelineId was null or undefined when calling getOrganizationPipeline.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -340,16 +394,20 @@ export class OrganizationPipelinesApi {
             });
         });
     }
+
     /**
      * Retrieve all archived organizational pipelines
      * @summary List archived pipelines
      * @param organizationId Organization ID
+     * @param projectId If set, filters on pipelines which are attached to this project.
      */
-    public async listArchivedOrganizationPipelines (organizationId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListOrganizationPipelinesResponse> {
+    public async listArchivedOrganizationPipelines (organizationId: number, queryParams: listArchivedOrganizationPipelinesQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListOrganizationPipelinesResponse> {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/pipelines/archived'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -360,11 +418,18 @@ export class OrganizationPipelinesApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling listArchivedOrganizationPipelines.');
         }
 
+        if (queryParams.projectId !== undefined) {
+            localVarQueryParameters['projectId'] = ObjectSerializer.serialize(queryParams.projectId, "number");
+        }
+
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -417,16 +482,20 @@ export class OrganizationPipelinesApi {
             });
         });
     }
+
     /**
      * Retrieve all organizational pipelines
      * @summary List pipelines
      * @param organizationId Organization ID
+     * @param projectId If set, filters on pipelines which are attached to this project.
      */
-    public async listOrganizationPipelines (organizationId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListOrganizationPipelinesResponse> {
+    public async listOrganizationPipelines (organizationId: number, queryParams: listOrganizationPipelinesQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<ListOrganizationPipelinesResponse> {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/pipelines'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -437,11 +506,18 @@ export class OrganizationPipelinesApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling listOrganizationPipelines.');
         }
 
+        if (queryParams.projectId !== undefined) {
+            localVarQueryParameters['projectId'] = ObjectSerializer.serialize(queryParams.projectId, "number");
+        }
+
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -494,18 +570,22 @@ export class OrganizationPipelinesApi {
             });
         });
     }
+
     /**
      * Run an organizational pipeline
      * @summary Run pipelines
      * @param organizationId Organization ID
      * @param pipelineId Pipeline ID
+     * @param ignoreLastSuccessfulRun If set then &#x60;EI_LAST_SUCCESSFUL_RUN&#x60; is not set. You can use this to re-run a pipeline from scratch.
      */
-    public async runOrganizationPipeline (organizationId: number, pipelineId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<RunOrganizationPipelineResponse> {
+    public async runOrganizationPipeline (organizationId: number, pipelineId: number, queryParams: runOrganizationPipelineQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<RunOrganizationPipelineResponse> {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/pipelines/{pipelineId}/run'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'pipelineId' + '}', encodeURIComponent(String(pipelineId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -516,16 +596,25 @@ export class OrganizationPipelinesApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling runOrganizationPipeline.');
         }
 
         // verify required parameter 'pipelineId' is not null or undefined
+
+
         if (pipelineId === null || pipelineId === undefined) {
             throw new Error('Required parameter pipelineId was null or undefined when calling runOrganizationPipeline.');
         }
 
+        if (queryParams.ignoreLastSuccessfulRun !== undefined) {
+            localVarQueryParameters['ignoreLastSuccessfulRun'] = ObjectSerializer.serialize(queryParams.ignoreLastSuccessfulRun, "boolean");
+        }
+
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -578,6 +667,7 @@ export class OrganizationPipelinesApi {
             });
         });
     }
+
     /**
      * Update an organizational pipelines
      * @summary Update pipeline
@@ -590,7 +680,9 @@ export class OrganizationPipelinesApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'pipelineId' + '}', encodeURIComponent(String(pipelineId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -601,21 +693,28 @@ export class OrganizationPipelinesApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling updateOrganizationPipeline.');
         }
 
         // verify required parameter 'pipelineId' is not null or undefined
+
+
         if (pipelineId === null || pipelineId === undefined) {
             throw new Error('Required parameter pipelineId was null or undefined when calling updateOrganizationPipeline.');
         }
 
         // verify required parameter 'organizationUpdatePipelineBody' is not null or undefined
+
+
         if (organizationUpdatePipelineBody === null || organizationUpdatePipelineBody === undefined) {
             throw new Error('Required parameter organizationUpdatePipelineBody was null or undefined when calling updateOrganizationPipeline.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 

@@ -47,10 +47,22 @@ export enum UploadPortalApiApiKeys {
     JWTHttpHeaderAuthentication,
 }
 
+type viewPortalFileQueryParams = {
+    path: string,
+};
+
+
+export type UploadPortalApiOpts = {
+    extraHeaders?: {
+        [name: string]: string
+    },
+};
+
 export class UploadPortalApi {
     protected _basePath = defaultBasePath;
     protected defaultHeaders : any = {};
     protected _useQuerystring : boolean = false;
+    protected _opts : UploadPortalApiOpts = { };
 
     protected authentications = {
         'default': <Authentication>new VoidAuth(),
@@ -59,8 +71,8 @@ export class UploadPortalApi {
         'JWTHttpHeaderAuthentication': new ApiKeyAuth('header', 'x-jwt-token'),
     }
 
-    constructor(basePath?: string);
-    constructor(basePathOrUsername: string, password?: string, basePath?: string) {
+    constructor(basePath?: string, opts?: UploadPortalApiOpts);
+    constructor(basePathOrUsername: string, opts?: UploadPortalApiOpts, password?: string, basePath?: string) {
         if (password) {
             if (basePath) {
                 this.basePath = basePath;
@@ -70,6 +82,8 @@ export class UploadPortalApi {
                 this.basePath = basePathOrUsername
             }
         }
+
+        this.opts = opts ?? { };
     }
 
     set useQuerystring(value: boolean) {
@@ -84,6 +98,14 @@ export class UploadPortalApi {
         return this._basePath;
     }
 
+    set opts(opts: UploadPortalApiOpts) {
+        this._opts = opts;
+    }
+
+    get opts() {
+        return this._opts;
+    }
+
     public setDefaultAuthentication(auth: Authentication) {
         this.authentications.default = auth;
     }
@@ -91,6 +113,7 @@ export class UploadPortalApi {
     public setApiKey(key: UploadPortalApiApiKeys, value: string | undefined) {
         (this.authentications as any)[UploadPortalApiApiKeys[key]].apiKey = value;
     }
+
 
     /**
      * Creates a signed link to securely upload data to s3 bucket directly from the client.
@@ -102,7 +125,9 @@ export class UploadPortalApi {
         const localVarPath = this.basePath + '/api/portals/{portalId}/upload-link'
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -113,16 +138,21 @@ export class UploadPortalApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling createSignedUploadLink.');
         }
 
         // verify required parameter 'createSignedUploadLinkRequest' is not null or undefined
+
+
         if (createSignedUploadLinkRequest === null || createSignedUploadLinkRequest === undefined) {
             throw new Error('Required parameter createSignedUploadLinkRequest was null or undefined when calling createSignedUploadLink.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -176,6 +206,7 @@ export class UploadPortalApi {
             });
         });
     }
+
     /**
      * Delete a file from an upload portal (requires JWT auth).
      * @summary Delete file from portal
@@ -186,7 +217,9 @@ export class UploadPortalApi {
         const localVarPath = this.basePath + '/api/portals/{portalId}/files/delete'
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -197,16 +230,21 @@ export class UploadPortalApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling deletePortalFile.');
         }
 
         // verify required parameter 'deletePortalFileRequest' is not null or undefined
+
+
         if (deletePortalFileRequest === null || deletePortalFileRequest === undefined) {
             throw new Error('Required parameter deletePortalFileRequest was null or undefined when calling deletePortalFile.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -260,6 +298,7 @@ export class UploadPortalApi {
             });
         });
     }
+
     /**
      * Download a file from an upload portal (requires JWT auth). Will return a signed URL to the bucket.
      * @summary Download file from portal
@@ -270,7 +309,9 @@ export class UploadPortalApi {
         const localVarPath = this.basePath + '/api/portals/{portalId}/files/download'
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -281,16 +322,21 @@ export class UploadPortalApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling downloadPortalFile.');
         }
 
         // verify required parameter 'downloadPortalFileRequest' is not null or undefined
+
+
         if (downloadPortalFileRequest === null || downloadPortalFileRequest === undefined) {
             throw new Error('Required parameter downloadPortalFileRequest was null or undefined when calling downloadPortalFile.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -344,6 +390,7 @@ export class UploadPortalApi {
             });
         });
     }
+
     /**
      * Get information about a portal
      * @summary Portal info
@@ -353,7 +400,9 @@ export class UploadPortalApi {
         const localVarPath = this.basePath + '/api/portals/{portalId}'
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -364,11 +413,14 @@ export class UploadPortalApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling getPortalInfo.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -421,6 +473,7 @@ export class UploadPortalApi {
             });
         });
     }
+
     /**
      * List all files and directories in specified prefix.
      * @summary List files in portal
@@ -431,7 +484,9 @@ export class UploadPortalApi {
         const localVarPath = this.basePath + '/api/portals/{portalId}/files'
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -442,16 +497,21 @@ export class UploadPortalApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling listPortalFilesInFolder.');
         }
 
         // verify required parameter 'listPortalFilesInFolderRequest' is not null or undefined
+
+
         if (listPortalFilesInFolderRequest === null || listPortalFilesInFolderRequest === undefined) {
             throw new Error('Required parameter listPortalFilesInFolderRequest was null or undefined when calling listPortalFilesInFolder.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -505,6 +565,7 @@ export class UploadPortalApi {
             });
         });
     }
+
     /**
      * Rename a file on an upload portal (requires JWT auth).
      * @summary Rename file from portal
@@ -515,7 +576,9 @@ export class UploadPortalApi {
         const localVarPath = this.basePath + '/api/portals/{portalId}/files/rename'
             .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -526,16 +589,21 @@ export class UploadPortalApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'portalId' is not null or undefined
+
+
         if (portalId === null || portalId === undefined) {
             throw new Error('Required parameter portalId was null or undefined when calling renamePortalFile.');
         }
 
         // verify required parameter 'renamePortalFileRequest' is not null or undefined
+
+
         if (renamePortalFileRequest === null || renamePortalFileRequest === undefined) {
             throw new Error('Required parameter renamePortalFileRequest was null or undefined when calling renamePortalFile.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -572,6 +640,93 @@ export class UploadPortalApi {
                         reject(error);
                     } else {
                         body = ObjectSerializer.deserialize(body, "GenericApiResponse");
+
+                        const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
+
+                        if (typeof body.success === 'boolean' && !body.success) {
+                            reject(new Error(body.error || errString));
+                        }
+                        else if (response.statusCode && response.statusCode >= 200 && response.statusCode <= 299) {
+                            resolve(body);
+                        }
+                        else {
+                            reject(errString);
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * View a file that\'s located in an upload portal (requires JWT auth). Will return a signed URL to the bucket.
+     * @summary View file from portal
+     * @param portalId Portal ID
+     * @param path Path to file in portal
+     */
+    public async viewPortalFile (portalId: number, queryParams: viewPortalFileQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<any> {
+        const localVarPath = this.basePath + '/api/portals/{portalId}/files/view'
+            .replace('{' + 'portalId' + '}', encodeURIComponent(String(portalId)));
+        let localVarQueryParameters: any = {};
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
+        let localVarFormParams: any = {};
+
+        // verify required parameter 'portalId' is not null or undefined
+
+
+        if (portalId === null || portalId === undefined) {
+            throw new Error('Required parameter portalId was null or undefined when calling viewPortalFile.');
+        }
+
+        // verify required parameter 'path' is not null or undefined
+
+        if (queryParams.path === null || queryParams.path === undefined) {
+            throw new Error('Required parameter queryParams.path was null or undefined when calling viewPortalFile.');
+        }
+
+
+        if (queryParams.path !== undefined) {
+            localVarQueryParameters['path'] = ObjectSerializer.serialize(queryParams.path, "string");
+        }
+
+        (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
+
+        let localVarUseFormData = false;
+
+        let localVarRequestOptions: localVarRequest.Options = {
+            method: 'GET',
+            qs: localVarQueryParameters,
+            headers: localVarHeaderParams,
+            uri: localVarPath,
+            useQuerystring: this._useQuerystring,
+            agentOptions: {keepAlive: false},
+            json: true,
+        };
+
+        let authenticationPromise = Promise.resolve();
+        authenticationPromise = authenticationPromise.then(() => this.authentications.ApiKeyAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.JWTHttpHeaderAuthentication.applyToRequest(localVarRequestOptions));
+
+        authenticationPromise = authenticationPromise.then(() => this.authentications.default.applyToRequest(localVarRequestOptions));
+        return authenticationPromise.then(() => {
+            if (Object.keys(localVarFormParams).length) {
+                if (localVarUseFormData) {
+                    (<any>localVarRequestOptions).formData = localVarFormParams;
+                } else {
+                    localVarRequestOptions.form = localVarFormParams;
+                }
+            }
+            return new Promise<any>((resolve, reject) => {
+                localVarRequest(localVarRequestOptions, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                    } else {
 
                         const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
 

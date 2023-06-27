@@ -42,10 +42,6 @@ export class UpdateProjectRequest {
     */
     'labelingMethod'?: UpdateProjectRequestLabelingMethodEnum;
     /**
-    * Whether to show the getting started wizard on the next page load of the dashboard
-    */
-    'showProjectTypeWizard'?: boolean;
-    /**
     * Which option was selected in the project type wizard
     */
     'selectedProjectTypeInWizard'?: UpdateProjectRequestSelectedProjectTypeInWizardEnum;
@@ -95,6 +91,11 @@ export class UpdateProjectRequest {
     * The IDs of users who should be notified when an export job is finished.
     */
     'exportJobNotificationUids'?: Array<number>;
+    /**
+    * Config file specifying how to process CSV files.
+    */
+    'csvImportConfig'?: object;
+    'inPretrainedModelFlow'?: boolean;
 
     static discriminator: string | undefined = undefined;
 
@@ -138,11 +139,6 @@ export class UpdateProjectRequest {
             "name": "labelingMethod",
             "baseName": "labelingMethod",
             "type": "UpdateProjectRequestLabelingMethodEnum"
-        },
-        {
-            "name": "showProjectTypeWizard",
-            "baseName": "showProjectTypeWizard",
-            "type": "boolean"
         },
         {
             "name": "selectedProjectTypeInWizard",
@@ -213,6 +209,16 @@ export class UpdateProjectRequest {
             "name": "exportJobNotificationUids",
             "baseName": "exportJobNotificationUids",
             "type": "Array<number>"
+        },
+        {
+            "name": "csvImportConfig",
+            "baseName": "csvImportConfig",
+            "type": "object"
+        },
+        {
+            "name": "inPretrainedModelFlow",
+            "baseName": "inPretrainedModelFlow",
+            "type": "boolean"
         }    ];
 
     static getAttributeTypeMap() {

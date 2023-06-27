@@ -55,10 +55,54 @@ export enum OrganizationBlocksApiApiKeys {
     JWTHttpHeaderAuthentication,
 }
 
+type addOrganizationDeployBlockFormParams = {
+    name: string,
+    dockerContainer: string,
+    description: string,
+    cliArguments: string,
+    requestsCpu?: number,
+    requestsMemory?: number,
+    limitsCpu?: number,
+    limitsMemory?: number,
+    photo?: RequestFile,
+    integrateUrl?: string,
+    privileged?: boolean,
+    mountLearnBlock?: boolean,
+    supportsEonCompiler?: boolean,
+    showOptimizations?: boolean,
+    category?: string,
+};
+
+type updateOrganizationDeployBlockFormParams = {
+    name?: string,
+    dockerContainer?: string,
+    description?: string,
+    cliArguments?: string,
+    requestsCpu?: number,
+    requestsMemory?: number,
+    limitsCpu?: number,
+    limitsMemory?: number,
+    photo?: RequestFile,
+    integrateUrl?: string,
+    privileged?: boolean,
+    mountLearnBlock?: boolean,
+    supportsEonCompiler?: boolean,
+    showOptimizations?: boolean,
+    category?: string,
+};
+
+
+export type OrganizationBlocksApiOpts = {
+    extraHeaders?: {
+        [name: string]: string
+    },
+};
+
 export class OrganizationBlocksApi {
     protected _basePath = defaultBasePath;
     protected defaultHeaders : any = {};
     protected _useQuerystring : boolean = false;
+    protected _opts : OrganizationBlocksApiOpts = { };
 
     protected authentications = {
         'default': <Authentication>new VoidAuth(),
@@ -67,8 +111,8 @@ export class OrganizationBlocksApi {
         'JWTHttpHeaderAuthentication': new ApiKeyAuth('header', 'x-jwt-token'),
     }
 
-    constructor(basePath?: string);
-    constructor(basePathOrUsername: string, password?: string, basePath?: string) {
+    constructor(basePath?: string, opts?: OrganizationBlocksApiOpts);
+    constructor(basePathOrUsername: string, opts?: OrganizationBlocksApiOpts, password?: string, basePath?: string) {
         if (password) {
             if (basePath) {
                 this.basePath = basePath;
@@ -78,6 +122,8 @@ export class OrganizationBlocksApi {
                 this.basePath = basePathOrUsername
             }
         }
+
+        this.opts = opts ?? { };
     }
 
     set useQuerystring(value: boolean) {
@@ -92,6 +138,14 @@ export class OrganizationBlocksApi {
         return this._basePath;
     }
 
+    set opts(opts: OrganizationBlocksApiOpts) {
+        this._opts = opts;
+    }
+
+    get opts() {
+        return this._opts;
+    }
+
     public setDefaultAuthentication(auth: Authentication) {
         this.authentications.default = auth;
     }
@@ -99,6 +153,7 @@ export class OrganizationBlocksApi {
     public setApiKey(key: OrganizationBlocksApiApiKeys, value: string | undefined) {
         (this.authentications as any)[OrganizationBlocksApiApiKeys[key]].apiKey = value;
     }
+
 
     /**
      * Adds a deploy block.
@@ -120,11 +175,13 @@ export class OrganizationBlocksApi {
      * @param showOptimizations 
      * @param category 
      */
-    public async addOrganizationDeployBlock (organizationId: number, name: string, dockerContainer: string, description: string, cliArguments: string, requestsCpu?: number, requestsMemory?: number, limitsCpu?: number, limitsMemory?: number, photo?: RequestFile, integrateUrl?: string, privileged?: boolean, mountLearnBlock?: boolean, supportsEonCompiler?: boolean, showOptimizations?: boolean, category?: string, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AddOrganizationDeployBlockResponse> {
+    public async addOrganizationDeployBlock (organizationId: number, params: addOrganizationDeployBlockFormParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AddOrganizationDeployBlockResponse> {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/deploy'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -135,93 +192,104 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling addOrganizationDeployBlock.');
         }
 
         // verify required parameter 'name' is not null or undefined
-        if (name === null || name === undefined) {
-            throw new Error('Required parameter name was null or undefined when calling addOrganizationDeployBlock.');
+        if (params.name === null || params.name === undefined) {
+            throw new Error('Required parameter params.name was null or undefined when calling addOrganizationDeployBlock.');
         }
+
+
 
         // verify required parameter 'dockerContainer' is not null or undefined
-        if (dockerContainer === null || dockerContainer === undefined) {
-            throw new Error('Required parameter dockerContainer was null or undefined when calling addOrganizationDeployBlock.');
+        if (params.dockerContainer === null || params.dockerContainer === undefined) {
+            throw new Error('Required parameter params.dockerContainer was null or undefined when calling addOrganizationDeployBlock.');
         }
+
+
 
         // verify required parameter 'description' is not null or undefined
-        if (description === null || description === undefined) {
-            throw new Error('Required parameter description was null or undefined when calling addOrganizationDeployBlock.');
+        if (params.description === null || params.description === undefined) {
+            throw new Error('Required parameter params.description was null or undefined when calling addOrganizationDeployBlock.');
         }
+
+
 
         // verify required parameter 'cliArguments' is not null or undefined
-        if (cliArguments === null || cliArguments === undefined) {
-            throw new Error('Required parameter cliArguments was null or undefined when calling addOrganizationDeployBlock.');
+        if (params.cliArguments === null || params.cliArguments === undefined) {
+            throw new Error('Required parameter params.cliArguments was null or undefined when calling addOrganizationDeployBlock.');
         }
 
+
+
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
-        if (name !== undefined) {
-            localVarFormParams['name'] = ObjectSerializer.serialize(name, "string");
+        if (params.name !== undefined) {
+            localVarFormParams['name'] = ObjectSerializer.serialize(params.name, "string");
         }
 
-        if (dockerContainer !== undefined) {
-            localVarFormParams['dockerContainer'] = ObjectSerializer.serialize(dockerContainer, "string");
+        if (params.dockerContainer !== undefined) {
+            localVarFormParams['dockerContainer'] = ObjectSerializer.serialize(params.dockerContainer, "string");
         }
 
-        if (description !== undefined) {
-            localVarFormParams['description'] = ObjectSerializer.serialize(description, "string");
+        if (params.description !== undefined) {
+            localVarFormParams['description'] = ObjectSerializer.serialize(params.description, "string");
         }
 
-        if (cliArguments !== undefined) {
-            localVarFormParams['cliArguments'] = ObjectSerializer.serialize(cliArguments, "string");
+        if (params.cliArguments !== undefined) {
+            localVarFormParams['cliArguments'] = ObjectSerializer.serialize(params.cliArguments, "string");
         }
 
-        if (requestsCpu !== undefined) {
-            localVarFormParams['requestsCpu'] = ObjectSerializer.serialize(requestsCpu, "number");
+        if (params.requestsCpu !== undefined) {
+            localVarFormParams['requestsCpu'] = ObjectSerializer.serialize(params.requestsCpu, "number");
         }
 
-        if (requestsMemory !== undefined) {
-            localVarFormParams['requestsMemory'] = ObjectSerializer.serialize(requestsMemory, "number");
+        if (params.requestsMemory !== undefined) {
+            localVarFormParams['requestsMemory'] = ObjectSerializer.serialize(params.requestsMemory, "number");
         }
 
-        if (limitsCpu !== undefined) {
-            localVarFormParams['limitsCpu'] = ObjectSerializer.serialize(limitsCpu, "number");
+        if (params.limitsCpu !== undefined) {
+            localVarFormParams['limitsCpu'] = ObjectSerializer.serialize(params.limitsCpu, "number");
         }
 
-        if (limitsMemory !== undefined) {
-            localVarFormParams['limitsMemory'] = ObjectSerializer.serialize(limitsMemory, "number");
+        if (params.limitsMemory !== undefined) {
+            localVarFormParams['limitsMemory'] = ObjectSerializer.serialize(params.limitsMemory, "number");
         }
 
-        if (photo !== undefined) {
-            localVarFormParams['photo'] = photo;
+        if (params.photo !== undefined) {
+            localVarFormParams['photo'] = params.photo;
         }
         localVarUseFormData = true;
 
-        if (integrateUrl !== undefined) {
-            localVarFormParams['integrateUrl'] = ObjectSerializer.serialize(integrateUrl, "string");
+        if (params.integrateUrl !== undefined) {
+            localVarFormParams['integrateUrl'] = ObjectSerializer.serialize(params.integrateUrl, "string");
         }
 
-        if (privileged !== undefined) {
-            localVarFormParams['privileged'] = ObjectSerializer.serialize(privileged, "boolean");
+        if (params.privileged !== undefined) {
+            localVarFormParams['privileged'] = ObjectSerializer.serialize(params.privileged, "boolean");
         }
 
-        if (mountLearnBlock !== undefined) {
-            localVarFormParams['mountLearnBlock'] = ObjectSerializer.serialize(mountLearnBlock, "boolean");
+        if (params.mountLearnBlock !== undefined) {
+            localVarFormParams['mountLearnBlock'] = ObjectSerializer.serialize(params.mountLearnBlock, "boolean");
         }
 
-        if (supportsEonCompiler !== undefined) {
-            localVarFormParams['supportsEonCompiler'] = ObjectSerializer.serialize(supportsEonCompiler, "boolean");
+        if (params.supportsEonCompiler !== undefined) {
+            localVarFormParams['supportsEonCompiler'] = ObjectSerializer.serialize(params.supportsEonCompiler, "boolean");
         }
 
-        if (showOptimizations !== undefined) {
-            localVarFormParams['showOptimizations'] = ObjectSerializer.serialize(showOptimizations, "boolean");
+        if (params.showOptimizations !== undefined) {
+            localVarFormParams['showOptimizations'] = ObjectSerializer.serialize(params.showOptimizations, "boolean");
         }
 
-        if (category !== undefined) {
-            localVarFormParams['category'] = ObjectSerializer.serialize(category, "string");
+        if (params.category !== undefined) {
+            localVarFormParams['category'] = ObjectSerializer.serialize(params.category, "string");
         }
 
         let localVarRequestOptions: localVarRequest.Options = {
@@ -273,6 +341,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Adds a dsp block.
      * @summary Add dsp block
@@ -283,7 +352,9 @@ export class OrganizationBlocksApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/dsp'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -294,16 +365,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling addOrganizationDspBlock.');
         }
 
         // verify required parameter 'addOrganizationDspBlockRequest' is not null or undefined
+
+
         if (addOrganizationDspBlockRequest === null || addOrganizationDspBlockRequest === undefined) {
             throw new Error('Required parameter addOrganizationDspBlockRequest was null or undefined when calling addOrganizationDspBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -357,6 +433,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Adds a secret.
      * @summary Add secret
@@ -367,7 +444,9 @@ export class OrganizationBlocksApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/secrets'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -378,16 +457,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling addOrganizationSecret.');
         }
 
         // verify required parameter 'addOrganizationSecretRequest' is not null or undefined
+
+
         if (addOrganizationSecretRequest === null || addOrganizationSecretRequest === undefined) {
             throw new Error('Required parameter addOrganizationSecretRequest was null or undefined when calling addOrganizationSecret.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -441,6 +525,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Adds a transfer learning block.
      * @summary Add transfer learning block
@@ -451,7 +536,9 @@ export class OrganizationBlocksApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/transfer-learning'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -462,16 +549,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling addOrganizationTransferLearningBlock.');
         }
 
         // verify required parameter 'addOrganizationTransferLearningBlockRequest' is not null or undefined
+
+
         if (addOrganizationTransferLearningBlockRequest === null || addOrganizationTransferLearningBlockRequest === undefined) {
             throw new Error('Required parameter addOrganizationTransferLearningBlockRequest was null or undefined when calling addOrganizationTransferLearningBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -525,6 +617,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Adds a transformation block.
      * @summary Add transformation block
@@ -535,7 +628,9 @@ export class OrganizationBlocksApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/transformation'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -546,16 +641,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling addOrganizationTransformationBlock.');
         }
 
         // verify required parameter 'addOrganizationTransformationBlockRequest' is not null or undefined
+
+
         if (addOrganizationTransformationBlockRequest === null || addOrganizationTransformationBlockRequest === undefined) {
             throw new Error('Required parameter addOrganizationTransformationBlockRequest was null or undefined when calling addOrganizationTransformationBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -609,6 +709,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Deletes a deploy block.
      * @summary Delete deploy block
@@ -620,7 +721,9 @@ export class OrganizationBlocksApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'deployId' + '}', encodeURIComponent(String(deployId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -631,16 +734,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling deleteOrganizationDeployBlock.');
         }
 
         // verify required parameter 'deployId' is not null or undefined
+
+
         if (deployId === null || deployId === undefined) {
             throw new Error('Required parameter deployId was null or undefined when calling deleteOrganizationDeployBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -693,6 +801,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Deletes a dsp block.
      * @summary Delete dsp block
@@ -704,7 +813,9 @@ export class OrganizationBlocksApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'dspId' + '}', encodeURIComponent(String(dspId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -715,16 +826,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling deleteOrganizationDspBlock.');
         }
 
         // verify required parameter 'dspId' is not null or undefined
+
+
         if (dspId === null || dspId === undefined) {
             throw new Error('Required parameter dspId was null or undefined when calling deleteOrganizationDspBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -777,6 +893,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Deletes a transfer learning block.
      * @summary Delete transfer learning block
@@ -788,7 +905,9 @@ export class OrganizationBlocksApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'secretId' + '}', encodeURIComponent(String(secretId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -799,16 +918,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling deleteOrganizationSecret.');
         }
 
         // verify required parameter 'secretId' is not null or undefined
+
+
         if (secretId === null || secretId === undefined) {
             throw new Error('Required parameter secretId was null or undefined when calling deleteOrganizationSecret.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -861,6 +985,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Deletes a transfer learning block.
      * @summary Delete transfer learning block
@@ -872,7 +997,9 @@ export class OrganizationBlocksApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'transferLearningId' + '}', encodeURIComponent(String(transferLearningId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -883,16 +1010,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling deleteOrganizationTransferLearningBlock.');
         }
 
         // verify required parameter 'transferLearningId' is not null or undefined
+
+
         if (transferLearningId === null || transferLearningId === undefined) {
             throw new Error('Required parameter transferLearningId was null or undefined when calling deleteOrganizationTransferLearningBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -945,6 +1077,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Deletes a transformation block.
      * @summary Delete transformation block
@@ -956,7 +1089,9 @@ export class OrganizationBlocksApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'transformationId' + '}', encodeURIComponent(String(transformationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -967,16 +1102,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling deleteOrganizationTransformationBlock.');
         }
 
         // verify required parameter 'transformationId' is not null or undefined
+
+
         if (transformationId === null || transformationId === undefined) {
             throw new Error('Required parameter transformationId was null or undefined when calling deleteOrganizationTransformationBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1029,6 +1169,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Retrieve all deploy blocks.
      * @summary Get deploy blocks
@@ -1038,7 +1179,9 @@ export class OrganizationBlocksApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/deploy'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1049,11 +1192,14 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling listOrganizationDeployBlocks.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1106,6 +1252,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Retrieve all dsp blocks.
      * @summary Get dsp blocks
@@ -1115,7 +1262,9 @@ export class OrganizationBlocksApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/dsp'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1126,11 +1275,14 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling listOrganizationDspBlocks.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1183,6 +1335,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Retrieve all secrets.
      * @summary Get secrets
@@ -1192,7 +1345,9 @@ export class OrganizationBlocksApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/secrets'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1203,11 +1358,14 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling listOrganizationSecrets.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1260,6 +1418,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Retrieve all transfer learning blocks.
      * @summary Get transfer learning blocks
@@ -1269,7 +1428,9 @@ export class OrganizationBlocksApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/transfer-learning'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1280,11 +1441,14 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling listOrganizationTransferLearningBlocks.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1337,6 +1501,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Retrieve all transformation blocks.
      * @summary Get transformation blocks
@@ -1346,7 +1511,9 @@ export class OrganizationBlocksApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/transformation'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1357,11 +1524,14 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling listOrganizationTransformationBlocks.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1414,6 +1584,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Retry launch a dsp block.
      * @summary Retry connection to dsp block
@@ -1425,7 +1596,9 @@ export class OrganizationBlocksApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'dspId' + '}', encodeURIComponent(String(dspId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1436,16 +1609,21 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling retryOrganizationDspBlock.');
         }
 
         // verify required parameter 'dspId' is not null or undefined
+
+
         if (dspId === null || dspId === undefined) {
             throw new Error('Required parameter dspId was null or undefined when calling retryOrganizationDspBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1498,6 +1676,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Updates a deploy block. Only values in the body will be updated.
      * @summary Update deploy block
@@ -1519,12 +1698,14 @@ export class OrganizationBlocksApi {
      * @param showOptimizations 
      * @param category 
      */
-    public async updateOrganizationDeployBlock (organizationId: number, deployId: number, name?: string, dockerContainer?: string, description?: string, cliArguments?: string, requestsCpu?: number, requestsMemory?: number, limitsCpu?: number, limitsMemory?: number, photo?: RequestFile, integrateUrl?: string, privileged?: boolean, mountLearnBlock?: boolean, supportsEonCompiler?: boolean, showOptimizations?: boolean, category?: string, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
+    public async updateOrganizationDeployBlock (organizationId: number, deployId: number, params: updateOrganizationDeployBlockFormParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GenericApiResponse> {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/deploy/{deployId}'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'deployId' + '}', encodeURIComponent(String(deployId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1535,78 +1716,83 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling updateOrganizationDeployBlock.');
         }
 
         // verify required parameter 'deployId' is not null or undefined
+
+
         if (deployId === null || deployId === undefined) {
             throw new Error('Required parameter deployId was null or undefined when calling updateOrganizationDeployBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
-        if (name !== undefined) {
-            localVarFormParams['name'] = ObjectSerializer.serialize(name, "string");
+        if (params.name !== undefined) {
+            localVarFormParams['name'] = ObjectSerializer.serialize(params.name, "string");
         }
 
-        if (dockerContainer !== undefined) {
-            localVarFormParams['dockerContainer'] = ObjectSerializer.serialize(dockerContainer, "string");
+        if (params.dockerContainer !== undefined) {
+            localVarFormParams['dockerContainer'] = ObjectSerializer.serialize(params.dockerContainer, "string");
         }
 
-        if (description !== undefined) {
-            localVarFormParams['description'] = ObjectSerializer.serialize(description, "string");
+        if (params.description !== undefined) {
+            localVarFormParams['description'] = ObjectSerializer.serialize(params.description, "string");
         }
 
-        if (cliArguments !== undefined) {
-            localVarFormParams['cliArguments'] = ObjectSerializer.serialize(cliArguments, "string");
+        if (params.cliArguments !== undefined) {
+            localVarFormParams['cliArguments'] = ObjectSerializer.serialize(params.cliArguments, "string");
         }
 
-        if (requestsCpu !== undefined) {
-            localVarFormParams['requestsCpu'] = ObjectSerializer.serialize(requestsCpu, "number");
+        if (params.requestsCpu !== undefined) {
+            localVarFormParams['requestsCpu'] = ObjectSerializer.serialize(params.requestsCpu, "number");
         }
 
-        if (requestsMemory !== undefined) {
-            localVarFormParams['requestsMemory'] = ObjectSerializer.serialize(requestsMemory, "number");
+        if (params.requestsMemory !== undefined) {
+            localVarFormParams['requestsMemory'] = ObjectSerializer.serialize(params.requestsMemory, "number");
         }
 
-        if (limitsCpu !== undefined) {
-            localVarFormParams['limitsCpu'] = ObjectSerializer.serialize(limitsCpu, "number");
+        if (params.limitsCpu !== undefined) {
+            localVarFormParams['limitsCpu'] = ObjectSerializer.serialize(params.limitsCpu, "number");
         }
 
-        if (limitsMemory !== undefined) {
-            localVarFormParams['limitsMemory'] = ObjectSerializer.serialize(limitsMemory, "number");
+        if (params.limitsMemory !== undefined) {
+            localVarFormParams['limitsMemory'] = ObjectSerializer.serialize(params.limitsMemory, "number");
         }
 
-        if (photo !== undefined) {
-            localVarFormParams['photo'] = photo;
+        if (params.photo !== undefined) {
+            localVarFormParams['photo'] = params.photo;
         }
         localVarUseFormData = true;
 
-        if (integrateUrl !== undefined) {
-            localVarFormParams['integrateUrl'] = ObjectSerializer.serialize(integrateUrl, "string");
+        if (params.integrateUrl !== undefined) {
+            localVarFormParams['integrateUrl'] = ObjectSerializer.serialize(params.integrateUrl, "string");
         }
 
-        if (privileged !== undefined) {
-            localVarFormParams['privileged'] = ObjectSerializer.serialize(privileged, "boolean");
+        if (params.privileged !== undefined) {
+            localVarFormParams['privileged'] = ObjectSerializer.serialize(params.privileged, "boolean");
         }
 
-        if (mountLearnBlock !== undefined) {
-            localVarFormParams['mountLearnBlock'] = ObjectSerializer.serialize(mountLearnBlock, "boolean");
+        if (params.mountLearnBlock !== undefined) {
+            localVarFormParams['mountLearnBlock'] = ObjectSerializer.serialize(params.mountLearnBlock, "boolean");
         }
 
-        if (supportsEonCompiler !== undefined) {
-            localVarFormParams['supportsEonCompiler'] = ObjectSerializer.serialize(supportsEonCompiler, "boolean");
+        if (params.supportsEonCompiler !== undefined) {
+            localVarFormParams['supportsEonCompiler'] = ObjectSerializer.serialize(params.supportsEonCompiler, "boolean");
         }
 
-        if (showOptimizations !== undefined) {
-            localVarFormParams['showOptimizations'] = ObjectSerializer.serialize(showOptimizations, "boolean");
+        if (params.showOptimizations !== undefined) {
+            localVarFormParams['showOptimizations'] = ObjectSerializer.serialize(params.showOptimizations, "boolean");
         }
 
-        if (category !== undefined) {
-            localVarFormParams['category'] = ObjectSerializer.serialize(category, "string");
+        if (params.category !== undefined) {
+            localVarFormParams['category'] = ObjectSerializer.serialize(params.category, "string");
         }
 
         let localVarRequestOptions: localVarRequest.Options = {
@@ -1658,6 +1844,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Updates a dsp block. Only values in the body will be updated.
      * @summary Update dsp block
@@ -1670,7 +1857,9 @@ export class OrganizationBlocksApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'dspId' + '}', encodeURIComponent(String(dspId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1681,21 +1870,28 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling updateOrganizationDspBlock.');
         }
 
         // verify required parameter 'dspId' is not null or undefined
+
+
         if (dspId === null || dspId === undefined) {
             throw new Error('Required parameter dspId was null or undefined when calling updateOrganizationDspBlock.');
         }
 
         // verify required parameter 'updateOrganizationDspBlockRequest' is not null or undefined
+
+
         if (updateOrganizationDspBlockRequest === null || updateOrganizationDspBlockRequest === undefined) {
             throw new Error('Required parameter updateOrganizationDspBlockRequest was null or undefined when calling updateOrganizationDspBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1749,6 +1945,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Updates a transfer learning block. Only values in the body will be updated.
      * @summary Update transfer learning block
@@ -1761,7 +1958,9 @@ export class OrganizationBlocksApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'transferLearningId' + '}', encodeURIComponent(String(transferLearningId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1772,21 +1971,28 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling updateOrganizationTransferLearningBlock.');
         }
 
         // verify required parameter 'transferLearningId' is not null or undefined
+
+
         if (transferLearningId === null || transferLearningId === undefined) {
             throw new Error('Required parameter transferLearningId was null or undefined when calling updateOrganizationTransferLearningBlock.');
         }
 
         // verify required parameter 'updateOrganizationTransferLearningBlockRequest' is not null or undefined
+
+
         if (updateOrganizationTransferLearningBlockRequest === null || updateOrganizationTransferLearningBlockRequest === undefined) {
             throw new Error('Required parameter updateOrganizationTransferLearningBlockRequest was null or undefined when calling updateOrganizationTransferLearningBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1840,6 +2046,7 @@ export class OrganizationBlocksApi {
             });
         });
     }
+
     /**
      * Updates a transformation block. Only values in the body will be updated.
      * @summary Update transformation block
@@ -1852,7 +2059,9 @@ export class OrganizationBlocksApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'transformationId' + '}', encodeURIComponent(String(transformationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1863,21 +2072,28 @@ export class OrganizationBlocksApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling updateOrganizationTransformationBlock.');
         }
 
         // verify required parameter 'transformationId' is not null or undefined
+
+
         if (transformationId === null || transformationId === undefined) {
             throw new Error('Required parameter transformationId was null or undefined when calling updateOrganizationTransformationBlock.');
         }
 
         // verify required parameter 'updateOrganizationTransformationBlockRequest' is not null or undefined
+
+
         if (updateOrganizationTransformationBlockRequest === null || updateOrganizationTransformationBlockRequest === undefined) {
             throw new Error('Required parameter updateOrganizationTransformationBlockRequest was null or undefined when calling updateOrganizationTransformationBlock.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 

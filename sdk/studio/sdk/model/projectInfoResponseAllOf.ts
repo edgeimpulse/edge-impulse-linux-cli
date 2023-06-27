@@ -12,6 +12,7 @@
 
 import { DevelopmentKeys } from './developmentKeys';
 import { Device } from './device';
+import { LatencyDevice } from './latencyDevice';
 import { Project } from './project';
 import { ProjectDataSummary } from './projectDataSummary';
 import { ProjectInfoResponseAllOfAcquisitionSettings } from './projectInfoResponseAllOfAcquisitionSettings';
@@ -20,7 +21,6 @@ import { ProjectInfoResponseAllOfDataSummaryPerCategory } from './projectInfoRes
 import { ProjectInfoResponseAllOfDeploySettings } from './projectInfoResponseAllOfDeploySettings';
 import { ProjectInfoResponseAllOfExperiments } from './projectInfoResponseAllOfExperiments';
 import { ProjectInfoResponseAllOfImpulse } from './projectInfoResponseAllOfImpulse';
-import { ProjectInfoResponseAllOfLatencyDevices } from './projectInfoResponseAllOfLatencyDevices';
 import { ProjectInfoResponseAllOfPerformance } from './projectInfoResponseAllOfPerformance';
 import { ProjectInfoResponseAllOfShowGettingStartedWizard } from './projectInfoResponseAllOfShowGettingStartedWizard';
 import { ProjectInfoResponseAllOfUrls } from './projectInfoResponseAllOfUrls';
@@ -33,6 +33,7 @@ export class ProjectInfoResponseAllOf {
     'impulse': ProjectInfoResponseAllOfImpulse;
     'devices': Array<Device>;
     'dataSummary': ProjectDataSummary;
+    'dataSummaryProcessedData': ProjectDataSummary;
     'dataSummaryPerCategory': ProjectInfoResponseAllOfDataSummaryPerCategory;
     'computeTime': ProjectInfoResponseAllOfComputeTime;
     'acquisitionSettings': ProjectInfoResponseAllOfAcquisitionSettings;
@@ -42,10 +43,9 @@ export class ProjectInfoResponseAllOf {
     * Experiments that the project has access to. Enabling experiments can only be done through a JWT token.
     */
     'experiments': Array<ProjectInfoResponseAllOfExperiments>;
-    'latencyDevices': Array<ProjectInfoResponseAllOfLatencyDevices>;
+    'latencyDevices': Array<LatencyDevice>;
     'urls': ProjectInfoResponseAllOfUrls;
     'showCreateFirstImpulse': boolean;
-    'showProjectTypeWizard': boolean;
     'showGettingStartedWizard': ProjectInfoResponseAllOfShowGettingStartedWizard;
     'performance': ProjectInfoResponseAllOfPerformance;
     'readme'?: ProjectPublicDataReadme;
@@ -66,6 +66,12 @@ export class ProjectInfoResponseAllOf {
     */
     'exportJobNotificationUids': Array<number>;
     'hasNewTrainingData': boolean;
+    /**
+    * Config file specifying how to process CSV files.
+    */
+    'csvImportConfig'?: object;
+    'studioUrl': string;
+    'inPretrainedModelFlow': boolean;
 
     static discriminator: string | undefined = undefined;
 
@@ -93,6 +99,11 @@ export class ProjectInfoResponseAllOf {
         {
             "name": "dataSummary",
             "baseName": "dataSummary",
+            "type": "ProjectDataSummary"
+        },
+        {
+            "name": "dataSummaryProcessedData",
+            "baseName": "dataSummaryProcessedData",
             "type": "ProjectDataSummary"
         },
         {
@@ -128,7 +139,7 @@ export class ProjectInfoResponseAllOf {
         {
             "name": "latencyDevices",
             "baseName": "latencyDevices",
-            "type": "Array<ProjectInfoResponseAllOfLatencyDevices>"
+            "type": "Array<LatencyDevice>"
         },
         {
             "name": "urls",
@@ -138,11 +149,6 @@ export class ProjectInfoResponseAllOf {
         {
             "name": "showCreateFirstImpulse",
             "baseName": "showCreateFirstImpulse",
-            "type": "boolean"
-        },
-        {
-            "name": "showProjectTypeWizard",
-            "baseName": "showProjectTypeWizard",
             "type": "boolean"
         },
         {
@@ -183,6 +189,21 @@ export class ProjectInfoResponseAllOf {
         {
             "name": "hasNewTrainingData",
             "baseName": "hasNewTrainingData",
+            "type": "boolean"
+        },
+        {
+            "name": "csvImportConfig",
+            "baseName": "csvImportConfig",
+            "type": "object"
+        },
+        {
+            "name": "studioUrl",
+            "baseName": "studioUrl",
+            "type": "string"
+        },
+        {
+            "name": "inPretrainedModelFlow",
+            "baseName": "inPretrainedModelFlow",
             "type": "boolean"
         }    ];
 

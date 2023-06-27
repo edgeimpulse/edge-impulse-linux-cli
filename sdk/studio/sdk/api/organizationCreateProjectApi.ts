@@ -47,10 +47,35 @@ export enum OrganizationCreateProjectApiApiKeys {
     JWTHttpHeaderAuthentication,
 }
 
+type getOrganizationCreateProjectStatusQueryParams = {
+    transformLimit: number,
+    transformOffset: number,
+    selection?: string,
+};
+
+type getOrganizationCreateProjectsQueryParams = {
+    limit?: number,
+    offset?: number,
+};
+
+type uploadCustomBlockFormParams = {
+    tar: RequestFile,
+    type: string,
+    blockId: number,
+};
+
+
+export type OrganizationCreateProjectApiOpts = {
+    extraHeaders?: {
+        [name: string]: string
+    },
+};
+
 export class OrganizationCreateProjectApi {
     protected _basePath = defaultBasePath;
     protected defaultHeaders : any = {};
     protected _useQuerystring : boolean = false;
+    protected _opts : OrganizationCreateProjectApiOpts = { };
 
     protected authentications = {
         'default': <Authentication>new VoidAuth(),
@@ -59,8 +84,8 @@ export class OrganizationCreateProjectApi {
         'JWTHttpHeaderAuthentication': new ApiKeyAuth('header', 'x-jwt-token'),
     }
 
-    constructor(basePath?: string);
-    constructor(basePathOrUsername: string, password?: string, basePath?: string) {
+    constructor(basePath?: string, opts?: OrganizationCreateProjectApiOpts);
+    constructor(basePathOrUsername: string, opts?: OrganizationCreateProjectApiOpts, password?: string, basePath?: string) {
         if (password) {
             if (basePath) {
                 this.basePath = basePath;
@@ -70,6 +95,8 @@ export class OrganizationCreateProjectApi {
                 this.basePath = basePathOrUsername
             }
         }
+
+        this.opts = opts ?? { };
     }
 
     set useQuerystring(value: boolean) {
@@ -84,6 +111,14 @@ export class OrganizationCreateProjectApi {
         return this._basePath;
     }
 
+    set opts(opts: OrganizationCreateProjectApiOpts) {
+        this._opts = opts;
+    }
+
+    get opts() {
+        return this._opts;
+    }
+
     public setDefaultAuthentication(auth: Authentication) {
         this.authentications.default = auth;
     }
@@ -91,6 +126,7 @@ export class OrganizationCreateProjectApi {
     public setApiKey(key: OrganizationCreateProjectApiApiKeys, value: string | undefined) {
         (this.authentications as any)[OrganizationCreateProjectApiApiKeys[key]].apiKey = value;
     }
+
 
     /**
      * Clear all failed transform job from a create project job. Only jobs that have failed will be cleared.
@@ -103,7 +139,9 @@ export class OrganizationCreateProjectApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'createProjectId' + '}', encodeURIComponent(String(createProjectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -114,16 +152,21 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling clearOrganizationTransform.');
         }
 
         // verify required parameter 'createProjectId' is not null or undefined
+
+
         if (createProjectId === null || createProjectId === undefined) {
             throw new Error('Required parameter createProjectId was null or undefined when calling clearOrganizationTransform.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -176,6 +219,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Remove a transformation job. This will stop all running jobs.
      * @summary Delete transformation job
@@ -187,7 +231,9 @@ export class OrganizationCreateProjectApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'createProjectId' + '}', encodeURIComponent(String(createProjectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -198,16 +244,21 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling deleteOrganizationCreateProject.');
         }
 
         // verify required parameter 'createProjectId' is not null or undefined
+
+
         if (createProjectId === null || createProjectId === undefined) {
             throw new Error('Required parameter createProjectId was null or undefined when calling deleteOrganizationCreateProject.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -260,6 +311,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Remove a file from a create project job. Only files for which no jobs are running can be deleted.
      * @summary Delete create project file
@@ -273,7 +325,9 @@ export class OrganizationCreateProjectApi {
             .replace('{' + 'createProjectId' + '}', encodeURIComponent(String(createProjectId)))
             .replace('{' + 'createProjectFileId' + '}', encodeURIComponent(String(createProjectFileId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -284,21 +338,28 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling deleteOrganizationCreateProjectFile.');
         }
 
         // verify required parameter 'createProjectId' is not null or undefined
+
+
         if (createProjectId === null || createProjectId === undefined) {
             throw new Error('Required parameter createProjectId was null or undefined when calling deleteOrganizationCreateProjectFile.');
         }
 
         // verify required parameter 'createProjectFileId' is not null or undefined
+
+
         if (createProjectFileId === null || createProjectFileId === undefined) {
             throw new Error('Required parameter createProjectFileId was null or undefined when calling deleteOrganizationCreateProjectFile.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -351,6 +412,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Get the current status of a transformation job job.
      * @summary Get transformation job status
@@ -360,12 +422,14 @@ export class OrganizationCreateProjectApi {
      * @param transformOffset Offset in results of transformation jobs, can be used in conjunction with TransformLimitResultsParameter to implement paging.
      * @param selection Type of selected rows, either \&#39;all\&#39;, \&#39;created\&#39;, \&#39;in-progress\&#39; or \&#39;failed\&#39; (defaults to \&#39;all\&#39;)
      */
-    public async getOrganizationCreateProjectStatus (organizationId: number, createProjectId: number, transformLimit: number, transformOffset: number, selection?: string, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<OrganizationCreateProjectStatusResponse> {
+    public async getOrganizationCreateProjectStatus (organizationId: number, createProjectId: number, queryParams: getOrganizationCreateProjectStatusQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<OrganizationCreateProjectStatusResponse> {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/create-project/{createProjectId}'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'createProjectId' + '}', encodeURIComponent(String(createProjectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -376,38 +440,47 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling getOrganizationCreateProjectStatus.');
         }
 
         // verify required parameter 'createProjectId' is not null or undefined
+
+
         if (createProjectId === null || createProjectId === undefined) {
             throw new Error('Required parameter createProjectId was null or undefined when calling getOrganizationCreateProjectStatus.');
         }
 
         // verify required parameter 'transformLimit' is not null or undefined
-        if (transformLimit === null || transformLimit === undefined) {
-            throw new Error('Required parameter transformLimit was null or undefined when calling getOrganizationCreateProjectStatus.');
+
+        if (queryParams.transformLimit === null || queryParams.transformLimit === undefined) {
+            throw new Error('Required parameter queryParams.transformLimit was null or undefined when calling getOrganizationCreateProjectStatus.');
         }
+
 
         // verify required parameter 'transformOffset' is not null or undefined
-        if (transformOffset === null || transformOffset === undefined) {
-            throw new Error('Required parameter transformOffset was null or undefined when calling getOrganizationCreateProjectStatus.');
+
+        if (queryParams.transformOffset === null || queryParams.transformOffset === undefined) {
+            throw new Error('Required parameter queryParams.transformOffset was null or undefined when calling getOrganizationCreateProjectStatus.');
         }
 
-        if (transformLimit !== undefined) {
-            localVarQueryParameters['transformLimit'] = ObjectSerializer.serialize(transformLimit, "number");
+
+        if (queryParams.transformLimit !== undefined) {
+            localVarQueryParameters['transformLimit'] = ObjectSerializer.serialize(queryParams.transformLimit, "number");
         }
 
-        if (transformOffset !== undefined) {
-            localVarQueryParameters['transformOffset'] = ObjectSerializer.serialize(transformOffset, "number");
+        if (queryParams.transformOffset !== undefined) {
+            localVarQueryParameters['transformOffset'] = ObjectSerializer.serialize(queryParams.transformOffset, "number");
         }
 
-        if (selection !== undefined) {
-            localVarQueryParameters['selection'] = ObjectSerializer.serialize(selection, "string");
+        if (queryParams.selection !== undefined) {
+            localVarQueryParameters['selection'] = ObjectSerializer.serialize(queryParams.selection, "string");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -460,6 +533,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Get list of transformation jobs.
      * @summary List transformation jobs
@@ -467,11 +541,13 @@ export class OrganizationCreateProjectApi {
      * @param limit Maximum number of results
      * @param offset Offset in results, can be used in conjunction with LimitResultsParameter to implement paging.
      */
-    public async getOrganizationCreateProjects (organizationId: number, limit?: number, offset?: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<OrganizationGetCreateProjectsResponse> {
+    public async getOrganizationCreateProjects (organizationId: number, queryParams: getOrganizationCreateProjectsQueryParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<OrganizationGetCreateProjectsResponse> {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/create-project'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -482,19 +558,22 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling getOrganizationCreateProjects.');
         }
 
-        if (limit !== undefined) {
-            localVarQueryParameters['limit'] = ObjectSerializer.serialize(limit, "number");
+        if (queryParams.limit !== undefined) {
+            localVarQueryParameters['limit'] = ObjectSerializer.serialize(queryParams.limit, "number");
         }
 
-        if (offset !== undefined) {
-            localVarQueryParameters['offset'] = ObjectSerializer.serialize(offset, "number");
+        if (queryParams.offset !== undefined) {
+            localVarQueryParameters['offset'] = ObjectSerializer.serialize(queryParams.offset, "number");
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -547,6 +626,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Add a new collaborator to a project owned by an organisation.
      * @summary Add a collaborator to a project within an organisation
@@ -557,7 +637,9 @@ export class OrganizationCreateProjectApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/add-project-collaborator'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -568,16 +650,21 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling organizationAddCollaborator.');
         }
 
         // verify required parameter 'updateOrganizationAddCollaboratorRequest' is not null or undefined
+
+
         if (updateOrganizationAddCollaboratorRequest === null || updateOrganizationAddCollaboratorRequest === undefined) {
             throw new Error('Required parameter updateOrganizationAddCollaboratorRequest was null or undefined when calling organizationAddCollaborator.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -631,6 +718,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Create a new empty project within an organization.
      * @summary Create new empty project
@@ -641,7 +729,9 @@ export class OrganizationCreateProjectApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/new-project'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -652,16 +742,21 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling organizationCreateEmptyProject.');
         }
 
         // verify required parameter 'updateOrganizationCreateEmptyProjectRequest' is not null or undefined
+
+
         if (updateOrganizationCreateEmptyProjectRequest === null || updateOrganizationCreateEmptyProjectRequest === undefined) {
             throw new Error('Required parameter updateOrganizationCreateEmptyProjectRequest was null or undefined when calling organizationCreateEmptyProject.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -715,6 +810,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Start a transformation job to fetch data from the organization and put it in a project, or transform into new data.
      * @summary Start transformation job
@@ -725,7 +821,9 @@ export class OrganizationCreateProjectApi {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/create-project'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -736,16 +834,21 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling organizationCreateProject.');
         }
 
         // verify required parameter 'organizationCreateProjectRequest' is not null or undefined
+
+
         if (organizationCreateProjectRequest === null || organizationCreateProjectRequest === undefined) {
             throw new Error('Required parameter organizationCreateProjectRequest was null or undefined when calling organizationCreateProject.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -799,6 +902,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Retry a transformation action on a file from a transformation job. Only files that have failed can be retried.
      * @summary Retry transformation file
@@ -812,7 +916,9 @@ export class OrganizationCreateProjectApi {
             .replace('{' + 'createProjectId' + '}', encodeURIComponent(String(createProjectId)))
             .replace('{' + 'createProjectFileId' + '}', encodeURIComponent(String(createProjectFileId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -823,21 +929,28 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling retryOrganizationCreateProjectFile.');
         }
 
         // verify required parameter 'createProjectId' is not null or undefined
+
+
         if (createProjectId === null || createProjectId === undefined) {
             throw new Error('Required parameter createProjectId was null or undefined when calling retryOrganizationCreateProjectFile.');
         }
 
         // verify required parameter 'createProjectFileId' is not null or undefined
+
+
         if (createProjectFileId === null || createProjectFileId === undefined) {
             throw new Error('Required parameter createProjectFileId was null or undefined when calling retryOrganizationCreateProjectFile.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -890,6 +1003,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Retry all failed transform job from a transformation job. Only jobs that have failed will be retried.
      * @summary Retry failed transform jobs
@@ -901,7 +1015,9 @@ export class OrganizationCreateProjectApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'createProjectId' + '}', encodeURIComponent(String(createProjectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -912,16 +1028,21 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling retryOrganizationTransform.');
         }
 
         // verify required parameter 'createProjectId' is not null or undefined
+
+
         if (createProjectId === null || createProjectId === undefined) {
             throw new Error('Required parameter createProjectId was null or undefined when calling retryOrganizationTransform.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -974,6 +1095,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Retry the upload job from a transformation job. Only jobs that have failed can be retried.
      * @summary Retry transformation upload job
@@ -985,7 +1107,9 @@ export class OrganizationCreateProjectApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'createProjectId' + '}', encodeURIComponent(String(createProjectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -996,16 +1120,21 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling retryOrganizationUpload.');
         }
 
         // verify required parameter 'createProjectId' is not null or undefined
+
+
         if (createProjectId === null || createProjectId === undefined) {
             throw new Error('Required parameter createProjectId was null or undefined when calling retryOrganizationUpload.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1058,6 +1187,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Update the properties of a transformation job.
      * @summary Update transformation job
@@ -1070,7 +1200,9 @@ export class OrganizationCreateProjectApi {
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)))
             .replace('{' + 'createProjectId' + '}', encodeURIComponent(String(createProjectId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1081,21 +1213,28 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling updateOrganizationCreateProject.');
         }
 
         // verify required parameter 'createProjectId' is not null or undefined
+
+
         if (createProjectId === null || createProjectId === undefined) {
             throw new Error('Required parameter createProjectId was null or undefined when calling updateOrganizationCreateProject.');
         }
 
         // verify required parameter 'updateOrganizationCreateProjectRequest' is not null or undefined
+
+
         if (updateOrganizationCreateProjectRequest === null || updateOrganizationCreateProjectRequest === undefined) {
             throw new Error('Required parameter updateOrganizationCreateProjectRequest was null or undefined when calling updateOrganizationCreateProject.');
         }
 
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
@@ -1149,6 +1288,7 @@ export class OrganizationCreateProjectApi {
             });
         });
     }
+
     /**
      * Upload a zip file containing a custom transformation or deployment block.
      * @summary Upload a custom block
@@ -1157,11 +1297,13 @@ export class OrganizationCreateProjectApi {
      * @param type 
      * @param blockId 
      */
-    public async uploadCustomBlock (organizationId: number, tar: RequestFile, type: string, blockId: number, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<StartJobResponse> {
+    public async uploadCustomBlock (organizationId: number, params: uploadCustomBlockFormParams, options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<StartJobResponse> {
         const localVarPath = this.basePath + '/api/organizations/{organizationId}/custom-block'
             .replace('{' + 'organizationId' + '}', encodeURIComponent(String(organizationId)));
         let localVarQueryParameters: any = {};
-        let localVarHeaderParams: any = (<any>Object).assign({}, this.defaultHeaders);
+        let localVarHeaderParams: any = (<any>Object).assign({
+            'User-Agent': 'edgeimpulse-api nodejs'
+        }, this.defaultHeaders);
         const produces = ['application/json'];
         // give precedence to 'application/json'
         if (produces.indexOf('application/json') >= 0) {
@@ -1172,40 +1314,49 @@ export class OrganizationCreateProjectApi {
         let localVarFormParams: any = {};
 
         // verify required parameter 'organizationId' is not null or undefined
+
+
         if (organizationId === null || organizationId === undefined) {
             throw new Error('Required parameter organizationId was null or undefined when calling uploadCustomBlock.');
         }
 
         // verify required parameter 'tar' is not null or undefined
-        if (tar === null || tar === undefined) {
-            throw new Error('Required parameter tar was null or undefined when calling uploadCustomBlock.');
+        if (params.tar === null || params.tar === undefined) {
+            throw new Error('Required parameter params.tar was null or undefined when calling uploadCustomBlock.');
         }
+
+
 
         // verify required parameter 'type' is not null or undefined
-        if (type === null || type === undefined) {
-            throw new Error('Required parameter type was null or undefined when calling uploadCustomBlock.');
+        if (params.type === null || params.type === undefined) {
+            throw new Error('Required parameter params.type was null or undefined when calling uploadCustomBlock.');
         }
+
+
 
         // verify required parameter 'blockId' is not null or undefined
-        if (blockId === null || blockId === undefined) {
-            throw new Error('Required parameter blockId was null or undefined when calling uploadCustomBlock.');
+        if (params.blockId === null || params.blockId === undefined) {
+            throw new Error('Required parameter params.blockId was null or undefined when calling uploadCustomBlock.');
         }
 
+
+
         (<any>Object).assign(localVarHeaderParams, options.headers);
+        (<any>Object).assign(localVarHeaderParams, this.opts.extraHeaders);
 
         let localVarUseFormData = false;
 
-        if (tar !== undefined) {
-            localVarFormParams['tar'] = tar;
+        if (params.tar !== undefined) {
+            localVarFormParams['tar'] = params.tar;
         }
         localVarUseFormData = true;
 
-        if (type !== undefined) {
-            localVarFormParams['type'] = ObjectSerializer.serialize(type, "string");
+        if (params.type !== undefined) {
+            localVarFormParams['type'] = ObjectSerializer.serialize(params.type, "string");
         }
 
-        if (blockId !== undefined) {
-            localVarFormParams['blockId'] = ObjectSerializer.serialize(blockId, "number");
+        if (params.blockId !== undefined) {
+            localVarFormParams['blockId'] = ObjectSerializer.serialize(params.blockId, "number");
         }
 
         let localVarRequestOptions: localVarRequest.Options = {
