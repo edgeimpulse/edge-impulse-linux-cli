@@ -65,9 +65,22 @@ export class GStreamer extends EventEmitter<{
             throw new Error('Missing "gst-device-monitor-1.0" in PATH. Install via `sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-base gstreamer1.0-plugins-base-apps`');
         }
 
+        let osRelease;
         if (await this.exists('/etc/os-release')) {
-            let x = await fs.promises.readFile('/etc/os-release', 'utf-8');
-            if ((x.indexOf('bullseye') > -1) && (x.indexOf('ID=raspbian') > -1)) {
+            osRelease = await fs.promises.readFile('/etc/os-release', 'utf-8');
+        }
+
+        let firmwareModel;
+        if (await this.exists('/sys/firmware/devicetree/base/model')) {
+            firmwareModel = await fs.promises.readFile('/sys/firmware/devicetree/base/model', 'utf-8');
+        }
+
+        if (osRelease && osRelease.indexOf('bullseye') > -1) {
+            if (osRelease.indexOf('ID=raspbian') > -1) {
+                this._mode = 'rpi-bullseye';
+            }
+
+            if (firmwareModel && firmwareModel.indexOf('Raspberry Pi') > -1) {
                 this._mode = 'rpi-bullseye';
             }
         }
