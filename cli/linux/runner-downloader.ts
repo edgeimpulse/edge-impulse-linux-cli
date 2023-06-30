@@ -45,12 +45,15 @@ export class RunnerDownloader extends EventEmitter<{
         else if (process.platform === 'linux') {
             if (process.arch === 'arm') {
                 let uname = (await spawnHelper('uname', ['-m'])).trim();
-                if (uname !== 'armv7l') {
+
+                if (uname == 'armv7l') {
+                    downloadType = 'runner-linux-armv7';
+                } else if (uname == 'aarch64') {
+                    downloadType = 'runner-linux-aarch64';
+                } else {
                     throw new Error('Unsupported architecture "' + uname + '", only ' +
                         'armv7l or aarch64 supported for now');
                 }
-
-                downloadType = 'runner-linux-armv7';
             }
             else if (process.arch === 'arm64') {
                 let uname = (await spawnHelper('uname', ['-m'])).trim();
