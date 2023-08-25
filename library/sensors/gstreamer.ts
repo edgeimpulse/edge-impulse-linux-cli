@@ -65,9 +65,24 @@ export class GStreamer extends EventEmitter<{
             throw new Error('Missing "gst-device-monitor-1.0" in PATH. Install via `sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-base gstreamer1.0-plugins-base-apps`');
         }
 
+        let osRelease;
         if (await this.exists('/etc/os-release')) {
-            let x = await fs.promises.readFile('/etc/os-release', 'utf-8');
-            if (x.indexOf('bullseye') > -1) {
+            console.log(PREFIX, 'checking for /etc/os-release');
+            osRelease = await fs.promises.readFile('/etc/os-release', 'utf-8');
+        }
+
+        let firmwareModel;
+        // using /proc/device-tree as recommended in user space.
+        if (await this.exists('/proc/device-tree/model')) {
+            firmwareModel = await fs.promises.readFile('/proc/device-tree/model', 'utf-8');
+        }
+
+        if (osRelease && osRelease.indexOf('bullseye') > -1) {
+            if (osRelease.indexOf('ID=raspbian') > -1) {
+                this._mode = 'rpi-bullseye';
+            }
+
+            if (firmwareModel && firmwareModel.indexOf('Raspberry Pi') > -1) {
                 this._mode = 'rpi-bullseye';
             }
         }
@@ -124,14 +139,23 @@ export class GStreamer extends EventEmitter<{
         }
 
         // now we need to determine the resolution... we want something as close as possible to dimensions.widthx480
-        let cap = device.caps.filter(c => {
+        let caps = device.caps.filter(c => {
             return c.width >= dimensions.width && c.height >= dimensions.height;
         }).sort((a, b) => {
             let diffA = Math.abs(a.width - dimensions.width) + Math.abs(a.height - dimensions.height);
             let diffB = Math.abs(b.width - dimensions.width) + Math.abs(b.height - dimensions.height);
 
             return diffA - diffB;
-        })[0];
+        });
+
+        // if the device supports video/x-raw, only list those types
+        const videoCaps = caps.filter(x => x.type === 'video/x-raw');
+        if (videoCaps.length > 0) {
+            caps = videoCaps;
+        }
+
+        // choose the top of the list
+        let cap = caps[0];
 
         if (!cap) {
             cap = {
@@ -494,11 +518,6 @@ export class GStreamer extends EventEmitter<{
             }
             else {
                 c = c.filter(x => x.width && x.height && x.framerate);
-            }
-
-            // if the device supports video/x-raw, only list those types
-            if (c.some(x => x.type === 'video/x-raw')) {
-                c = c.filter(x => x.type === 'video/x-raw');
             }
 
             c = c.reduce((curr: GStreamerCap[], o) => {

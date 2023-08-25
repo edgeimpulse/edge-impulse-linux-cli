@@ -328,8 +328,16 @@ process.on('SIGINT', onSignal);
             throw new Error('Invalid sensorType: ' + param.sensorType);
         }
     }
-    catch (ex) {
-        console.warn(RUNNER_PREFIX, 'Failed to run impulse', ex);
+    catch (ex2) {
+        let ex = <Error>ex2;
+        console.warn(RUNNER_PREFIX, 'Failed to run impulse', ex.message || ex.toString());
+
+        if ((ex.message || ex.toString()).indexOf('libtensorflowlite_flex') > -1) {
+            console.log('You will need to install the flex delegates ' +
+                'shared library to run this model. Learn more at https://docs.edgeimpulse.com/docs/edge-impulse-for-linux/flex-delegates');
+            console.log('');
+        }
+
         if (audioClassifier) {
             await audioClassifier.stop();
         }

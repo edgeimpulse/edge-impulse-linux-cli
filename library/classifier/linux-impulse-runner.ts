@@ -165,7 +165,13 @@ export class LinuxImpulseRunner {
             }
 
             if (typeof exitCode !== 'undefined') {
-                throw new Error('Failed to start runner (code: ' + exitCode + '): ' + stdout);
+                let err = 'Failed to start runner (code: ' + exitCode + '): ' + stdout;
+                if (stdout.indexOf('libtensorflowlite_flex') > -1) {
+                    err += '\n\n' +
+                        'You will need to install the flex delegates ' +
+                        'shared library to run this model. Learn more at https://docs.edgeimpulse.com/docs/edge-impulse-for-linux/flex-delegates';
+                }
+                throw new Error(err);
             }
 
             this._runner.stdout.off('data', onStdout);
