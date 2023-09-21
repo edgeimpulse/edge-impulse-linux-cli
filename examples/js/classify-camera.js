@@ -3,12 +3,23 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
 // tslint:disable-next-line: no-floating-promises
 (async () => {
     try  {
-        if (!process.argv[2]) {
+        const argModelFile = process.argv[2];
+        const argCamDevice = process.argv[3];
+        const fps = process.argv[4] ? Number(process.argv[4]) : 5;
+        const dimensions = (process.argv[5] && process.argv[6]) ? {
+            width: Number(process.argv[5]),
+            height: Number(process.argv[6])
+        }: {
+            width: 640,
+            height: 480
+        };
+
+        if (!argModelFile) {
             console.log('Missing one argument (model file)');
             process.exit(1);
         }
 
-        let runner = new LinuxImpulseRunner(process.argv[2]);
+        let runner = new LinuxImpulseRunner(argModelFile);
         let model = await runner.init();
 
         console.log('Starting the image classifier for',
@@ -35,18 +46,19 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
         if (devices.length === 0) {
             throw new Error('Cannot find any webcams');
         }
-        if (devices.length > 1 && !process.argv[3]) {
+        if (devices.length > 1 && !argCamDevice) {
             throw new Error('Multiple cameras found (' + devices.map(n => '"' + n + '"').join(', ') + '), add ' +
                 'the camera to use to this script (node classify-camera.js model.eim cameraname)');
         }
 
-        let device = process.argv[3] || devices[0];
+        let device = argCamDevice || devices[0];
 
         console.log('Using camera', device, 'starting...');
 
         await camera.start({
             device: device,
-            intervalMs: 200,
+            intervalMs: 1000 / fps,
+            dimensions: dimensions
         });
 
         camera.on('error', error => {

@@ -1,4 +1,9 @@
-import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } from "../../library";
+import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap, ModelInformation, getIps } from "../../library";
+import sharp from 'sharp';
+import express = require('express');
+import socketIO from 'socket.io';
+import http from 'http';
+import Path from 'path';
 
 // tslint:disable-next-line: no-floating-promises
 (async () => {
@@ -13,6 +18,8 @@ import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } from 
             width: 640,
             height: 480
         };
+
+        const port = process.argv[7] ? Number(process.argv[7]) : (Number(process.env.PORT) ? Number(process.env.PORT) : 4912);
 
         if (!argModelFile) {
             console.log('Missing one argument (model file)');
@@ -72,6 +79,13 @@ import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } from 
 
         await imageClassifier.start();
 
+        let webserverPort = await startWebServer(model, camera, imageClassifier, port);
+        const ips = getIps();
+        console.log('');
+        console.log('Want to see a feed of the camera and live classification in your browser? ' +
+            'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + webserverPort);
+        console.log('');
+
         imageClassifier.on('result', (ev, timeMs, imgAsJpg) => {
             if (ev.result.classification) {
                 // print the raw predicted values for this frame
@@ -93,3 +107,65 @@ import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } from 
         process.exit(1);
     }
 })();
+
+function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier: ImageClassifier, port: number) {
+    const app = express();
+    app.use(express.static(Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public')));
+
+    const server = new http.Server(app);
+    const io = socketIO(server);
+
+    // you can also get the actual image being classified from 'imageClassifier.on("result")',
+    // but then you're limited by the inference speed.
+    // here we get a direct feed from the camera so we guarantee the fps that we set earlier.
+
+    let nextFrame = Date.now();
+    let processingFrame = false;
+    camera.on('snapshot', async (data) => {
+        if (nextFrame > Date.now() || processingFrame) return;
+
+        processingFrame = true;
+
+        let img;
+        if (model.modelParameters.image_channel_count === 3) {
+            img = sharp(data).resize({
+                height: model.modelParameters.image_input_height,
+                width: model.modelParameters.image_input_width
+            });
+        }
+        else {
+            img = sharp(data).resize({
+                height: model.modelParameters.image_input_height,
+                width: model.modelParameters.image_input_width
+            }).toColourspace('b-w');
+        }
+
+        io.emit('image', {
+            img: 'data:image/jpeg;base64,' + (await img.jpeg().toBuffer()).toString('base64')
+        });
+
+        nextFrame = Date.now() + 50;
+        processingFrame = false;
+    });
+
+    imgClassifier.on('result', async (result, timeMs, imgAsJpg) => {
+        io.emit('classification', {
+            modelType: model.modelParameters.model_type,
+            result: result.result,
+            timeMs: timeMs,
+            additionalInfo: result.info,
+        });
+    });
+
+    io.on('connection', socket => {
+        socket.emit('hello', {
+            projectName: model.project.owner + ' / ' + model.project.name
+        });
+    });
+
+    return new Promise<number>((resolve) => {
+        server.listen(port, process.env.HOST || '0.0.0.0', async () => {
+            resolve(port);
+        });
+    });
+}
