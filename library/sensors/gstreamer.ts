@@ -371,24 +371,20 @@ export class GStreamer extends EventEmitter<{
         let stopRes = new Promise<void>((resolve) => {
             if (this._captureProcess) {
                 this._captureProcess.on('close', code => {
-
                     if (this._watcher) {
-                            this._watcher.on('close', () => {
-                                (async ()=> {
-                                    if (this._tempDir) {
-                                        const files = await fs.promises.readdir(this._tempDir);
-                                        const imageFiles = files.filter(file => {
-                                            const fileExt = Path.extname(file).toLowerCase();
-                                            return (fileExt === 'jpg' || fileExt === 'jpeg');
-                                        });
-
-                                        for (const file of imageFiles) {
-                                            await fs.promises.unlink(Path.join(this._tempDir, file));
-                                        }
-                                    }
+                        this._watcher.on('close', async () => {
+                            if (this._tempDir) {
+                                const files = await fs.promises.readdir(this._tempDir);
+                                const imageFiles = files.filter(file => {
+                                    const fileExt = Path.extname(file).toLowerCase();
+                                    return (fileExt === 'jpg' || fileExt === 'jpeg');
                                 });
-                            });
 
+                                for (const file of imageFiles) {
+                                    await fs.promises.unlink(Path.join(this._tempDir, file));
+                                }
+                            }
+                        });
                         this._watcher.close();
                     }
                     resolve();
