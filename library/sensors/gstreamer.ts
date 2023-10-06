@@ -248,10 +248,9 @@ export class GStreamer extends EventEmitter<{
             if (!(fileName.endsWith('.jpeg') || fileName.endsWith('.jpg'))) return;
             if (!this._tempDir) return;
             if (this._handledFiles[fileName]) return;
-            if (this._processing) return;
 
             // not next frame yet?
-            if (Date.now() < nextFrame) {
+            if (this._processing || Date.now() < nextFrame) {
                 this._handledFiles[fileName] = true;
                 if (await this.exists(Path.join(this._tempDir, fileName))) {
                     await fs.promises.unlink(Path.join(this._tempDir, fileName));
@@ -372,7 +371,24 @@ export class GStreamer extends EventEmitter<{
         let stopRes = new Promise<void>((resolve) => {
             if (this._captureProcess) {
                 this._captureProcess.on('close', code => {
+
                     if (this._watcher) {
+                            this._watcher.on('close', () => {
+                                (async ()=> {
+                                    if (this._tempDir) {
+                                        const files = await fs.promises.readdir(this._tempDir);
+                                        const imageFiles = files.filter(file => {
+                                            const fileExt = Path.extname(file).toLowerCase();
+                                            return (fileExt === 'jpg' || fileExt === 'jpeg');
+                                        });
+
+                                        for (const file of imageFiles) {
+                                            await fs.promises.unlink(Path.join(this._tempDir, file));
+                                        }
+                                    }
+                                });
+                            });
+
                         this._watcher.close();
                     }
                     resolve();
