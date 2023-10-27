@@ -38,7 +38,7 @@ export class GStreamer extends EventEmitter<{
     private _lastHash = '';
     private _processing = false;
     private _lastOptions?: ICameraStartOptions;
-    private _mode: 'default' | 'rpi-bullseye' = 'default';
+    private _mode: 'default' | 'rpi' = 'default';
     private _keepAliveTimeout: NodeJS.Timeout | undefined;
     private _isStarted = false;
     private _isRestarting = false;
@@ -77,13 +77,13 @@ export class GStreamer extends EventEmitter<{
             firmwareModel = await fs.promises.readFile('/proc/device-tree/model', 'utf-8');
         }
 
-        if (osRelease && osRelease.indexOf('bullseye') > -1) {
+        if (osRelease && ((osRelease.indexOf('bullseye') > -1) || (osRelease.indexOf('bookworm')))) {
             if (osRelease.indexOf('ID=raspbian') > -1) {
-                this._mode = 'rpi-bullseye';
+                this._mode = 'rpi';
             }
 
             if (firmwareModel && firmwareModel.indexOf('Raspberry Pi') > -1) {
-                this._mode = 'rpi-bullseye';
+                this._mode = 'rpi';
             }
         }
     }
@@ -167,7 +167,7 @@ export class GStreamer extends EventEmitter<{
         }
 
         let videoSource = [ 'v4l2src', 'device=' + device.id ];
-        if (this._mode === 'rpi-bullseye') {
+        if (this._mode === 'rpi') {
             // Rpi camera
             if (!device.id) {
                 videoSource = [ 'libcamerasrc' ];
@@ -248,10 +248,9 @@ export class GStreamer extends EventEmitter<{
             if (!(fileName.endsWith('.jpeg') || fileName.endsWith('.jpg'))) return;
             if (!this._tempDir) return;
             if (this._handledFiles[fileName]) return;
-            if (this._processing) return;
 
             // not next frame yet?
-            if (Date.now() < nextFrame) {
+            if (this._processing || Date.now() < nextFrame) {
                 this._handledFiles[fileName] = true;
                 if (await this.exists(Path.join(this._tempDir, fileName))) {
                     await fs.promises.unlink(Path.join(this._tempDir, fileName));
@@ -373,6 +372,19 @@ export class GStreamer extends EventEmitter<{
             if (this._captureProcess) {
                 this._captureProcess.on('close', code => {
                     if (this._watcher) {
+                        this._watcher.on('close', async () => {
+                            if (this._tempDir) {
+                                const files = await fs.promises.readdir(this._tempDir);
+                                const imageFiles = files.filter(file => {
+                                    const fileExt = Path.extname(file).toLowerCase();
+                                    return (fileExt === 'jpg' || fileExt === 'jpeg');
+                                });
+
+                                for (const file of imageFiles) {
+                                    await fs.promises.unlink(Path.join(this._tempDir, file));
+                                }
+                            }
+                        });
                         this._watcher.close();
                     }
                     resolve();
@@ -501,7 +513,7 @@ export class GStreamer extends EventEmitter<{
                     return r;
                 });
 
-            if (this._mode === 'rpi-bullseye') { // no framerate here...
+            if (this._mode === 'rpi') { // no framerate here...
                 c = c.filter(x => x.width && x.height);
             }
             else if (d.name === 'RZG2L_CRU') {
