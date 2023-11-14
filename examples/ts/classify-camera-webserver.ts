@@ -1,4 +1,9 @@
-const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = require('../../build/library');
+import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap, ModelInformation, getIps } from "../../library";
+import sharp from 'sharp';
+import express = require('express');
+import socketIO from 'socket.io';
+import http from 'http';
+import Path from 'path';
 
 // tslint:disable-next-line: no-floating-promises
 (async () => {
@@ -11,6 +16,7 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
         //   arg 4: desired FPS. e.g. 20, default 5
         //   arg 5: desired capture width. e.g. 320, default 640
         //   arg 6: desired capture height. e.g. 200, default 480
+        //   arg 7: webserver port. e.g. 4999, default 4912
 
         const argModelFile = process.argv[2];
         const argCamDevice = process.argv[3];
@@ -18,10 +24,12 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
         const dimensions = (process.argv[5] && process.argv[6]) ? {
             width: Number(process.argv[5]),
             height: Number(process.argv[6])
-        }: {
+        } : {
             width: 640,
             height: 480
         };
+
+        const port = process.argv[7] ? Number(process.argv[7]) : (process.env.PORT ? Number(process.env.PORT) : 4912);
 
         if (!argModelFile) {
             console.log('Missing one argument (model file)');
@@ -39,7 +47,7 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
             'classes', model.modelParameters.labels);
 
         // select a camera... you can implement this interface for other targets :-)
-        let camera;
+        let camera: ICamera;
         if (process.platform === 'darwin') {
             camera = new Imagesnap();
         }
@@ -72,6 +80,7 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
 
         camera.on('error', error => {
             console.log('camera error', error);
+            process.exit(1);
         });
 
         console.log('Connected to camera');
@@ -80,13 +89,21 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
 
         await imageClassifier.start();
 
+        let webserverPort = await startWebServer(model, camera, imageClassifier, port);
+        const ips = getIps();
+        console.log('');
+        console.log('Want to see a feed of the camera and live classification in your browser? ' +
+            'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + webserverPort);
+        console.log('');
+
         imageClassifier.on('result', (ev, timeMs, imgAsJpg) => {
             if (ev.result.classification) {
                 // print the raw predicted values for this frame
                 // (turn into string here so the content does not jump around)
-                let c = ev.result.classification;
+                // tslint:disable-next-line: no-unsafe-any
+                let c = <{ [k: string]: string | number }>(<any>ev.result.classification);
                 for (let k of Object.keys(c)) {
-                    c[k] = c[k].toFixed(4);
+                    c[k] = (<number>c[k]).toFixed(4);
                 }
                 console.log('classification', timeMs + 'ms.', c);
             }
@@ -100,3 +117,65 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
         process.exit(1);
     }
 })();
+
+function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier: ImageClassifier, port: number) {
+    const app = express();
+    app.use(express.static(Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public')));
+
+    const server = new http.Server(app);
+    const io = socketIO(server);
+
+    // you can also get the actual image being classified from 'imageClassifier.on("result")',
+    // but then you're limited by the inference speed.
+    // here we get a direct feed from the camera so we guarantee the fps that we set earlier.
+
+    let nextFrame = Date.now();
+    let processingFrame = false;
+    camera.on('snapshot', async (data) => {
+        if (nextFrame > Date.now() || processingFrame) return;
+
+        processingFrame = true;
+
+        let img;
+        if (model.modelParameters.image_channel_count === 3) {
+            img = sharp(data).resize({
+                height: model.modelParameters.image_input_height,
+                width: model.modelParameters.image_input_width
+            });
+        }
+        else {
+            img = sharp(data).resize({
+                height: model.modelParameters.image_input_height,
+                width: model.modelParameters.image_input_width
+            }).toColourspace('b-w');
+        }
+
+        io.emit('image', {
+            img: 'data:image/jpeg;base64,' + (await img.jpeg().toBuffer()).toString('base64')
+        });
+
+        nextFrame = Date.now() + 50;
+        processingFrame = false;
+    });
+
+    imgClassifier.on('result', async (result, timeMs, imgAsJpg) => {
+        io.emit('classification', {
+            modelType: model.modelParameters.model_type,
+            result: result.result,
+            timeMs: timeMs,
+            additionalInfo: result.info,
+        });
+    });
+
+    io.on('connection', socket => {
+        socket.emit('hello', {
+            projectName: model.project.owner + ' / ' + model.project.name
+        });
+    });
+
+    return new Promise<number>((resolve) => {
+        server.listen(port, process.env.HOST || '0.0.0.0', async () => {
+            resolve(port);
+        });
+    });
+}

@@ -10,11 +10,11 @@
  * Do not edit the class manually.
  */
 
-import { DevelopmentBoardResponse } from './developmentBoardResponse';
-import { DevelopmentBoardsResponseAllOf } from './developmentBoardsResponseAllOf';
 import { GenericApiResponse } from './genericApiResponse';
+import { GetFeatureFlagsResponseAllOf } from './getFeatureFlagsResponseAllOf';
+import { GetFeatureFlagsResponseAllOfFlags } from './getFeatureFlagsResponseAllOfFlags';
 
-export class DevelopmentBoardsResponse {
+export class GetFeatureFlagsResponse {
     /**
     * Whether the operation succeeded
     */
@@ -23,7 +23,10 @@ export class DevelopmentBoardsResponse {
     * Optional error description (set if \'success\' was false)
     */
     'error'?: string;
-    'developmentBoards': Array<DevelopmentBoardResponse>;
+    /**
+    * List of feature flags.
+    */
+    'flags': Array<GetFeatureFlagsResponseAllOfFlags>;
 
     static discriminator: string | undefined = undefined;
 
@@ -39,13 +42,13 @@ export class DevelopmentBoardsResponse {
             "type": "string"
         },
         {
-            "name": "developmentBoards",
-            "baseName": "developmentBoards",
-            "type": "Array<DevelopmentBoardResponse>"
+            "name": "flags",
+            "baseName": "flags",
+            "type": "Array<GetFeatureFlagsResponseAllOfFlags>"
         }    ];
 
     static getAttributeTypeMap() {
-        return DevelopmentBoardsResponse.attributeTypeMap;
+        return GetFeatureFlagsResponse.attributeTypeMap;
     }
 }
 

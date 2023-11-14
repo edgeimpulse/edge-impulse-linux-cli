@@ -11,6 +11,7 @@
  */
 
 import { AkidaEdgeLearningConfig } from './akidaEdgeLearningConfig';
+import { AnomalyCapacity } from './anomalyCapacity';
 import { AugmentationPolicyImageEnum } from './augmentationPolicyImageEnum';
 import { AugmentationPolicySpectrogram } from './augmentationPolicySpectrogram';
 import { DependencyData } from './dependencyData';
@@ -63,6 +64,14 @@ export class KerasResponse {
     */
     'learningRate': number;
     /**
+    * The batch size used during training.
+    */
+    'batchSize'?: number;
+    /**
+    * The default batch size if a value is not configured.
+    */
+    'defaultBatchSize': number;
+    /**
     * Python-formatted tuple of input axes
     */
     'shape': string;
@@ -102,6 +111,7 @@ export class KerasResponse {
     * Training parameters, this list depends on the list of parameters that the model exposes.
     */
     'customParameters'?: { [key: string]: string; };
+    'anomalyCapacity'?: AnomalyCapacity;
 
     static discriminator: string | undefined = undefined;
 
@@ -172,6 +182,16 @@ export class KerasResponse {
             "type": "number"
         },
         {
+            "name": "batchSize",
+            "baseName": "batchSize",
+            "type": "number"
+        },
+        {
+            "name": "defaultBatchSize",
+            "baseName": "defaultBatchSize",
+            "type": "number"
+        },
+        {
             "name": "shape",
             "baseName": "shape",
             "type": "string"
@@ -235,6 +255,11 @@ export class KerasResponse {
             "name": "customParameters",
             "baseName": "customParameters",
             "type": "{ [key: string]: string; }"
+        },
+        {
+            "name": "anomalyCapacity",
+            "baseName": "anomalyCapacity",
+            "type": "AnomalyCapacity"
         }    ];
 
     static getAttributeTypeMap() {

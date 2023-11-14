@@ -12,8 +12,8 @@
 
 
 /**
-* Known feature identifiers.
+* Capacity level for visual anomaly detection. Determines which set of default configurations to use. The higher capacity, the higher number of (Gaussian) components, and the more adapted the model becomes to the original distribution
 */
 
-export type Feature = 'signup-thank-you-page';
-export const FeatureValues: string[] = ['signup-thank-you-page'];
+export type AnomalyCapacity = 'low' | 'medium' | 'high';
+export const AnomalyCapacityValues: string[] = ['low', 'medium', 'high'];

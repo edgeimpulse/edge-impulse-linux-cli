@@ -10,22 +10,33 @@
  * Do not edit the class manually.
  */
 
-import { DevelopmentBoardResponse } from './developmentBoardResponse';
 
-export class DevelopmentBoardsResponseAllOf {
-    'developmentBoards': Array<DevelopmentBoardResponse>;
+export class WhitelabelAllLearningBlocks {
+    /**
+    * The name of the learning block
+    */
+    'title': string;
+    /**
+    * The learning block type
+    */
+    'type': string;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "developmentBoards",
-            "baseName": "developmentBoards",
-            "type": "Array<DevelopmentBoardResponse>"
+            "name": "title",
+            "baseName": "title",
+            "type": "string"
+        },
+        {
+            "name": "type",
+            "baseName": "type",
+            "type": "string"
         }    ];
 
     static getAttributeTypeMap() {
-        return DevelopmentBoardsResponseAllOf.attributeTypeMap;
+        return WhitelabelAllLearningBlocks.attributeTypeMap;
     }
 }
 

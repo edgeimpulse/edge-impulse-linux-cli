@@ -10,22 +10,33 @@
  * Do not edit the class manually.
  */
 
-import { DevelopmentBoardResponse } from './developmentBoardResponse';
 
-export class DevelopmentBoardsResponseAllOf {
-    'developmentBoards': Array<DevelopmentBoardResponse>;
+export class DevelopmentBoardRequest {
+    'name': string;
+    'image': string;
+    'docsUrl': string;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "developmentBoards",
-            "baseName": "developmentBoards",
-            "type": "Array<DevelopmentBoardResponse>"
+            "name": "name",
+            "baseName": "name",
+            "type": "string"
+        },
+        {
+            "name": "image",
+            "baseName": "image",
+            "type": "string"
+        },
+        {
+            "name": "docsUrl",
+            "baseName": "docsUrl",
+            "type": "string"
         }    ];
 
     static getAttributeTypeMap() {
-        return DevelopmentBoardsResponseAllOf.attributeTypeMap;
+        return DevelopmentBoardRequest.attributeTypeMap;
     }
 }
 

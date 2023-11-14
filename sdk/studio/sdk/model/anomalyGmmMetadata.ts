@@ -10,11 +10,10 @@
  * Do not edit the class manually.
  */
 
+import { AnomalyGmmMetadataAllOf } from './anomalyGmmMetadataAllOf';
 import { GenericApiResponse } from './genericApiResponse';
-import { VerifyOrganizationBucketResponseAllOf } from './verifyOrganizationBucketResponseAllOf';
-import { VerifyOrganizationBucketResponseAllOfFiles } from './verifyOrganizationBucketResponseAllOfFiles';
 
-export class VerifyOrganizationBucketResponse {
+export class AnomalyGmmMetadata {
     /**
     * Whether the operation succeeded
     */
@@ -24,17 +23,17 @@ export class VerifyOrganizationBucketResponse {
     */
     'error'?: string;
     /**
-    * 20 random files from the bucket.
+    * 2D array of shape (n, m)
     */
-    'files': Array<VerifyOrganizationBucketResponseAllOfFiles>;
+    'means': Array<Array<number>>;
     /**
-    * Indicates whether there are any info.labels files in this bucket. If so, those are used for category/labels.
+    * 3D array of shape (n, m, m)
     */
-    'hasInfoLabelsFile': boolean;
+    'covariances': Array<Array<Array<number>>>;
     /**
-    * A signed URL that allows you to PUT an item, to check whether CORS headers are set up correctly for this bucket.
+    * 1D array of shape (n,)
     */
-    'signedUrl': string;
+    'weights': Array<number>;
 
     static discriminator: string | undefined = undefined;
 
@@ -50,23 +49,23 @@ export class VerifyOrganizationBucketResponse {
             "type": "string"
         },
         {
-            "name": "files",
-            "baseName": "files",
-            "type": "Array<VerifyOrganizationBucketResponseAllOfFiles>"
+            "name": "means",
+            "baseName": "means",
+            "type": "Array<Array<number>>"
         },
         {
-            "name": "hasInfoLabelsFile",
-            "baseName": "hasInfoLabelsFile",
-            "type": "boolean"
+            "name": "covariances",
+            "baseName": "covariances",
+            "type": "Array<Array<Array<number>>>"
         },
         {
-            "name": "signedUrl",
-            "baseName": "signedUrl",
-            "type": "string"
+            "name": "weights",
+            "baseName": "weights",
+            "type": "Array<number>"
         }    ];
 
     static getAttributeTypeMap() {
-        return VerifyOrganizationBucketResponse.attributeTypeMap;
+        return AnomalyGmmMetadata.attributeTypeMap;
     }
 }
 

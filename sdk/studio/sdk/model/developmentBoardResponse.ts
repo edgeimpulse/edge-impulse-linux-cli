@@ -11,53 +11,38 @@
  */
 
 
-/**
-* Only fields set in this object will be updated.
-*/
-export class UpdateUserRequest {
-    /**
-    * New full name
-    */
-    'name'?: string;
-    /**
-    * New job title
-    */
-    'jobTitle'?: string;
-    /**
-    * New company name
-    */
-    'companyName'?: string;
-    /**
-    * List of user experiments
-    */
-    'experiments'?: Array<string>;
+export class DevelopmentBoardResponse {
+    'id': number;
+    'name': string;
+    'image': string;
+    'docsUrl': string;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
+        {
+            "name": "id",
+            "baseName": "id",
+            "type": "number"
+        },
         {
             "name": "name",
             "baseName": "name",
             "type": "string"
         },
         {
-            "name": "jobTitle",
-            "baseName": "jobTitle",
+            "name": "image",
+            "baseName": "image",
             "type": "string"
         },
         {
-            "name": "companyName",
-            "baseName": "companyName",
+            "name": "docsUrl",
+            "baseName": "docsUrl",
             "type": "string"
-        },
-        {
-            "name": "experiments",
-            "baseName": "experiments",
-            "type": "Array<string>"
         }    ];
 
     static getAttributeTypeMap() {
-        return UpdateUserRequest.attributeTypeMap;
+        return DevelopmentBoardResponse.attributeTypeMap;
     }
 }
 

@@ -11,9 +11,6 @@
  */
 
 
-/**
-* Known feature identifiers.
-*/
 
-export type Feature = 'signup-thank-you-page';
-export const FeatureValues: string[] = ['signup-thank-you-page'];
+export type KerasModelVariantEnum = 'int8' | 'float32' | 'akida';
+export const KerasModelVariantEnumValues: string[] = ['int8', 'float32', 'akida'];

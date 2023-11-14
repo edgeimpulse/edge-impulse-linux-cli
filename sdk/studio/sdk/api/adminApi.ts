@@ -28,7 +28,6 @@ import { AdminCreateOrganizationRequest } from '../model/adminCreateOrganization
 import { AdminGetDataMigrationResponse } from '../model/adminGetDataMigrationResponse';
 import { AdminGetDataMigrationsResponse } from '../model/adminGetDataMigrationsResponse';
 import { AdminGetDisallowedEmailDomainsResponse } from '../model/adminGetDisallowedEmailDomainsResponse';
-import { AdminGetFeatureFlagsResponse } from '../model/adminGetFeatureFlagsResponse';
 import { AdminGetMetricsResponse } from '../model/adminGetMetricsResponse';
 import { AdminGetOrganizationsResponse } from '../model/adminGetOrganizationsResponse';
 import { AdminGetSSODomainIdPsResponse } from '../model/adminGetSSODomainIdPsResponse';
@@ -51,6 +50,7 @@ import { Feature } from '../model/feature';
 import { FindUserResponse } from '../model/findUserResponse';
 import { GenericApiResponse } from '../model/genericApiResponse';
 import { GetEmailVerificationCodeResponse } from '../model/getEmailVerificationCodeResponse';
+import { GetFeatureFlagsResponse } from '../model/getFeatureFlagsResponse';
 import { JobDetailsResponse } from '../model/jobDetailsResponse';
 import { JobLogsResponse } from '../model/jobLogsResponse';
 import { JobMetricsResponse } from '../model/jobMetricsResponse';
@@ -2031,7 +2031,7 @@ export class AdminApi {
      * Admin-only API to get all feature flags.
      * @summary Get all feature flags
      */
-    public async adminGetFeatureFlags (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<AdminGetFeatureFlagsResponse> {
+    public async adminGetFeatureFlags (options: {headers: {[name: string]: string}} = {headers: {}}) : Promise<GetFeatureFlagsResponse> {
         const localVarPath = this.basePath + '/api/admin/infra/featureFlags';
         let localVarQueryParameters: any = {};
         let localVarHeaderParams: any = (<any>Object).assign({
@@ -2077,12 +2077,12 @@ export class AdminApi {
                     localVarRequestOptions.form = localVarFormParams;
                 }
             }
-            return new Promise<AdminGetFeatureFlagsResponse>((resolve, reject) => {
+            return new Promise<GetFeatureFlagsResponse>((resolve, reject) => {
                 localVarRequest(localVarRequestOptions, (error, response, body) => {
                     if (error) {
                         reject(error);
                     } else {
-                        body = ObjectSerializer.deserialize(body, "AdminGetFeatureFlagsResponse");
+                        body = ObjectSerializer.deserialize(body, "GetFeatureFlagsResponse");
 
                         const errString = `Failed to call "${localVarPath}", returned ${response.statusCode}: ` + response.body;
 

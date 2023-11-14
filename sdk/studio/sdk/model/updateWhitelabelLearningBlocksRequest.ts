@@ -10,31 +10,24 @@
  * Do not edit the class manually.
  */
 
-import { Feature } from './feature';
 
-export class AdminGetFeatureFlagsResponseAllOfFlags {
-    'feature': Feature;
+export class UpdateWhitelabelLearningBlocksRequest {
     /**
-    * Whether the feature is enabled.
+    * The types of the learning blocks that are enabled for this whitelabel.
     */
-    'enabled': boolean;
+    'learningBlocks'?: Array<string>;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "feature",
-            "baseName": "feature",
-            "type": "Feature"
-        },
-        {
-            "name": "enabled",
-            "baseName": "enabled",
-            "type": "boolean"
+            "name": "learningBlocks",
+            "baseName": "learningBlocks",
+            "type": "Array<string>"
         }    ];
 
     static getAttributeTypeMap() {
-        return AdminGetFeatureFlagsResponseAllOfFlags.attributeTypeMap;
+        return UpdateWhitelabelLearningBlocksRequest.attributeTypeMap;
     }
 }
 

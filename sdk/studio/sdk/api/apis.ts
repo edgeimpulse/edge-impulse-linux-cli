@@ -20,6 +20,8 @@ export * from './emailVerificationApi';
 import { EmailVerificationApi } from './emailVerificationApi';
 export * from './exportApi';
 import { ExportApi } from './exportApi';
+export * from './featureFlagsApi';
+import { FeatureFlagsApi } from './featureFlagsApi';
 export * from './healthApi';
 import { HealthApi } from './healthApi';
 export * from './impulseApi';
@@ -102,4 +104,4 @@ export interface RequestDetailedFile {
 
 export type RequestFile = RequestDetailedFile;
 
-export const APIS = [AdminApi, AllowsReadOnlyApi, AuthApi, CDNApi, ClassifyApi, ContentDispositionInlineApi, DSPApi, DeploymentApi, DevicesApi, EmailVerificationApi, ExportApi, HealthApi, ImpulseApi, JobsApi, LearnApi, LoginApi, MetricsApi, OptimizationApi, OrganizationAllowDeveloperProfileApi, OrganizationAllowGuestAccessApi, OrganizationBlocksApi, OrganizationCreateProjectApi, OrganizationDataApi, OrganizationDataCampaignsApi, OrganizationJobsApi, OrganizationPipelinesApi, OrganizationPortalsApi, OrganizationRequiresAdminApi, OrganizationRequiresWhitelabelAdminApi, OrganizationsApi, PerformanceCalibrationApi, ProjectRequiresAdminApi, ProjectsApi, RawDataApi, RequiresSudoApi, RequiresThirdPartyAuthApiKeyApi, SupportsRangeApi, ThemesApi, ThirdPartyAuthApi, UploadPortalApi, UserApi, WhitelabelsApi];
+export const APIS = [AdminApi, AllowsReadOnlyApi, AuthApi, CDNApi, ClassifyApi, ContentDispositionInlineApi, DSPApi, DeploymentApi, DevicesApi, EmailVerificationApi, ExportApi, FeatureFlagsApi, HealthApi, ImpulseApi, JobsApi, LearnApi, LoginApi, MetricsApi, OptimizationApi, OrganizationAllowDeveloperProfileApi, OrganizationAllowGuestAccessApi, OrganizationBlocksApi, OrganizationCreateProjectApi, OrganizationDataApi, OrganizationDataCampaignsApi, OrganizationJobsApi, OrganizationPipelinesApi, OrganizationPortalsApi, OrganizationRequiresAdminApi, OrganizationRequiresWhitelabelAdminApi, OrganizationsApi, PerformanceCalibrationApi, ProjectRequiresAdminApi, ProjectsApi, RawDataApi, RequiresSudoApi, RequiresThirdPartyAuthApiKeyApi, SupportsRangeApi, ThemesApi, ThirdPartyAuthApi, UploadPortalApi, UserApi, WhitelabelsApi];

@@ -10,22 +10,25 @@
  * Do not edit the class manually.
  */
 
-import { DevelopmentBoardResponse } from './developmentBoardResponse';
+import { GetFeatureFlagsResponseAllOfFlags } from './getFeatureFlagsResponseAllOfFlags';
 
-export class DevelopmentBoardsResponseAllOf {
-    'developmentBoards': Array<DevelopmentBoardResponse>;
+export class GetFeatureFlagsResponseAllOf {
+    /**
+    * List of feature flags.
+    */
+    'flags': Array<GetFeatureFlagsResponseAllOfFlags>;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "developmentBoards",
-            "baseName": "developmentBoards",
-            "type": "Array<DevelopmentBoardResponse>"
+            "name": "flags",
+            "baseName": "flags",
+            "type": "Array<GetFeatureFlagsResponseAllOfFlags>"
         }    ];
 
     static getAttributeTypeMap() {
-        return DevelopmentBoardsResponseAllOf.attributeTypeMap;
+        return GetFeatureFlagsResponseAllOf.attributeTypeMap;
     }
 }
 

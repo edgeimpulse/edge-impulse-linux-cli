@@ -11,32 +11,38 @@
  */
 
 
-export class DevelopmentBoard {
+export class OrganizationCreateProjectCreatedByUser {
+    'id': number;
     'name': string;
-    'image': string;
-    'docsUrl': string;
+    'username': string;
+    'photo'?: string;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
+        {
+            "name": "id",
+            "baseName": "id",
+            "type": "number"
+        },
         {
             "name": "name",
             "baseName": "name",
             "type": "string"
         },
         {
-            "name": "image",
-            "baseName": "image",
+            "name": "username",
+            "baseName": "username",
             "type": "string"
         },
         {
-            "name": "docsUrl",
-            "baseName": "docsUrl",
+            "name": "photo",
+            "baseName": "photo",
             "type": "string"
         }    ];
 
     static getAttributeTypeMap() {
-        return DevelopmentBoard.attributeTypeMap;
+        return OrganizationCreateProjectCreatedByUser.attributeTypeMap;
     }
 }
 
