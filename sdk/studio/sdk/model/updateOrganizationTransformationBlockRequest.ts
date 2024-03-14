@@ -11,6 +11,7 @@
  */
 
 import { TransformationBlockAdditionalMountPoint } from './transformationBlockAdditionalMountPoint';
+import { TransformationJobOperatesOnEnum } from './transformationJobOperatesOnEnum';
 
 export class UpdateOrganizationTransformationBlockRequest {
     'name'?: string;
@@ -26,12 +27,25 @@ export class UpdateOrganizationTransformationBlockRequest {
     'limitsCpu'?: number;
     'limitsMemory'?: number;
     'additionalMountPoints'?: Array<TransformationBlockAdditionalMountPoint>;
-    'operatesOn'?: UpdateOrganizationTransformationBlockRequestOperatesOnEnum;
+    'operatesOn'?: TransformationJobOperatesOnEnum;
     'allowExtraCliArguments'?: boolean;
     /**
     * List of parameters, spec\'ed according to https://docs.edgeimpulse.com/docs/tips-and-tricks/adding-parameters-to-custom-blocks
     */
     'parameters'?: Array<object>;
+    /**
+    * 15m for 15 minutes, 2h for 2 hours, 1d for 1 day. If not set, the default is 8 hours.
+    */
+    'maxRunningTimeStr'?: string;
+    'isPublic'?: boolean;
+    /**
+    * URL to the source code of this custom learn block.
+    */
+    'repositoryUrl'?: string;
+    /**
+    * Whether to show this block in \'Data sources\'. Only applies for standalone blocks.
+    */
+    'showInDataSources'?: boolean;
 
     static discriminator: string | undefined = undefined;
 
@@ -89,7 +103,7 @@ export class UpdateOrganizationTransformationBlockRequest {
         {
             "name": "operatesOn",
             "baseName": "operatesOn",
-            "type": "UpdateOrganizationTransformationBlockRequestOperatesOnEnum"
+            "type": "TransformationJobOperatesOnEnum"
         },
         {
             "name": "allowExtraCliArguments",
@@ -100,6 +114,26 @@ export class UpdateOrganizationTransformationBlockRequest {
             "name": "parameters",
             "baseName": "parameters",
             "type": "Array<object>"
+        },
+        {
+            "name": "maxRunningTimeStr",
+            "baseName": "maxRunningTimeStr",
+            "type": "string"
+        },
+        {
+            "name": "isPublic",
+            "baseName": "isPublic",
+            "type": "boolean"
+        },
+        {
+            "name": "repositoryUrl",
+            "baseName": "repositoryUrl",
+            "type": "string"
+        },
+        {
+            "name": "showInDataSources",
+            "baseName": "showInDataSources",
+            "type": "boolean"
         }    ];
 
     static getAttributeTypeMap() {
@@ -107,6 +141,3 @@ export class UpdateOrganizationTransformationBlockRequest {
     }
 }
 
-
-export type UpdateOrganizationTransformationBlockRequestOperatesOnEnum = 'file' | 'dataitem' | 'standalone';
-export const UpdateOrganizationTransformationBlockRequestOperatesOnEnumValues: string[] = ['file', 'dataitem', 'standalone'];

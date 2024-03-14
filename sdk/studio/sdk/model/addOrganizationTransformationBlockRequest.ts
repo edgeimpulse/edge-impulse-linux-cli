@@ -32,6 +32,19 @@ export class AddOrganizationTransformationBlockRequest {
     * List of parameters, spec\'ed according to https://docs.edgeimpulse.com/docs/tips-and-tricks/adding-parameters-to-custom-blocks
     */
     'parameters'?: Array<object>;
+    /**
+    * 15m for 15 minutes, 2h for 2 hours, 1d for 1 day. If not set, the default is 8 hours.
+    */
+    'maxRunningTimeStr'?: string;
+    'isPublic'?: boolean;
+    /**
+    * URL to the source code of this custom learn block.
+    */
+    'repositoryUrl'?: string;
+    /**
+    * Whether to show this block in \'Data sources\'. Only applies for standalone blocks. (defaults to \'true\' when not provided)
+    */
+    'showInDataSources'?: boolean;
 
     static discriminator: string | undefined = undefined;
 
@@ -100,6 +113,26 @@ export class AddOrganizationTransformationBlockRequest {
             "name": "parameters",
             "baseName": "parameters",
             "type": "Array<object>"
+        },
+        {
+            "name": "maxRunningTimeStr",
+            "baseName": "maxRunningTimeStr",
+            "type": "string"
+        },
+        {
+            "name": "isPublic",
+            "baseName": "isPublic",
+            "type": "boolean"
+        },
+        {
+            "name": "repositoryUrl",
+            "baseName": "repositoryUrl",
+            "type": "string"
+        },
+        {
+            "name": "showInDataSources",
+            "baseName": "showInDataSources",
+            "type": "boolean"
         }    ];
 
     static getAttributeTypeMap() {
@@ -108,5 +141,5 @@ export class AddOrganizationTransformationBlockRequest {
 }
 
 
-export type AddOrganizationTransformationBlockRequestOperatesOnEnum = 'file' | 'dataitem' | 'standalone';
-export const AddOrganizationTransformationBlockRequestOperatesOnEnumValues: string[] = ['file', 'dataitem', 'standalone'];
+export type AddOrganizationTransformationBlockRequestOperatesOnEnum = 'file' | 'directory' | 'dataitem' | 'standalone';
+export const AddOrganizationTransformationBlockRequestOperatesOnEnumValues: string[] = ['file', 'directory', 'dataitem', 'standalone'];

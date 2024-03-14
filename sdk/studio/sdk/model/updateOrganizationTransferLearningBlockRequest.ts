@@ -10,6 +10,7 @@
  * Do not edit the class manually.
  */
 
+import { BlockDisplayCategory } from './blockDisplayCategory';
 import { ImageInputScaling } from './imageInputScaling';
 import { ObjectDetectionLastLayer } from './objectDetectionLastLayer';
 import { OrganizationTransferLearningOperatesOn } from './organizationTransferLearningOperatesOn';
@@ -30,6 +31,10 @@ export class UpdateOrganizationTransferLearningBlockRequest {
     */
     'isPublicForDevices'?: Array<string>;
     /**
+    * Whether this block is publicly available to Edge Impulse only to enterprise users
+    */
+    'isPublicEnterpriseOnly'?: boolean;
+    /**
     * URL to the source code of this custom learn block.
     */
     'repositoryUrl'?: string;
@@ -42,6 +47,7 @@ export class UpdateOrganizationTransferLearningBlockRequest {
     * If set, requires this block to be scheduled on GPU.
     */
     'indRequiresGpu'?: boolean;
+    'displayCategory'?: BlockDisplayCategory;
 
     static discriminator: string | undefined = undefined;
 
@@ -87,6 +93,11 @@ export class UpdateOrganizationTransferLearningBlockRequest {
             "type": "Array<string>"
         },
         {
+            "name": "isPublicEnterpriseOnly",
+            "baseName": "isPublicEnterpriseOnly",
+            "type": "boolean"
+        },
+        {
             "name": "repositoryUrl",
             "baseName": "repositoryUrl",
             "type": "string"
@@ -105,6 +116,11 @@ export class UpdateOrganizationTransferLearningBlockRequest {
             "name": "indRequiresGpu",
             "baseName": "indRequiresGpu",
             "type": "boolean"
+        },
+        {
+            "name": "displayCategory",
+            "baseName": "displayCategory",
+            "type": "BlockDisplayCategory"
         }    ];
 
     static getAttributeTypeMap() {

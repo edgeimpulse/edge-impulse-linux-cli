@@ -64,6 +64,12 @@ window.WebServer = async () => {
 
         console.log('classification', opts.result, opts.timeMs);
 
+        for (let bx of Array.from(els.cameraContainer.querySelectorAll('.bounding-box-container'))) {
+            bx.parentNode?.removeChild(bx);
+        }
+
+        els.imageClassify.row.style.display = 'none';
+
         if (result.classification) {
             if (isFirstClassification) {
                 for (let ix = 0; ix < Object.keys(result.classification).length; ix++) {
@@ -73,6 +79,14 @@ window.WebServer = async () => {
                     th.scope = 'col';
                     th.classList.add('px-0', 'text-center');
                     th.textContent = th.title = key;
+                    els.resultsThead.appendChild(th);
+                }
+
+                if (result.visual_anomaly_grid) {
+                    let th = document.createElement('th');
+                    th.scope = 'col';
+                    th.classList.add('px-0', 'text-center');
+                    th.textContent = th.title = 'anomaly';
                     els.resultsThead.appendChild(th);
                 }
 
@@ -91,6 +105,13 @@ window.WebServer = async () => {
                 }
             }
 
+            // both visual AD and we have at least 1 anomaly
+            let isVisualAnomaly = false;
+            if (result.visual_anomaly_grid && result.visual_anomaly_grid.length > 0) {
+                conclusion = 'anomaly (' + (result.visual_anomaly_max || 0).toFixed(2) + ')';
+                isVisualAnomaly = true;
+            }
+
             let tr = document.createElement('tr');
             let td1 = document.createElement('td');
             td1.textContent = (++inferenceIx).toString();
@@ -99,11 +120,21 @@ window.WebServer = async () => {
                 let td = document.createElement('td');
                 td.classList.add('text-center');
                 td.textContent = result.classification[k].toFixed(2);
-                if (result.classification[k] === highest) {
+                if (result.classification[k] === highest && !isVisualAnomaly) {
                     td.style.fontWeight = 600;
                 }
                 tr.appendChild(td);
             }
+            if (result.visual_anomaly_grid) {
+                let td = document.createElement('td');
+                td.classList.add('text-center');
+                td.textContent = (result.visual_anomaly_max || 0).toFixed(2);
+                if (isVisualAnomaly) {
+                    td.style.fontWeight = 600;
+                }
+                tr.appendChild(td);
+            }
+
             tr.classList.add('active');
             setTimeout(() => {
                 tr.classList.remove('active');
@@ -122,11 +153,7 @@ window.WebServer = async () => {
 
             els.imageClassify.text.textContent = conclusion;
         }
-        else {
-            for (let bx of Array.from(els.cameraContainer.querySelectorAll('.bounding-box-container'))) {
-                bx.parentNode?.removeChild(bx);
-            }
-
+        if (result.bounding_boxes) {
             let factor = els.cameraImg.naturalHeight / els.cameraImg.clientHeight;
 
             for (let b of result.bounding_boxes) {
@@ -179,8 +206,41 @@ window.WebServer = async () => {
 
                 els.cameraContainer.appendChild(el);
             }
+        }
+        if (result.visual_anomaly_grid) {
+            let factor = els.cameraImg.naturalHeight / els.cameraImg.clientHeight;
 
-            els.imageClassify.row.style.display = 'none';
+            for (let b of result.visual_anomaly_grid) {
+                let bb = {
+                    x: b.x / factor,
+                    y: b.y / factor,
+                    width: b.width / factor,
+                    height: b.height / factor,
+                    label: b.label,
+                    value: b.value
+                };
+
+                let el = document.createElement('div');
+                el.classList.add('bounding-box-container');
+                el.style.position = 'absolute';
+                el.style.background = 'rgba(255, 0, 0, 0.5)';
+                el.style.width = (bb.width) + 'px';
+                el.style.height = (bb.height) + 'px';
+                el.style.left = (bb.x) + 'px';
+                el.style.top = (bb.y) + 'px';
+
+                let score = document.createElement('div');
+                score.style.color = 'white';
+                score.textContent = bb.value.toFixed(2);
+                el.appendChild(score);
+
+                // Center align the score
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = 'center';
+
+                els.cameraContainer.appendChild(el);
+            }
         }
     });
 };

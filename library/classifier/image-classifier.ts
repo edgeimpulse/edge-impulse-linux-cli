@@ -1,7 +1,8 @@
 import { EventEmitter } from "tsee";
 import { LinuxImpulseRunner, ModelInformation, RunnerClassifyResponseSuccess } from "./linux-impulse-runner";
-import sharp from 'sharp';
+import sharp, { FitEnum } from 'sharp';
 import { ICamera } from "../sensors/icamera";
+import fs from 'fs';
 
 export class ImageClassifier extends EventEmitter<{
     result: (result: RunnerClassifyResponseSuccess, timeMs: number, imgAsJpeg: Buffer) => void
@@ -41,7 +42,7 @@ export class ImageClassifier extends EventEmitter<{
         this._camera.on('snapshot', async (data) => {
             // are we looking at video? Then we always add to the frameQueue
             if (model.modelParameters.image_input_frames > 1) {
-                let resized = await this.resizeImage(model, data);
+                let resized = await ImageClassifier.resizeImage(model, data);
                 frameQueue.push(resized);
             }
 
@@ -64,7 +65,7 @@ export class ImageClassifier extends EventEmitter<{
                     frameQueue = frameQueue.slice(frameQueue.length - model.modelParameters.image_input_frames);
                 }
                 else {
-                    let resized = await this.resizeImage(model, data);
+                    let resized = await ImageClassifier.resizeImage(model, data);
                     frameQueue = [ resized ];
                 }
 
@@ -116,7 +117,15 @@ export class ImageClassifier extends EventEmitter<{
         ]);
     }
 
-    private async resizeImage(model: ModelInformation, data: Buffer) {
+    static async resizeImage(model: ModelInformation, data: Buffer, fitMethod?: keyof FitEnum) {
+        const metadata = await sharp(data).metadata();
+        if (!metadata.width) {
+            throw new Error('ImageClassifier.resize: cannot determine width of image');
+        }
+        if (!metadata.height) {
+            throw new Error('ImageClassifier.resize: cannot determine height of image');
+        }
+
         // resize image and add to frameQueue
         let img;
         let features = [];
@@ -124,8 +133,8 @@ export class ImageClassifier extends EventEmitter<{
             img = sharp(data).resize({
                 height: model.modelParameters.image_input_height,
                 width: model.modelParameters.image_input_width,
-
-            });
+                fit: fitMethod,
+            }).removeAlpha();
             let buffer = await img.raw().toBuffer();
 
             for (let ix = 0; ix < buffer.length; ix += 3) {
@@ -139,7 +148,8 @@ export class ImageClassifier extends EventEmitter<{
         else {
             img = sharp(data).resize({
                 height: model.modelParameters.image_input_height,
-                width: model.modelParameters.image_input_width
+                width: model.modelParameters.image_input_width,
+                fit: fitMethod,
             }).toColourspace('b-w');
             let buffer = await img.raw().toBuffer();
 
@@ -149,9 +159,16 @@ export class ImageClassifier extends EventEmitter<{
             }
         }
 
+        // await fs.promises.writeFile('debug.png', await img.png().toBuffer());
+        // await fs.promises.writeFile('features.txt', features.map(x => '0x' + x.toString(16)).join(', '), 'utf-8');
+
         return {
             img: img,
-            features: features
+            features: features,
+            originalWidth: metadata.width,
+            originalHeight: metadata.height,
+            newWidth: model.modelParameters.image_input_width,
+            newHeight: model.modelParameters.image_input_height,
         };
     }
 }

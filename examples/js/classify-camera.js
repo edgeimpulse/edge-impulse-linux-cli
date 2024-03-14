@@ -1,4 +1,4 @@
-const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = require('../../build/library');
+const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap, RunnerHelloHasAnomaly } = require('../../build/library');
 
 // tslint:disable-next-line: no-floating-promises
 (async () => {
@@ -31,12 +31,17 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
         let runner = new LinuxImpulseRunner(argModelFile);
         let model = await runner.init();
 
+        let labels = model.modelParameters.labels;
+        if (model.modelParameters.has_anomaly === RunnerHelloHasAnomaly.VisualGMM) {
+            labels.push('anomaly');
+        }
+
         console.log('Starting the image classifier for',
             model.project.owner + ' / ' + model.project.name, '(v' + model.project.deploy_version + ')');
         console.log('Parameters',
             'image size', model.modelParameters.image_input_width + 'x' + model.modelParameters.image_input_height + ' px (' +
                 model.modelParameters.image_channel_count + ' channels)',
-            'classes', model.modelParameters.labels);
+            'classes', labels);
 
         // select a camera... you can implement this interface for other targets :-)
         let camera;
@@ -90,8 +95,11 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } = requ
                 }
                 console.log('classification', timeMs + 'ms.', c);
             }
-            else if (ev.result.bounding_boxes) {
+            if (ev.result.bounding_boxes) {
                 console.log('boundingBoxes', timeMs + 'ms.', JSON.stringify(ev.result.bounding_boxes));
+            }
+            if (ev.result.visual_anomaly_grid) {
+                console.log('visual anomalies', timeMs + 'ms.', JSON.stringify(ev.result.visual_anomaly_grid));
             }
         });
     }

@@ -10,6 +10,8 @@
  * Do not edit the class manually.
  */
 
+import { BlockDisplayCategory } from './blockDisplayCategory';
+import { CreatedUpdatedByUser } from './createdUpdatedByUser';
 import { ImageInputScaling } from './imageInputScaling';
 import { ObjectDetectionLastLayer } from './objectDetectionLastLayer';
 import { OrganizationTransferLearningOperatesOn } from './organizationTransferLearningOperatesOn';
@@ -20,6 +22,9 @@ export class OrganizationTransferLearningBlock {
     'dockerContainer': string;
     'dockerContainerManagedByEdgeImpulse': boolean;
     'created': Date;
+    'createdByUser'?: CreatedUpdatedByUser;
+    'lastUpdated'?: Date;
+    'lastUpdatedByUser'?: CreatedUpdatedByUser;
     'description': string;
     'userId'?: number;
     'userName'?: string;
@@ -35,6 +40,14 @@ export class OrganizationTransferLearningBlock {
     */
     'isPublicForDevices': Array<string>;
     /**
+    * Whether this block is publicly available to Edge Impulse only to enterprise users
+    */
+    'isPublicEnterpriseOnly': boolean;
+    /**
+    * Whether this block is available to Edge Impulse only to enterprise users
+    */
+    'enterpriseOnly'?: boolean;
+    /**
     * URL to the source code of this custom learn block.
     */
     'repositoryUrl'?: string;
@@ -47,6 +60,8 @@ export class OrganizationTransferLearningBlock {
     * If set, requires this block to be scheduled on GPU.
     */
     'indRequiresGpu': boolean;
+    'sourceCodeAvailable': boolean;
+    'displayCategory'?: BlockDisplayCategory;
 
     static discriminator: string | undefined = undefined;
 
@@ -75,6 +90,21 @@ export class OrganizationTransferLearningBlock {
             "name": "created",
             "baseName": "created",
             "type": "Date"
+        },
+        {
+            "name": "createdByUser",
+            "baseName": "createdByUser",
+            "type": "CreatedUpdatedByUser"
+        },
+        {
+            "name": "lastUpdated",
+            "baseName": "lastUpdated",
+            "type": "Date"
+        },
+        {
+            "name": "lastUpdatedByUser",
+            "baseName": "lastUpdatedByUser",
+            "type": "CreatedUpdatedByUser"
         },
         {
             "name": "description",
@@ -117,6 +147,16 @@ export class OrganizationTransferLearningBlock {
             "type": "Array<string>"
         },
         {
+            "name": "isPublicEnterpriseOnly",
+            "baseName": "isPublicEnterpriseOnly",
+            "type": "boolean"
+        },
+        {
+            "name": "enterpriseOnly",
+            "baseName": "enterpriseOnly",
+            "type": "boolean"
+        },
+        {
             "name": "repositoryUrl",
             "baseName": "repositoryUrl",
             "type": "string"
@@ -135,6 +175,16 @@ export class OrganizationTransferLearningBlock {
             "name": "indRequiresGpu",
             "baseName": "indRequiresGpu",
             "type": "boolean"
+        },
+        {
+            "name": "sourceCodeAvailable",
+            "baseName": "sourceCodeAvailable",
+            "type": "boolean"
+        },
+        {
+            "name": "displayCategory",
+            "baseName": "displayCategory",
+            "type": "BlockDisplayCategory"
         }    ];
 
     static getAttributeTypeMap() {

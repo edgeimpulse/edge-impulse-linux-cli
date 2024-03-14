@@ -4157,3 +4157,23 @@ video {
 }
 
 /* end animate.css */
+
+.inference-server-view-title-col,
+.inference-server-view-title-col h1 {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.card-sub-header {
+    margin-left: -1.7rem;
+    margin-right: -1.7rem;
+    margin-bottom: 0.75rem;
+    margin-top: 1.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+#preview-image-container {
+    position: relative;
+}

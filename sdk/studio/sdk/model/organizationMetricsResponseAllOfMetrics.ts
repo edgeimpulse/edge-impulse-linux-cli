@@ -13,11 +13,11 @@
 
 export class OrganizationMetricsResponseAllOfMetrics {
     /**
-    * Total compute time of all organizational jobs since the creation of the organization (including organizational project jobs).
+    * Total compute time of all organizational jobs since the creation of the organization (including organizational project jobs). Compute time is the amount of computation time spent in jobs, in minutes used by an organization over a 12 month period, calculated as 1 x CPU + 3 x GPU minutes.
     */
     'totalJobsComputeTime': number;
     /**
-    * Total compute time of all jobs in the organization in the current contract (including organizational project jobs). This includes CPU and GPU compute time.
+    * Total compute time of all organizational jobs in the current contract (including organizational project jobs). Compute time is the amount of computation time spent in jobs, in minutes used by an organization over a 12 month period, calculated as 1 x CPU + 3 x GPU minutes.
     */
     'jobsComputeTimeCurrentYear': number;
     /**

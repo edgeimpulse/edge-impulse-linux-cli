@@ -15,10 +15,33 @@ type RunnerHelloRequest = {
     hello: 1;
 };
 
+export enum RunnerHelloHasAnomaly {
+    None = 0,
+    KMeans = 1,
+    GMM = 2,
+    VisualGMM = 3,
+}
+
+export enum RunnerHelloInferencingEngine {
+    None = 255,
+    Utensor = 1,
+    Tflite = 2,
+    Cubeai = 3,
+    TfliteFull = 4,
+    TensaiFlow = 5,
+    TensorRT = 6,
+    Drpai = 7,
+    TfliteTidl = 8,
+    Akida = 9,
+    Syntiant = 10,
+    OnnxTidl = 11,
+    Memryx = 12,
+}
+
 export type RunnerHelloResponseModelParameters = {
     axis_count: number;
     frequency: number;
-    has_anomaly: number;
+    has_anomaly: RunnerHelloHasAnomaly;
     input_features_count: number;
     image_input_height: number;
     image_input_width: number;
@@ -31,6 +54,7 @@ export type RunnerHelloResponseModelParameters = {
     model_type: 'classification' | 'object_detection' | 'constrained_object_detection';
     slice_size: undefined | number;
     use_continuous_mode: undefined | boolean;
+    inferencing_engine?: undefined | RunnerHelloInferencingEngine;
 };
 
 export type RunnerHelloResponseProject = {
@@ -65,6 +89,16 @@ export type RunnerClassifyResponseSuccess = {
             width: number,
             height: number,
         }[],
+        visual_anomaly_grid?: {
+            label: string,
+            value: number,
+            x: number,
+            y: number,
+            width: number,
+            height: number,
+        }[],
+        visual_anomaly_max?: number;
+        visual_anomaly_mean?: number;
         anomaly?: number;
     },
     timing: {
@@ -231,7 +265,13 @@ export class LinuxImpulseRunner {
             }, 10000);
         });
 
-        return await this.sendHello();
+        let helloResp = await this.sendHello();
+
+        if (helloResp.modelParameters.inferencing_engine === RunnerHelloInferencingEngine.TensorRT) {
+            await this.runTensorRTWarmup(helloResp.modelParameters);
+        }
+
+        return helloResp;
     }
 
     /**
@@ -279,8 +319,8 @@ export class LinuxImpulseRunner {
      * @param data An array of numbers, already formatted according to the rules in
      *             https://docs.edgeimpulse.com/docs/running-your-impulse-locally-1
      */
-    async classify(data: number[]): Promise<RunnerClassifyResponseSuccess> {
-        let resp = await this.send<RunnerClassifyRequest, RunnerClassifyResponse>({ classify: data });
+    async classify(data: number[], timeout?: number): Promise<RunnerClassifyResponseSuccess> {
+        let resp = await this.send<RunnerClassifyRequest, RunnerClassifyResponse>({ classify: data }, timeout);
         if (!resp.success) {
             throw new Error(resp.error);
         }
@@ -348,8 +388,11 @@ export class LinuxImpulseRunner {
         return data;
     }
 
-    private send<T, U>(msg: T) {
+    private send<T, U>(msg: T, timeoutArg?: number) {
+
         return new Promise<U>((resolve, reject) => {
+            let timeout = typeof timeoutArg === 'number' ? timeoutArg : 5000;
+
             if (!this._socket) {
                 console.trace('Runner is not initialized (runner.send)');
                 return reject('Runner is not initialized');
@@ -374,8 +417,8 @@ export class LinuxImpulseRunner {
             })) + '\n');
 
             setTimeout(() => {
-                reject('No response within 5 seconds');
-            }, 5000);
+                reject(`'No response within ${timeout / 1000} seconds'`);
+            }, timeout);
 
             const onExit = (code: number) => {
                 if (!this._stopped) {
@@ -403,5 +446,55 @@ export class LinuxImpulseRunner {
             /* noop */
         }
         return exists;
+    }
+
+    private async runTensorRTWarmup(params: RunnerHelloResponseModelParameters) {
+        const PREFIX = '\x1b[33m[TRT]\x1b[0m';
+
+        const spinner = [ "|", "/", "-", "\\" ];
+        let progressIv: NodeJS.Timeout | undefined;
+        try {
+            let i = 0;
+            progressIv = setInterval(() => {
+                console.log(PREFIX, 'Loading model into GPU, this can take several minutes on the first run... ' +
+                    spinner[i] + '\x1b[1A');
+                i = (i < spinner.length - 1) ? i + 1 : 0;
+            }, 1000);
+
+            let initStart = Date.now();
+
+            await this.classify(<number[]>Array.from({ length: params.input_features_count }).fill(0),
+                60 * 60 * 1000 /* 1 hour */);
+
+            let totalTime = Date.now() - initStart;
+
+            if (progressIv) {
+                clearInterval(progressIv);
+            }
+
+            console.log(PREFIX, 'Loading model into GPU, this can take several minutes on the first run... ' +
+                'OK (' + totalTime + 'ms.)');
+
+            if (totalTime > 5000) {
+                // https://stackoverflow.com/questions/20010199/how-to-determine-if-a-process-runs-inside-lxc-docker
+                if (await this.exists('/.dockerenv')) {
+                    console.log(PREFIX, '');
+                    console.log(PREFIX, 'If you run this model in Docker you can cache the GPU-optimized model for faster startup times');
+                    console.log(PREFIX, 'by mounting the', + Path.dirname(this._path), 'directory into the container.');
+                    console.log(PREFIX, 'See https://docs.edgeimpulse.com/docs/run-inference/docker#running-offline');
+                    console.log(PREFIX, '');
+                }
+            }
+        }
+        catch (ex2) {
+            const ex = <Error>ex2;
+            console.log(''); // make sure to jump to next line
+            throw ex;
+        }
+        finally {
+            if (progressIv) {
+                clearInterval(progressIv);
+            }
+        }
     }
 }

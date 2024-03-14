@@ -1,7 +1,7 @@
 import { MovingAverageFilter } from "./moving-average-filter";
 import { DataForwarder } from './data-forwarder';
 import { ips } from './get-ips';
-import { LinuxImpulseRunner, ModelInformation } from "./classifier/linux-impulse-runner";
+import { LinuxImpulseRunner, ModelInformation, RunnerHelloHasAnomaly } from "./classifier/linux-impulse-runner";
 import { AudioClassifier } from "./classifier/audio-classifier";
 import { ImageClassifier } from "./classifier/image-classifier";
 import { GStreamer } from "./sensors/gstreamer";
@@ -22,3 +22,4 @@ export function getIps() {
     return ips;
 }
 export { ModelInformation };
+export { RunnerHelloHasAnomaly };

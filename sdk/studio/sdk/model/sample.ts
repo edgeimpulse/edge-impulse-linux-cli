@@ -12,6 +12,7 @@
 
 import { BoundingBox } from './boundingBox';
 import { Sensor } from './sensor';
+import { StructuredLabel } from './structuredLabel';
 
 export class Sample {
     'id': number;
@@ -29,6 +30,10 @@ export class Sample {
     * Timestamp when the sample was created on device, or if no accurate time was known on device, the time that the file was processed by the ingestion service.
     */
     'created': Date;
+    /**
+    * Timestamp when the sample was last modified.
+    */
+    'lastModified': Date;
     'category': string;
     'coldstorageFilename': string;
     'label': string;
@@ -89,6 +94,10 @@ export class Sample {
     */
     'processingErrorString'?: string;
     /**
+    * Whether the sample is cropped from another sample (and has crop start / end info)
+    */
+    'isCropped': boolean;
+    /**
     * Sample free form associated metadata
     */
     'metadata'?: { [key: string]: string; };
@@ -112,6 +121,8 @@ export class Sample {
     * Data sample SHA 256 hash (including CBOR envelope if applicable)
     */
     'sha256Hash': string;
+    'structuredLabels'?: Array<StructuredLabel>;
+    'structuredLabelsList'?: Array<string>;
 
     static discriminator: string | undefined = undefined;
 
@@ -144,6 +155,11 @@ export class Sample {
         {
             "name": "created",
             "baseName": "created",
+            "type": "Date"
+        },
+        {
+            "name": "lastModified",
+            "baseName": "lastModified",
             "type": "Date"
         },
         {
@@ -262,6 +278,11 @@ export class Sample {
             "type": "string"
         },
         {
+            "name": "isCropped",
+            "baseName": "isCropped",
+            "type": "boolean"
+        },
+        {
             "name": "metadata",
             "baseName": "metadata",
             "type": "{ [key: string]: string; }"
@@ -290,6 +311,16 @@ export class Sample {
             "name": "sha256Hash",
             "baseName": "sha256Hash",
             "type": "string"
+        },
+        {
+            "name": "structuredLabels",
+            "baseName": "structuredLabels",
+            "type": "Array<StructuredLabel>"
+        },
+        {
+            "name": "structuredLabelsList",
+            "baseName": "structuredLabelsList",
+            "type": "Array<string>"
         }    ];
 
     static getAttributeTypeMap() {

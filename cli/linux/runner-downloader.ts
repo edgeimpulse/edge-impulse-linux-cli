@@ -63,6 +63,24 @@ export class RunnerDownloader extends EventEmitter<{
                     downloadType = 'runner-linux-aarch64-rzv2l';
                 } else if (fs.existsSync('/dev/akida0')) {
                     downloadType = 'runner-linux-aarch64-akd1000';
+                } else if (fs.existsSync('/dev/nvhost-as-gpu')) {
+
+                    downloadType = 'runner-linux-aarch64-jetson-orin';
+
+                    let firmwareModel;
+                    // using /proc/device-tree as recommended in user space.
+                    if (fs.existsSync('/proc/device-tree/model')) {
+                        firmwareModel = await fs.promises.readFile('/proc/device-tree/model', 'utf-8');
+                    }
+
+                    if (firmwareModel && firmwareModel.indexOf('NVIDIA Jetson Nano') > -1) {
+                        downloadType = 'runner-linux-aarch64-jetson-nano';
+                    }
+
+                    if (process.env.INFERENCE_CONTAINER_JETSON_NANO === '1') {
+                        downloadType = 'runner-linux-aarch64-jetson-nano';
+                    }
+
                 } else {
                     downloadType = 'runner-linux-aarch64';
                 }

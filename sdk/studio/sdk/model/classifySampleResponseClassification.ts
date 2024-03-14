@@ -15,6 +15,7 @@ import { ClassifySampleResponseClassificationDetails } from './classifySampleRes
 import { ImpulseLearnBlock } from './impulseLearnBlock';
 import { ObjectDetectionLastLayer } from './objectDetectionLastLayer';
 import { StructuredClassifyResult } from './structuredClassifyResult';
+import { StructuredLabel } from './structuredLabel';
 
 export class ClassifySampleResponseClassification {
     'learnBlock': ImpulseLearnBlock;
@@ -39,6 +40,10 @@ export class ClassifySampleResponseClassification {
     */
     'details'?: Array<ClassifySampleResponseClassificationDetails>;
     'objectDetectionLastLayer'?: ObjectDetectionLastLayer;
+    /**
+    * An array with an expected label per window.
+    */
+    'expectedLabels': Array<StructuredLabel>;
 
     static discriminator: string | undefined = undefined;
 
@@ -77,6 +82,11 @@ export class ClassifySampleResponseClassification {
             "name": "objectDetectionLastLayer",
             "baseName": "objectDetectionLastLayer",
             "type": "ObjectDetectionLastLayer"
+        },
+        {
+            "name": "expectedLabels",
+            "baseName": "expectedLabels",
+            "type": "Array<StructuredLabel>"
         }    ];
 
     static getAttributeTypeMap() {

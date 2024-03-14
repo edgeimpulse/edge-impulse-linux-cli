@@ -16,14 +16,6 @@ export class AdminOrganizationInfoResponseAllOf {
     'billable'?: boolean;
     'entitlementLimits'?: EntitlementLimits;
     /**
-    * CPU compute time in seconds of all jobs in the organization in the current contract (including organizational project jobs).
-    */
-    'cpuComputeTimeCurrentContract'?: number;
-    /**
-    * GPU compute time in seconds of all jobs in the organization in the current contract (including organizational project jobs).
-    */
-    'gpuComputeTimeCurrentContract'?: number;
-    /**
     * The date from which the compute time for the running contract is calculated.
     */
     'computeTimeCurrentContractSince'?: Date;
@@ -44,16 +36,6 @@ export class AdminOrganizationInfoResponseAllOf {
             "name": "entitlementLimits",
             "baseName": "entitlementLimits",
             "type": "EntitlementLimits"
-        },
-        {
-            "name": "cpuComputeTimeCurrentContract",
-            "baseName": "cpuComputeTimeCurrentContract",
-            "type": "number"
-        },
-        {
-            "name": "gpuComputeTimeCurrentContract",
-            "baseName": "gpuComputeTimeCurrentContract",
-            "type": "number"
         },
         {
             "name": "computeTimeCurrentContractSince",

@@ -7,11 +7,12 @@ import { spawnHelper, SpawnHelperType } from './spawn-helper';
 import { ICamera, ICameraStartOptions } from './icamera';
 import util from 'util';
 import crypto from 'crypto';
+import { split as argvSplit } from '../argv-split';
 
 const PREFIX = '\x1b[34m[GST]\x1b[0m';
 
 type GStreamerCap = {
-    type: 'video/x-raw' | 'image/jpeg' | 'nvarguscamerasrc',
+    type: 'video/x-raw' | 'image/jpeg' | 'nvarguscamerasrc' | 'pylonsrc',
     width: number,
     height: number,
     framerate: number,
@@ -25,6 +26,8 @@ type GStreamerDevice = {
     id: string,
     caps: GStreamerCap[],
 };
+
+const CUSTOM_GST_LAUNCH_COMMAND = 'custom-gst-launch-command';
 
 export class GStreamer extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
@@ -43,12 +46,17 @@ export class GStreamer extends EventEmitter<{
     private _isStarted = false;
     private _isRestarting = false;
     private _spawnHelper: SpawnHelperType;
+    private _customLaunchCommand: string | undefined;
 
-    constructor(verbose: boolean, spawnHelperOverride?: SpawnHelperType) {
+    constructor(verbose: boolean, options?: {
+        spawnHelperOverride?: SpawnHelperType,
+        customLaunchCommand?: string,
+    }) {
         super();
 
         this._verbose = verbose;
-        this._spawnHelper = spawnHelperOverride || spawnHelper;
+        this._customLaunchCommand = options?.customLaunchCommand;
+        this._spawnHelper = options?.spawnHelperOverride || spawnHelper;
     }
 
     async init() {
@@ -88,7 +96,11 @@ export class GStreamer extends EventEmitter<{
         }
     }
 
-    async listDevices() {
+    async listDevices(): Promise<string[]> {
+        if (this._customLaunchCommand) {
+            return [ CUSTOM_GST_LAUNCH_COMMAND ];
+        }
+
         let devices = await this.getAllDevices();
 
         if (this._verbose) {
@@ -138,93 +150,17 @@ export class GStreamer extends EventEmitter<{
             }
         }
 
-        // now we need to determine the resolution... we want something as close as possible to dimensions.widthx480
-        let caps = device.caps.filter(c => {
-            return c.width >= dimensions.width && c.height >= dimensions.height;
-        }).sort((a, b) => {
-            let diffA = Math.abs(a.width - dimensions.width) + Math.abs(a.height - dimensions.height);
-            let diffB = Math.abs(b.width - dimensions.width) + Math.abs(b.height - dimensions.height);
-
-            return diffA - diffB;
-        });
-
-        // if the device supports video/x-raw, only list those types
-        const videoCaps = caps.filter(x => x.type === 'video/x-raw');
-        if (videoCaps.length > 0) {
-            caps = videoCaps;
-        }
-
-        // choose the top of the list
-        let cap = caps[0];
-
-        if (!cap) {
-            cap = {
-                type: 'video/x-raw',
-                width: dimensions.width,
-                height: dimensions.height,
-                framerate: 30,
-            };
-        }
-
-        let videoSource = [ 'v4l2src', 'device=' + device.id ];
-        if (this._mode === 'rpi-bullseye') {
-            // Rpi camera
-            if (!device.id) {
-                videoSource = [ 'libcamerasrc' ];
-            }
-            else {
-                videoSource = [ 'uvch264src', 'device=' + device.id ];
-            }
-        }
-
-        let invokeProcess: 'spawn' | 'exec';
-        let args: string[];
-        if (cap.type === 'video/x-raw') {
-            args = videoSource.concat([
-                `!`,
-                `video/x-raw,width=${cap.width},height=${cap.height}`,
-                `!`,
-                `videoconvert`,
-                `!`,
-                `jpegenc`,
-                `!`,
-                `multifilesink`,
-                `location=test%05d.jpg`
-            ]);
-            invokeProcess = 'spawn';
-        }
-        else if (cap.type === 'image/jpeg') {
-            args = videoSource.concat([
-                `!`,
-                `image/jpeg,width=${cap.width},height=${cap.height}`,
-                `!`,
-                `multifilesink`,
-                `location=test%05d.jpg`
-            ]);
-            invokeProcess = 'spawn';
-        }
-        else if (cap.type === 'nvarguscamerasrc') {
-            args = [
-                `nvarguscamerasrc ! "video/x-raw(memory:NVMM),width=${cap.width},height=${cap.height}" ! ` +
-                    `nvvidconv flip-method=0 ! video/x-raw,width=${cap.width},height=${cap.height} ! nvvidconv ! ` +
-                    `jpegenc ! multifilesink location=test%05d.jpg`
-            ];
-            // no idea why... but if we throw this thru `spawn` this yields an invalid pipeline...
-            invokeProcess = 'exec';
-        }
-        else {
-            throw new Error('Invalid cap type ' + cap.type);
-        }
+        const { invokeProcess, command, args } = this.getGstreamerLaunchCommand(device, dimensions);
 
         if (this._verbose) {
-            console.log(PREFIX, 'Starting gst-launch-1.0 with', args);
+            console.log(PREFIX, `Starting ${command} with`, args);
         }
 
         if (invokeProcess === 'spawn') {
-            this._captureProcess = spawn('gst-launch-1.0', args, { env: process.env, cwd: this._tempDir });
+            this._captureProcess = spawn(command, args, { env: process.env, cwd: this._tempDir });
         }
         else if (invokeProcess === 'exec') {
-            this._captureProcess = exec('gst-launch-1.0 ' + args.join(' '), { env: process.env, cwd: this._tempDir });
+            this._captureProcess = exec(command + ' ' + args.join(' '), { env: process.env, cwd: this._tempDir });
         }
         else {
             throw new Error('Invalid value for invokeProcess');
@@ -363,6 +299,132 @@ export class GStreamer extends EventEmitter<{
         return p;
     }
 
+    getGstreamerLaunchCommand(device: {
+        id: string,
+        name: string,
+        caps: GStreamerCap[],
+    }, dimensions: { width: number, height: number }) {
+
+        if (device.id === CUSTOM_GST_LAUNCH_COMMAND) {
+            if (!this._customLaunchCommand) {
+                throw new Error('_customLaunchCommand is null');
+            }
+            let customArgs = argvSplit(this._customLaunchCommand);
+            customArgs = customArgs.concat([
+                `!`,
+                `multifilesink`,
+                `location=test%05d.jpg`
+            ]);
+
+            return {
+                invokeProcess: 'spawn',
+                command: 'gst-launch-1.0',
+                args: customArgs,
+            };
+        }
+
+        // now we need to determine the resolution... we want something as close as possible to dimensions.widthx480
+        let caps = device.caps.filter(c => {
+            return c.width >= dimensions.width && c.height >= dimensions.height;
+        }).sort((a, b) => {
+            let diffA = Math.abs(a.width - dimensions.width) + Math.abs(a.height - dimensions.height);
+            let diffB = Math.abs(b.width - dimensions.width) + Math.abs(b.height - dimensions.height);
+
+            return diffA - diffB;
+        });
+
+        // if the device supports video/x-raw, only list those types
+        const videoCaps = caps.filter(x => x.type === 'video/x-raw');
+        if (videoCaps.length > 0) {
+            caps = videoCaps;
+        }
+
+        // choose the top of the list
+        let cap = caps[0];
+
+        if (!cap) {
+            cap = {
+                type: 'video/x-raw',
+                width: dimensions.width,
+                height: dimensions.height,
+                framerate: 30,
+            };
+        }
+
+        let videoSource = [ 'v4l2src', 'device=' + device.id ];
+        if (this._mode === 'rpi-bullseye') {
+            // Rpi camera
+            if (!device.id) {
+                videoSource = [ 'libcamerasrc' ];
+            }
+            else {
+                videoSource = [ 'uvch264src', 'device=' + device.id ];
+            }
+        }
+        if (device.id === 'pylonsrc') {
+            videoSource = [ 'pylonsrc' ];
+        }
+
+        let invokeProcess: 'spawn' | 'exec';
+        let args: string[];
+        if (cap.type === 'video/x-raw') {
+            args = videoSource.concat([
+                `!`,
+                `video/x-raw,width=${cap.width},height=${cap.height}`,
+                `!`,
+                `videoconvert`,
+                `!`,
+                `jpegenc`,
+                `!`,
+                `multifilesink`,
+                `location=test%05d.jpg`
+            ]);
+            invokeProcess = 'spawn';
+        }
+        else if (cap.type === 'image/jpeg') {
+            args = videoSource.concat([
+                `!`,
+                `image/jpeg,width=${cap.width},height=${cap.height}`,
+                `!`,
+                `multifilesink`,
+                `location=test%05d.jpg`
+            ]);
+            invokeProcess = 'spawn';
+        }
+        else if (cap.type === 'pylonsrc') {
+            args = videoSource.concat([
+                `!`,
+                `video/x-raw,width=${cap.width},height=${cap.height}`,
+                `!`,
+                `videoconvert`,
+                `!`,
+                `jpegenc`,
+                `!`,
+                `multifilesink`,
+                `location=test%05d.jpg`
+            ]);
+            invokeProcess = 'spawn';
+        }
+        else if (cap.type === 'nvarguscamerasrc') {
+            args = [
+                `nvarguscamerasrc ! "video/x-raw(memory:NVMM),width=${cap.width},height=${cap.height}" ! ` +
+                    `nvvidconv flip-method=0 ! video/x-raw,width=${cap.width},height=${cap.height} ! nvvidconv ! ` +
+                    `jpegenc ! multifilesink location=test%05d.jpg`
+            ];
+            // no idea why... but if we throw this thru `spawn` this yields an invalid pipeline...
+            invokeProcess = 'exec';
+        }
+        else {
+            throw new Error('Invalid cap type ' + cap.type);
+        }
+
+        return {
+            invokeProcess,
+            command: 'gst-launch-1.0',
+            args,
+        };
+    }
+
     async stop() {
         if (this._keepAliveTimeout) {
             clearTimeout(this._keepAliveTimeout);
@@ -409,7 +471,36 @@ export class GStreamer extends EventEmitter<{
         return stopRes;
     }
 
-    async getAllDevices() {
+    async getAllDevices(): Promise<{
+        id: string,
+        name: string,
+        caps: GStreamerCap[]
+    }[]> {
+        if (this._customLaunchCommand) {
+            let width = 640;
+            let height = 480;
+
+            let widthM = CUSTOM_GST_LAUNCH_COMMAND.match(/width=(\d+)/);
+            if (widthM && widthM.length >= 1) {
+                width = Number(widthM[1]);
+            }
+            let heightM = CUSTOM_GST_LAUNCH_COMMAND.match(/height=(\d+)/);
+            if (heightM && heightM.length >= 1) {
+                height = Number(heightM[1]);
+            }
+
+            return [{
+                id: CUSTOM_GST_LAUNCH_COMMAND,
+                name: CUSTOM_GST_LAUNCH_COMMAND,
+                caps: [{
+                    type: 'video/x-raw',
+                    framerate: 60,
+                    width: width,
+                    height: height,
+                }],
+            }];
+        }
+
         let lines;
         try {
             lines = (await this._spawnHelper('gst-device-monitor-1.0', []))
@@ -556,6 +647,7 @@ export class GStreamer extends EventEmitter<{
 
         // NVIDIA has their own plugins, query them too
         devices = devices.concat(await this.listNvarguscamerasrcDevices());
+        devices = devices.concat(await this.listPylonsrcDevices());
 
         let mapped = devices.map(d => {
             let name = devices.filter(x => x.name === d.name).length >= 2 ?
@@ -680,6 +772,222 @@ export class GStreamer extends EventEmitter<{
                 id: 'nvarguscamerasrc',
                 inCapMode: false,
                 name: 'CSI camera',
+                rawCaps: [],
+            };
+            return [d];
+        }
+        else {
+            return [];
+        }
+    }
+
+    private async listPylonsrcDevices(): Promise<GStreamerDevice[]> {
+        let hasPlugin: boolean;
+        try {
+            hasPlugin = (await this._spawnHelper('gst-inspect-1.0', [])).indexOf('pylonsrc') > -1;
+        }
+        catch (ex) {
+            if (this._verbose) {
+                console.log(PREFIX, 'Error invoking gst-inspect-1.0:', ex);
+            }
+            hasPlugin = false;
+        }
+
+        if (!hasPlugin) {
+            return [];
+        }
+
+        let caps: GStreamerCap[] = [];
+
+        let gstInspectRet;
+        {
+            let command = 'gst-inspect-1.0';
+            let args = [ 'pylonsrc' ];
+            let opts = { ignoreErrors: true };
+
+            // not overridden spawn helper?
+            if (this._spawnHelper === spawnHelper) {
+                gstInspectRet = await new Promise<string>((resolve, reject) => {
+                    const p = spawn(command, args, { env: process.env });
+
+                    let allData: Buffer[] = [];
+
+                    p.stdout.on('data', (data: Buffer) => {
+                        allData.push(data);
+
+                        if (data.toString('utf-8').indexOf('No devices found') > -1) {
+                            p.kill('SIGINT');
+                            resolve(Buffer.concat(allData).toString('utf-8'));
+                        }
+                    });
+
+                    p.stderr.on('data', (data: Buffer) => {
+                        allData.push(data);
+
+                        if (data.toString('utf-8').indexOf('No devices found') > -1) {
+                            p.kill('SIGINT');
+                            resolve(Buffer.concat(allData).toString('utf-8'));
+                        }
+                    });
+
+                    p.on('error', reject);
+
+                    p.on('close', (code) => {
+                        if (code === 0 || opts.ignoreErrors === true) {
+                            resolve(Buffer.concat(allData).toString('utf-8'));
+                        }
+                        else {
+                            reject('Error code was not 0: ' + Buffer.concat(allData).toString('utf-8'));
+                        }
+                    });
+                });
+            }
+            else {
+                gstInspectRet = await this._spawnHelper(command, args, opts);
+            }
+        }
+
+        let gstInspectLines = gstInspectRet.split('\n');
+        let inRoiWidth = false;
+        let inRoiHeight = false;
+        let currProp: string[] = [];
+        let expectedIndent = 0;
+        let defaultWidth = 1920;
+        let defaultHeight = 1080;
+        // find AutoFunctionROIWidth-ROI1 and AutoFunctionROIHeight-ROI1
+        for (const line of gstInspectLines) {
+            let currIndent = line.split(/\w+/)[0].length;
+
+            if (line.indexOf('AutoFunctionROIWidth-ROI1') > -1) {
+                inRoiWidth = true;
+                expectedIndent = currIndent;
+                currProp = [line];
+                continue;
+            }
+            else if (line.indexOf('AutoFunctionROIHeight-ROI1') > -1) {
+                inRoiHeight = true;
+                expectedIndent = currIndent;
+                currProp = [line];
+                continue;
+            }
+
+            if (inRoiWidth) {
+                if (currIndent === expectedIndent) {
+                    let roiWidth = currProp.join('\n');
+                    if (this._verbose) {
+                        console.log(PREFIX, 'AutoFunctionROIWidth-ROI1:\n', roiWidth);
+                    }
+                    let m = roiWidth.match(/Default\: (\d+)/);
+                    if (m) {
+                        defaultWidth = Number(m[1]);
+                    }
+
+                    inRoiWidth = false;
+                }
+                else {
+                    currProp.push(line);
+                }
+            }
+
+            if (inRoiHeight) {
+                if (currIndent === expectedIndent) {
+                    let roiHeight = currProp.join('\n');
+                    if (this._verbose) {
+                        console.log(PREFIX, 'AutoFunctionROIHeight-ROI1:\n', roiHeight);
+                    }
+                    let m = roiHeight.match(/Default\: (\d+)/);
+                    if (m) {
+                        defaultHeight = Number(m[1]);
+                    }
+
+                    inRoiHeight = false;
+                }
+                else {
+                    currProp.push(line);
+                }
+            }
+        }
+
+        // console.log('gstInspectRes', gstInspectRet);
+
+        let gstLaunchRet;
+        {
+            let command = 'gst-launch-1.0';
+            let args = [ 'pylonsrc' ];
+            let opts = { ignoreErrors: true };
+
+            // not overridden spawn helper?
+            if (this._spawnHelper === spawnHelper) {
+                gstLaunchRet = await new Promise<string>((resolve, reject) => {
+                    const p = spawn(command, args, { env: process.env });
+
+                    let allData: Buffer[] = [];
+
+                    p.stdout.on('data', (data: Buffer) => {
+                        allData.push(data);
+
+                        if (data.toString('utf-8').indexOf('No devices found') > -1) {
+                            p.kill('SIGINT');
+                            resolve(Buffer.concat(allData).toString('utf-8'));
+                        }
+                    });
+
+                    p.stderr.on('data', (data: Buffer) => {
+                        allData.push(data);
+
+                        if (data.toString('utf-8').indexOf('No devices found') > -1) {
+                            p.kill('SIGINT');
+                            resolve(Buffer.concat(allData).toString('utf-8'));
+                        }
+                    });
+
+                    p.on('error', reject);
+
+                    p.on('close', (code) => {
+                        if (code === 0 || opts.ignoreErrors === true) {
+                            resolve(Buffer.concat(allData).toString('utf-8'));
+                        }
+                        else {
+                            reject('Error code was not 0: ' + Buffer.concat(allData).toString('utf-8'));
+                        }
+                    });
+                });
+            }
+            else {
+                gstLaunchRet = await this._spawnHelper(command, args, opts);
+            }
+        }
+
+        let lines = gstLaunchRet.split('\n').filter(x => !!x).map(x => x.trim());
+
+        if (this._verbose) {
+            console.log(PREFIX, 'gst-launch-1.0 pylonsrc options', lines.join('\n'));
+        }
+
+        for (let l of lines) {
+            let m = l.match(/New clock: GstSystemClock/);
+            if (!m) {
+                continue;
+            }
+
+            // fps,height and width won't be used
+            let cap: GStreamerCap = {
+                framerate: 60,
+                height: defaultHeight,
+                width: defaultWidth,
+                type: 'pylonsrc'
+            };
+
+            caps.push(cap);
+        }
+
+        if (caps.length > 0) {
+            let d: GStreamerDevice = {
+                caps: caps,
+                deviceClass: '',
+                id: 'pylonsrc',
+                inCapMode: false,
+                name: 'Basler camera',
                 rawCaps: [],
             };
             return [d];

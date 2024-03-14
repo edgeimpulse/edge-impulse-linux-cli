@@ -87,3 +87,13 @@ let res = await runner.classify(features);
 // run the filter
 let filteredRes = movingAverageFilter.run(res);
 ```
+
+## Development tips
+
+### Auto-reload the runner
+
+If you're working on something in the runner, and want to auto-recompile on changes; start with:
+
+```
+npm run watch-runner -- "--model-file /Users/yourname/Downloads/yourmodel-v36.eim --run-http-server 1338"
+```

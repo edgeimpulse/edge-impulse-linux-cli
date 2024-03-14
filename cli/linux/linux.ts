@@ -34,6 +34,8 @@ program
     .option('--disable-microphone', `Don't prompt for microphone`)
     .option('--width <px>', 'Desired width of the camera stream')
     .option('--height <px>', 'Desired height of the camera stream')
+    .option('--gst-launch-args <args>', 'Override the arguments to gst-launch-1.0. This should be a stream that returns JPEG images, e.g.: ' +
+        '"v4l2src device=/dev/video0 ! video/x-raw,width=640,height=480 ! videoconvert ! jpegenc"')
     .option('--clean', 'Clear credentials')
     .option('--silent', `Run in silent mode, don't prompt for credentials`)
     .option('--dev', 'List development servers, alternatively you can use the EI_HOST environmental variable ' +
@@ -48,6 +50,7 @@ const silentArgv: boolean = !!program.silent;
 const verboseArgv: boolean = !!program.verbose;
 const apiKeyArgv = <string | undefined>program.apiKey;
 const hmacKeyArgv = <string | undefined>program.hmacKey;
+const gstLaunchArgsArgv = <string | undefined>program.gstLaunchArgs;
 const noCamera: boolean = !!program.disableCamera;
 const noMicrophone: boolean = !!program.disableMicrophone;
 const isProphesee = process.env.PROPHESEE_CAM === '1';
@@ -440,7 +443,9 @@ let isExiting = false;
                 camera = new Imagesnap(verboseArgv);
             }
             else if (process.platform === 'linux') {
-                camera = new GStreamer(verboseArgv);
+                camera = new GStreamer(verboseArgv, {
+                    customLaunchCommand: gstLaunchArgsArgv,
+                });
             }
             else {
                 throw new Error('Unsupported platform: "' + process.platform + '"');
