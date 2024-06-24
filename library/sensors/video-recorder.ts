@@ -47,7 +47,7 @@ export class VideoRecorder {
 
         let tempDir = await fs.promises.mkdtemp(Path.join(osTmpDir, 'edge-impulse-cli'));
 
-        // tslint:disable-next-line: no-floating-promises
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         (async () => {
             let fileIx = 0;
             let hasError = false;

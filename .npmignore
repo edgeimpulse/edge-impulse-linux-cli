@@ -4,5 +4,6 @@ examples/ts/
 examples/features.txt
 build/examples/
 tsconfig.json
-tslint.json
+.eslintrc.json
+.eslintignore
 webserver/*.ts

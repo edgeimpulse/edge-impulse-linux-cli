@@ -94,6 +94,7 @@ export class Prophesee extends EventEmitter<{
 
         this._watcher = fs.watch(this._tempDir, async (eventType, fileName) => {
             // if (eventType !== 'rename') return;
+            if (fileName === null) return;
             if (!(fileName.endsWith('.jpeg') || fileName.endsWith('.jpg'))) return;
             if (!this._tempDir) return;
             if (this._handledFiles[fileName]) return;
@@ -154,7 +155,7 @@ export class Prophesee extends EventEmitter<{
                 });
             }
 
-            // tslint:disable-next-line: no-floating-promises
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
             (async () => {
                 if (!this._tempDir) {
                     throw new Error('tempDir is undefined');

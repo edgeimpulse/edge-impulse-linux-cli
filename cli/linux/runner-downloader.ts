@@ -61,9 +61,11 @@ export class RunnerDownloader extends EventEmitter<{
 
                 if (fs.existsSync("/dev/drpai0")) {
                     downloadType = 'runner-linux-aarch64-rzv2l';
-                } else if (fs.existsSync('/dev/akida0')) {
+                }
+                else if (fs.existsSync('/dev/akida0')) {
                     downloadType = 'runner-linux-aarch64-akd1000';
-                } else if (fs.existsSync('/dev/nvhost-as-gpu')) {
+                }
+                else if (fs.existsSync('/dev/nvhost-as-gpu')) {
 
                     downloadType = 'runner-linux-aarch64-jetson-orin';
 
@@ -81,14 +83,16 @@ export class RunnerDownloader extends EventEmitter<{
                         downloadType = 'runner-linux-aarch64-jetson-nano';
                     }
 
-                } else {
+                }
+                else {
                     downloadType = 'runner-linux-aarch64';
                 }
             }
             else if (process.arch === 'x64') {
                 if (fs.existsSync('/dev/akida0')) {
                     downloadType = 'runner-linux-aarch64-akd1000';
-                } else {
+                }
+                else {
                     downloadType = 'runner-linux-x86_64';
                 }
             }

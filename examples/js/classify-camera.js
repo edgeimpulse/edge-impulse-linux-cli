@@ -1,6 +1,6 @@
 const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap, RunnerHelloHasAnomaly } = require('../../build/library');
 
-// tslint:disable-next-line: no-floating-promises
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try  {
 

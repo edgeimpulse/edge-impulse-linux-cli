@@ -239,7 +239,8 @@ export class AudioRecorder {
                         this._cp.kill('SIGHUP');
                     }
                 }, 3000);
-            } else {
+            }
+            else {
                 resolve();
             }
         });

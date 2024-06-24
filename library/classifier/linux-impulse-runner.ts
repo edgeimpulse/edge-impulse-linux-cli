@@ -55,6 +55,7 @@ export type RunnerHelloResponseModelParameters = {
     slice_size: undefined | number;
     use_continuous_mode: undefined | boolean;
     inferencing_engine?: undefined | RunnerHelloInferencingEngine;
+    threshold: number | undefined;
 };
 
 export type RunnerHelloResponseProject = {
@@ -144,7 +145,11 @@ export class LinuxImpulseRunner {
      * Initialize the runner
      * This returns information about the model
      */
-    async init() {
+    async init(modelPath?: string) {
+        if (modelPath) {
+            this._path = Path.resolve(modelPath);
+        }
+
         if (!await this.exists(this._path)) {
             throw new Error('Runner does not exist: ' + this._path);
         }
@@ -166,6 +171,11 @@ export class LinuxImpulseRunner {
             socketPath = Path.join(tempDir, 'runner.sock');
 
             // start the .eim file
+            if (this._runner && this._runner.pid) {
+                // kill the runner
+                this._runner.kill('SIGINT');
+                // TODO: check if the runner still exists
+            }
             this._runner = spawn(this._path, [ socketPath ]);
 
             if (!this._runner.stdout) {
@@ -208,8 +218,8 @@ export class LinuxImpulseRunner {
                 throw new Error(err);
             }
 
-            this._runner.stdout.off('data', onStdout);
-            if (this._runner.stderr) {
+            this._runner?.stdout.off('data', onStdout);
+            if (this._runner?.stderr) {
                 this._runner.stderr.off('data', onStdout);
             }
         }
@@ -218,6 +228,11 @@ export class LinuxImpulseRunner {
         let bracesOpen = 0;
         let bracesClosed = 0;
         let line = '';
+
+        if (this._socket) {
+            this._socket.removeAllListeners();
+            this._socket.end();
+        }
 
         this._socket = net.connect(socketPath);
         this._socket.on('data', data => {
@@ -295,7 +310,8 @@ export class LinuxImpulseRunner {
                         this._runner.kill('SIGHUP');
                     }
                 }, 3000);
-            } else {
+            }
+            else {
                 resolve();
             }
         });
@@ -388,7 +404,7 @@ export class LinuxImpulseRunner {
         return data;
     }
 
-    private send<T, U>(msg: T, timeoutArg?: number) {
+    private send<T extends object, U>(msg: T, timeoutArg?: number) {
 
         return new Promise<U>((resolve, reject) => {
             let timeout = typeof timeoutArg === 'number' ? timeoutArg : 5000;

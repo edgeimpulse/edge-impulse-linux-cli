@@ -104,7 +104,7 @@ export class Imagesnap extends EventEmitter<{
         }
 
         this._watcher = fs.watch(this._tempDir, async (eventType, fileName) => {
-            if (eventType === 'rename' && fileName.endsWith('.jpg') && this._tempDir) {
+            if (eventType === 'rename' && fileName !== null && fileName.endsWith('.jpg') && this._tempDir) {
                 if (this._keepAliveTimeout) {
                     clearTimeout(this._keepAliveTimeout);
                 }
@@ -118,7 +118,7 @@ export class Imagesnap extends EventEmitter<{
                         clearTimeout(this._keepAliveTimeout);
                     }
                     this._keepAliveTimeout = setTimeout(() => {
-                        // tslint:disable-next-line: no-floating-promises
+                        // eslint-disable-next-line @typescript-eslint/no-floating-promises
                         this.timeoutCallback();
                     }, 2000);
                 }
@@ -155,7 +155,7 @@ export class Imagesnap extends EventEmitter<{
                 });
             }
 
-            // tslint:disable-next-line: no-floating-promises
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
             (async () => {
                 if (!this._tempDir) {
                     throw new Error('tempDir is undefined');

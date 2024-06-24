@@ -41,7 +41,7 @@ export class GStreamer extends EventEmitter<{
     private _lastHash = '';
     private _processing = false;
     private _lastOptions?: ICameraStartOptions;
-    private _mode: 'default' | 'rpi-bullseye' = 'default';
+    private _mode: 'default' | 'rpi-bullseye' | 'microchip' = 'default';
     private _keepAliveTimeout: NodeJS.Timeout | undefined;
     private _isStarted = false;
     private _isRestarting = false;
@@ -93,6 +93,9 @@ export class GStreamer extends EventEmitter<{
             if (firmwareModel && firmwareModel.indexOf('Raspberry Pi') > -1) {
                 this._mode = 'rpi-bullseye';
             }
+        }
+        if (firmwareModel && firmwareModel.indexOf('Microchip SAMA7G5') > -1) {
+            this._mode = 'microchip';
         }
     }
 
@@ -181,6 +184,7 @@ export class GStreamer extends EventEmitter<{
 
         this._watcher = fs.watch(this._tempDir, async (eventType, fileName) => {
             if (eventType !== 'rename') return;
+            if (fileName === null) return;
             if (!(fileName.endsWith('.jpeg') || fileName.endsWith('.jpg'))) return;
             if (!this._tempDir) return;
             if (this._handledFiles[fileName]) return;
@@ -223,7 +227,7 @@ export class GStreamer extends EventEmitter<{
                             clearTimeout(this._keepAliveTimeout);
                         }
                         this._keepAliveTimeout = setTimeout(() => {
-                            // tslint:disable-next-line: no-floating-promises
+                            // eslint-disable-next-line @typescript-eslint/no-floating-promises
                             this.timeoutCallback();
                         }, 2000);
                     }
@@ -272,7 +276,7 @@ export class GStreamer extends EventEmitter<{
                 });
             }
 
-            // tslint:disable-next-line: no-floating-promises
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
             (async () => {
                 if (!this._tempDir) {
                     throw new Error('tempDir is undefined');
@@ -352,7 +356,7 @@ export class GStreamer extends EventEmitter<{
         }
 
         let videoSource = [ 'v4l2src', 'device=' + device.id ];
-        if (this._mode === 'rpi-bullseye') {
+        if (this._mode === 'rpi-bullseye' || this._mode === 'microchip') {
             // Rpi camera
             if (!device.id) {
                 videoSource = [ 'libcamerasrc' ];
@@ -569,6 +573,10 @@ export class GStreamer extends EventEmitter<{
             if (l.startsWith('device.path =')) {
                 currDevice.id = l.split('=')[1].trim();
             }
+
+            if(l.startsWith('api.v4l2.path =') && currDevice.id === '') {
+                currDevice.id = l.split('=')[1].trim();
+            }
         }
 
         if (currDevice) {
@@ -583,7 +591,7 @@ export class GStreamer extends EventEmitter<{
                     let framerate = (l.match(/framerate=[^\d]+(\d+)/) || [])[1];
 
                     // Rpi on bullseye has lines like this..
-                    // tslint:disable-next-line: max-line-length
+                    // eslint-disable-next-line max-len
                     // image/jpeg, width=160, height=120, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
                     if (!width) {
                         width = (l.match(/width=(\d+)/) || [])[1];
@@ -604,7 +612,7 @@ export class GStreamer extends EventEmitter<{
                     return r;
                 });
 
-            if (this._mode === 'rpi-bullseye') { // no framerate here...
+            if (this._mode === 'rpi-bullseye' || this._mode === 'microchip') { // no framerate here...
                 c = c.filter(x => x.width && x.height);
             }
             else if (d.name === 'RZG2L_CRU') {

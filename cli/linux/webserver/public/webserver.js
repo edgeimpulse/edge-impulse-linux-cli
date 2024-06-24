@@ -72,6 +72,7 @@ window.WebServer = async () => {
 
         if (result.classification) {
             if (isFirstClassification) {
+                // eslint-disable-next-line @typescript-eslint/prefer-for-of
                 for (let ix = 0; ix < Object.keys(result.classification).length; ix++) {
                     const key = Object.keys(result.classification)[ix];
 

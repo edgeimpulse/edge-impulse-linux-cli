@@ -11,6 +11,7 @@ export class ImageClassifier extends EventEmitter<{
     private _camera: ICamera;
     private _stopped: boolean = true;
     private _runningInference = false;
+    private _model: ModelInformation;
 
     /**
      * Classifies realtime image data from a camera
@@ -22,17 +23,16 @@ export class ImageClassifier extends EventEmitter<{
 
         this._runner = runner;
         this._camera = camera;
+        this._model = runner.getModel();
     }
 
     /**
      * Start the image classifier
      */
     async start() {
-        let model = this._runner.getModel();
-
-        if (model.modelParameters.sensorType !== 'camera') {
+        if (this._model.modelParameters.sensorType !== 'camera') {
             throw new Error('Sensor for this model was not camera, but ' +
-                model.modelParameters.sensor);
+                this._model.modelParameters.sensor);
         }
 
         this._stopped = false;
@@ -40,6 +40,11 @@ export class ImageClassifier extends EventEmitter<{
         let frameQueue: { features: number[], img: sharp.Sharp }[] = [];
 
         this._camera.on('snapshot', async (data) => {
+            let model = this._model;
+            if (this._stopped) {
+                return;
+            }
+
             // are we looking at video? Then we always add to the frameQueue
             if (model.modelParameters.image_input_frames > 1) {
                 let resized = await ImageClassifier.resizeImage(model, data);
@@ -105,6 +110,18 @@ export class ImageClassifier extends EventEmitter<{
         });
     }
 
+    resume() {
+        // reload the model info
+        this._model = this._runner.getModel();
+        this._stopped = false;
+        // reset the inference flag (in case we were paused during inference)
+        this._runningInference = false;
+    }
+
+    pause() {
+        this._stopped = true;
+    }
+
     /**
      * Stop the classifier
      */
@@ -128,12 +145,13 @@ export class ImageClassifier extends EventEmitter<{
 
         // resize image and add to frameQueue
         let img;
-        let features = [];
+        let features: number[] = [];
         if (model.modelParameters.image_channel_count === 3) {
             img = sharp(data).resize({
                 height: model.modelParameters.image_input_height,
                 width: model.modelParameters.image_input_width,
                 fit: fitMethod,
+                fastShrinkOnLoad: false
             }).removeAlpha();
             let buffer = await img.raw().toBuffer();
 
@@ -141,7 +159,7 @@ export class ImageClassifier extends EventEmitter<{
                 let r = buffer[ix + 0];
                 let g = buffer[ix + 1];
                 let b = buffer[ix + 2];
-                // tslint:disable-next-line: no-bitwise
+                // eslint-disable-next-line no-bitwise
                 features.push((r << 16) + (g << 8) + b);
             }
         }
@@ -150,11 +168,12 @@ export class ImageClassifier extends EventEmitter<{
                 height: model.modelParameters.image_input_height,
                 width: model.modelParameters.image_input_width,
                 fit: fitMethod,
+                fastShrinkOnLoad: false
             }).toColourspace('b-w');
             let buffer = await img.raw().toBuffer();
 
             for (let p of buffer) {
-                // tslint:disable-next-line: no-bitwise
+                // eslint-disable-next-line no-bitwise
                 features.push((p << 16) + (p << 8) + p);
             }
         }

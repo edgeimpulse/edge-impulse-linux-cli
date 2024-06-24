@@ -98,6 +98,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
 
     constructor(cameraInstance: ICamera | undefined, config: EdgeImpulseConfig,
                 devKeys: { apiKey: string, hmacKey: string }) {
+        // eslint-disable-next-line constructor-super
         super();
 
         this._camera  = cameraInstance;
@@ -120,7 +121,9 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
 
                         if (this._snapshotStreamingResolution === 'low') {
                             const jpg = sharp(buffer);
-                            const resized = await jpg.resize(undefined, 96).jpeg().toBuffer();
+                            const resized = await jpg.resize(undefined, 96, {
+                                fastShrinkOnLoad: false
+                            }).jpeg().toBuffer();
                             this.emit('snapshot', resized, filename);
                         }
                         else {
@@ -163,7 +166,8 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
     }
 
     getSensors() {
-        let sensors = [];
+        /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+        let sensors: any = [];
         if (!noMicrophone) {
             sensors.push({
                 name: 'Microphone',
@@ -186,6 +190,7 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 });
             }
         }
+        /* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
         return sensors;
     }
 
@@ -396,20 +401,20 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
         let headerArr = new Uint8Array(44);
         let h = [
             0x52, 0x49, 0x46, 0x46, // RIFF
-            // tslint:disable-next-line: no-bitwise
+            // eslint-disable-next-line no-bitwise
             fileSize & 0xff, (fileSize >> 8) & 0xff, (fileSize >> 16) & 0xff, (fileSize >> 24) & 0xff,
             0x57, 0x41, 0x56, 0x45, // WAVE
             0x66, 0x6d, 0x74, 0x20, // fmt
             0x10, 0x00, 0x00, 0x00, // length of format data
             0x01, 0x00, // type of format (1=PCM)
             0x01, 0x00, // number of channels
-            // tslint:disable-next-line: no-bitwise
+            // eslint-disable-next-line no-bitwise
             wavFreq & 0xff, (wavFreq >> 8) & 0xff, (wavFreq >> 16) & 0xff, (wavFreq >> 24) & 0xff,
-            // tslint:disable-next-line: no-bitwise
+            // eslint-disable-next-line no-bitwise
             srBpsC8 & 0xff, (srBpsC8 >> 8) & 0xff, (srBpsC8 >> 16) & 0xff, (srBpsC8 >> 24) & 0xff,
             0x02, 0x00, 0x10, 0x00,
             0x64, 0x61, 0x74, 0x61, // data
-            // tslint:disable-next-line: no-bitwise
+            // eslint-disable-next-line no-bitwise
             dataSize & 0xff, (dataSize >> 8) & 0xff, (dataSize >> 16) & 0xff, (dataSize >> 24) & 0xff,
         ];
         for (let hx = 0; hx < 44; hx++) {
@@ -424,7 +429,7 @@ let camera: ICamera | undefined;
 let configFactory: Config;
 let isExiting = false;
 
-// tslint:disable-next-line: no-floating-promises
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try {
         const init = await initCliApp(cliOptions);
@@ -501,6 +506,7 @@ let isExiting = false;
             let audioDevice: string | undefined;
             const audioDevices = await AudioRecorder.ListDevices();
             const storedAudio = await configFactory.getAudio();
+
             if (storedAudio && audioDevices.find(d => d.id === storedAudio)) {
                 audioDevice = storedAudio;
             }

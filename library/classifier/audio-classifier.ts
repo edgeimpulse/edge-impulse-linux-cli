@@ -1,6 +1,6 @@
 import { EventEmitter } from "tsee";
 import { AudioInstance, AudioRecorder } from "../sensors/recorder";
-import { LinuxImpulseRunner, RunnerClassifyResponseSuccess } from "./linux-impulse-runner";
+import { LinuxImpulseRunner, ModelInformation, RunnerClassifyResponseSuccess } from "./linux-impulse-runner";
 
 export class AudioClassifier extends EventEmitter<{
     result: (result: RunnerClassifyResponseSuccess, timeMs: number, audioBuffer: Buffer) => void
@@ -11,7 +11,7 @@ export class AudioClassifier extends EventEmitter<{
     private _audio: AudioInstance | undefined;
     private _stopped = true;
     private _verbose: boolean;
-
+    private _model: ModelInformation;
     /**
      * Classifies realtime audio data
      * @param runner An instance of the initialized impulse runner
@@ -22,6 +22,7 @@ export class AudioClassifier extends EventEmitter<{
 
         this._runner = runner;
         this._verbose = verbose;
+        this._model = runner.getModel();
     }
 
     /**
@@ -31,17 +32,18 @@ export class AudioClassifier extends EventEmitter<{
      *                      (true for all new models)
      */
     async start(device: string, sliceLengthMs: number = 250) {
-        let model = this._runner.getModel();
 
-        if (model.modelParameters.sensorType !== 'microphone') {
+        if (this._model.modelParameters.sensorType !== 'microphone') {
             throw new Error('Sensor for this model was not microphone, but ' +
-                model.modelParameters.sensorType);
+                this._model.modelParameters.sensorType);
         }
 
         this._stopped = false;
 
+        // TODO: respawn the recorder after model update???
         this._recorder = new AudioRecorder({
-            sampleRate: model.modelParameters.frequency,
+            // TODO: update frequency on model update
+            sampleRate: this._model.modelParameters.frequency,
             channels: 1,
             asRaw: true,
             verbose: this._verbose
@@ -51,26 +53,34 @@ export class AudioClassifier extends EventEmitter<{
 
         let fullFrameBuffer = Buffer.from([]);
 
-        const fullFrameBytes = model.modelParameters.input_features_count * 2;
+        // TODO: update after model update
+        const fullFrameBytes = this._model.modelParameters.input_features_count * 2;
 
+        // TODO: update after model update
         let sliceBytes: number;
-        if (model.modelParameters.slice_size) {
-            sliceBytes = model.modelParameters.slice_size * 2;
+        if (this._model.modelParameters.slice_size) {
+            sliceBytes = this._model.modelParameters.slice_size * 2;
         }
         else {
-            sliceBytes = (sliceLengthMs / 1000) * model.modelParameters.frequency * 2;
+            sliceBytes = (sliceLengthMs / 1000) * this._model.modelParameters.frequency * 2;
         }
 
+        // TODO: reset after model update?
         let firstFrame = true;
 
         const onData = async (data: Buffer) => {
+            let model = this._model;
+            if (this._stopped) {
+                return;
+            }
+
             fullFrameBuffer = Buffer.concat([ fullFrameBuffer, data ]);
 
             if (fullFrameBuffer.length >= fullFrameBytes) {
                 // one sec slice
                 let buffer = fullFrameBuffer.slice(fullFrameBuffer.length - fullFrameBytes);
 
-                let values = [];
+                let values: number[] = [];
                 for (let ix = 0; ix < buffer.length; ix += 2) {
                     values.push(buffer.readInt16LE(ix));
                 }
@@ -118,6 +128,16 @@ export class AudioClassifier extends EventEmitter<{
         };
 
         this._audio.ee.on('data', onData);
+    }
+
+    resume() {
+        // reload the model info
+        this._model = this._runner.getModel();
+        this._stopped = false;
+    }
+
+    pause() {
+        this._stopped = true;
     }
 
     /**

@@ -7,7 +7,6 @@ import { AudioClassifier } from '../../library/classifier/audio-classifier';
 import { ImageClassifier } from '../../library/classifier/image-classifier';
 import { Imagesnap } from '../../library/sensors/imagesnap';
 import inquirer from 'inquirer';
-import { Config } from '../config';
 import { initCliApp, setupCliApp } from '../init-cli-app';
 import fs from 'fs';
 import os from 'os';
@@ -23,9 +22,15 @@ import { AudioRecorder } from '../../library';
 import { ips } from '../get-ips';
 import { Prophesee } from '../../library/sensors/prophesee';
 import { asyncMiddleware } from './webserver/middleware/asyncMiddleware';
+import { RemoteMgmt, RemoteMgmtConfig, RemoteMgmtInferenceDevice } from './remote-mgmt-service';
+import { EventEmitter } from "tsee";
+import TypedEmitter from "typed-emitter";
+import WebSocket from 'ws';
+import { Config, EdgeImpulseConfig } from "../config";
 import multer from 'multer';
 import util from 'util';
 import { InferenceServerModelViewModel, InferenceServerViewModel, renderInferenceServerView } from './webserver/views/inference-server-view';
+import { ModelMonitor } from './model-monitor';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 const BUILD_PREFIX = '\x1b[32m[BLD]\x1b[0m';
@@ -48,6 +53,7 @@ program
     .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand (e.g. "runner-linux-aarch64")')
     .option('--force-engine <engine>', 'Do not autodetect the inference engine, but set it by hand (e.g. "tflite")')
     .option('--run-http-server <port>', 'Do not run using a sensor, but instead expose an API server at the specified port')
+    .option('--monitor', 'Enable model monitoring', false)
     .option('--clean', 'Clear credentials')
     .option('--silent', `Run in silent mode, don't prompt for credentials`)
     .option('--quantized', 'Download int8 quantized neural networks, rather than the float32 neural networks. ' +
@@ -73,6 +79,7 @@ const modelFileArgv = <string | undefined>program.modelFile;
 const downloadArgv = <string | undefined>program.download;
 const forceTargetArgv = <string | undefined>program.forceTarget;
 const forceEngineArgv = <string | undefined>program.forceEngine;
+const monitorArgv: boolean = !!program.monitor;
 const listTargetsArgv: boolean = !!program.listTargets;
 const gstLaunchArgsArgv = <string | undefined>program.gstLaunchArgs;
 const runHttpServerPort = program.runHttpServer ? Number(program.runHttpServer) : undefined;
@@ -131,72 +138,203 @@ const onSignal = async () => {
 process.on('SIGHUP', onSignal);
 process.on('SIGINT', onSignal);
 
-// tslint:disable-next-line: no-floating-promises
+class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
+    snapshot: (buffer: Buffer, filename: string) => void
+}>) implements RemoteMgmtInferenceDevice  {
+
+    constructor() {
+        // eslint-disable-next-line constructor-super
+        super();
+    }
+
+    async getDeviceId() {
+        return ips.length > 0 ? ips[0].mac : '00:00:00:00:00:00';
+    }
+
+    getDeviceType() {
+        let id = (ips.length > 0 ? ips[0].mac : '00:00:00:00:00:00').toLowerCase();
+
+        if (id.startsWith('dc:a6:32') || id.startsWith('b8:27:eb')) {
+            return 'RASPBERRY_PI';
+        }
+
+        if (id.startsWith('00:04:4b') || id.startsWith('48:b0:2d')) {
+            return 'NVIDIA_JETSON_NANO';
+        }
+
+        return 'EDGE_IMPULSE_LINUX';
+    }
+}
+
+async function downloadModel(projectId: number | undefined,
+                             config: EdgeImpulseConfig): Promise<{
+                                modelFile: string,
+                                modelPath: RunnerModelPath }> {
+
+    if (!projectId) {
+        throw new Error('No project ID found');
+    }
+
+    // configFactory should be set by now (global variable)
+    if (!configFactory) {
+        throw new Error('No config factory found');
+    }
+
+    const studioUrl = await configFactory.getStudioUrl(null);
+    let projectStudioUrl = studioUrl + '/studio/' + projectId;
+    let modelPath: RunnerModelPath | undefined;
+    let modelFile: string;
+
+    await configFactory.setLinuxProjectId(projectId);
+
+    const downloader = new RunnerDownloader(projectId, quantizedArgv ? 'int8' : 'float32',
+                                            config, forceTargetArgv, forceEngineArgv);
+    downloader.on('build-progress', msg => {
+        console.log(BUILD_PREFIX, msg);
+    });
+    modelPath = new RunnerModelPath(projectId, quantizedArgv ? 'int8' : 'float32',
+        forceTargetArgv, forceEngineArgv);
+
+    // no new version? and already downloaded? return that model
+    let currVersion = await downloader.getLastDeploymentVersion();
+    if (currVersion && await checkFileExists(modelPath.getModelPath(currVersion))) {
+        modelFile = modelPath.getModelPath(currVersion);
+        console.log(RUNNER_PREFIX, 'Already have model', modelFile, 'not downloading...');
+    }
+    else {
+        console.log(RUNNER_PREFIX, 'Downloading model...');
+
+        let deployment = await downloader.downloadDeployment();
+        let tmpDir = await fs.promises.mkdtemp(Path.join(os.tmpdir(), 'ei-' + Date.now()));
+        tmpDir = Path.join(os.tmpdir(), tmpDir);
+        await fs.promises.mkdir(tmpDir, { recursive: true });
+        let ret = await downloader.getDownloadType();
+        modelFile = Path.join(tmpDir, ret[0]);
+        await fs.promises.writeFile(modelFile, deployment);
+        await fs.promises.chmod(modelFile, 0o755);
+
+        console.log(RUNNER_PREFIX, 'Downloading model OK');
+    }
+
+    return { modelFile, modelPath };
+}
+
+function audioClassifierHelloMsg(model: ModelInformation) {
+    let param = model.modelParameters;
+    console.log(RUNNER_PREFIX, 'Starting the audio classifier for',
+        model.project.owner + ' / ' + model.project.name, '(v' + model.project.deploy_version + ')');
+    console.log(RUNNER_PREFIX, 'Parameters', 'freq', param.frequency + 'Hz',
+        'window length', ((param.input_features_count / param.frequency / param.axis_count) * 1000) + 'ms.',
+        'classes', param.labels);
+}
+
+function imageClassifierHelloMsg(model: ModelInformation) {
+    let param = model.modelParameters;
+    let labels = param.labels;
+
+    if (param.has_anomaly === RunnerHelloHasAnomaly.VisualGMM) {
+        labels.push('anomaly');
+    }
+
+    console.log(RUNNER_PREFIX, 'Starting the image classifier for',
+        model.project.owner + ' / ' + model.project.name, '(v' + model.project.deploy_version + ')');
+    console.log(RUNNER_PREFIX, 'Parameters',
+        'image size', param.image_input_width + 'x' + param.image_input_height + ' px (' +
+            param.image_channel_count + ' channels)',
+        'classes', labels);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try {
         let modelFile;
+        let remoteMgmt: RemoteMgmt | undefined;
+        let modelPath: RunnerModelPath | undefined;
+        let projectStudioUrl: string | undefined;
+        let config: EdgeImpulseConfig | undefined;
+        // projectId keeps the Studio project ID, not the EIM/model project ID
+        // currently they can differ, as user can use EIM form the other project than the projct
+        // the user selected during the login
+        let projectId: number | undefined;
+        let devKeys: { apiKey: string, hmacKey: string };
+        let modelMonitor: ModelMonitor | undefined;
+        let runner: LinuxImpulseRunner;
+        let model: ModelInformation;
 
-        if (listTargetsArgv && modelFile) {
+        // make sanity checks on the arguments
+        if (listTargetsArgv && modelFileArgv) {
+            // TODO: why? List targets and display the warning...
             throw new Error('Cannot combine --list-targets and --model-file');
         }
 
-        let modelPath: RunnerModelPath | undefined;
-        let projectStudioUrl: string | undefined;
+        if (modelFileArgv && downloadArgv) {
+            throw new Error('Cannot combine --model-file and --download');
+        }
 
-        // no model file passed in? then build / download the latest deployment...
-        if (!modelFileArgv) {
+        // any of this arguments implies online mode, so we need to login to the studio or get the API key
+        const connectionRequired: boolean =
+            monitorArgv ||
+            modelFileArgv === undefined ||
+            downloadArgv !== undefined ||
+            listTargetsArgv ||
+            devArgv;
+
+        if (connectionRequired) {
+            if (monitorArgv && modelFileArgv) {
+                cliOptions.connectProjectMsg = 'From which project do you want to monitor the model?';
+            }
+            // initCliApp calls verifyLogin which logs in the user
             const init = await initCliApp(cliOptions);
-            const config = init.config;
+            config = init.config;
             configFactory = init.configFactory;
 
-            const { projectId } = await setupCliApp(configFactory, config, cliOptions, undefined);
+            ({ projectId, devKeys } = await setupCliApp(configFactory, config, cliOptions, undefined));
 
-            const studioUrl = await configFactory.getStudioUrl(null);
-            projectStudioUrl = studioUrl + '/studio/' + projectId;
-
+            // store project id in case user just selected one
             await configFactory.setLinuxProjectId(projectId);
+        }
+        else {
+            configFactory = new Config();
+            devKeys = {
+                apiKey: apiKeyArgv ?? '',
+                hmacKey: ''
+            };
+        }
 
-            if (listTargetsArgv) {
-                const targets = await config.api.deployment.listDeploymentTargetsForProjectDataSources(projectId);
-                console.log('Listing all available targets');
-                console.log('-----------------------------');
-                for (let t of targets.targets.filter(x => x.format.startsWith('runner'))) {
-                    console.log(`target: ${t.format}, name: ${t.name}, supported engines: [${t.supportedEngines.join(', ')}]`);
-                }
-                console.log('');
-                console.log('You can force a target via "edge-impulse-linux-runner --force-target <target> [--force-engine <engine>]"');
-                process.exit(0);
+        if (listTargetsArgv) {
+            if (!projectId) {
+                // this should never happen, as we are in online mode
+                projectId = await configFactory.getLinuxProjectId() || -1;
             }
-
-            const downloader = new RunnerDownloader(projectId, quantizedArgv ? 'int8' : 'float32',
-                config, forceTargetArgv, forceEngineArgv);
-            downloader.on('build-progress', msg => {
-                console.log(BUILD_PREFIX, msg);
-            });
-
-            modelPath = new RunnerModelPath(projectId, quantizedArgv ? 'int8' : 'float32',
-                forceTargetArgv, forceEngineArgv);
-
-            // no new version? and already downloaded? return that model
-            let currVersion = await downloader.getLastDeploymentVersion();
-            if (currVersion && await checkFileExists(modelPath.getModelPath(currVersion))) {
-                modelFile = modelPath.getModelPath(currVersion);
-                console.log(RUNNER_PREFIX, 'Already have model', modelFile, 'not downloading...');
+            // make sure the config is set
+            if (!config) {
+                // this should never happen, as we are in online mode
+                throw new Error('No config found');
             }
-            else {
-                console.log(RUNNER_PREFIX, 'Downloading model...');
-
-                let deployment = await downloader.downloadDeployment();
-                let tmpDir = await fs.promises.mkdtemp(Path.join(os.tmpdir(), 'ei-' + Date.now()));
-                tmpDir = Path.join(os.tmpdir(), tmpDir);
-                await fs.promises.mkdir(tmpDir, { recursive: true });
-                let ret = await downloader.getDownloadType();
-                modelFile = Path.join(tmpDir, ret[0]);
-                await fs.promises.writeFile(modelFile, deployment);
-                await fs.promises.chmod(modelFile, 0o755);
-
-                console.log(RUNNER_PREFIX, 'Downloading model OK');
+            const targets = await config.api.deployment.listDeploymentTargetsForProjectDataSources(projectId);
+            console.log('Listing all available targets');
+            console.log('-----------------------------');
+            for (let t of targets.targets.filter(x => x.format.startsWith('runner'))) {
+                console.log(`target: ${t.format}, name: ${t.name}, supported engines: [${t.supportedEngines.join(', ')}]`);
             }
+            console.log('');
+            console.log('You can force a target via "edge-impulse-linux-runner --force-target <target> [--force-engine <engine>]"');
+            process.exit(0);
+        }
+
+        if (modelFileArgv) {
+            // if we have the model file, just use that and make it executable
+            modelFile = modelFileArgv;
+            await fs.promises.chmod(modelFile, 0o755);
+        }
+        else {
+            // make sure the config is set
+            if (!config) {
+                // this should never happen, as we are in online mode
+                throw new Error('No config found');
+            }
+            // if we don't have the model file, download it
+            ({ modelFile, modelPath } = await downloadModel(projectId, config));
             if (downloadArgv) {
                 await fs.promises.mkdir(Path.dirname(downloadArgv), { recursive: true });
                 await fs.promises.copyFile(modelFile, downloadArgv);
@@ -204,17 +342,10 @@ process.on('SIGINT', onSignal);
                 return process.exit(0);
             }
         }
-        else {
-            if (downloadArgv) {
-                throw new Error('Cannot combine --model-file and --download');
-            }
-            configFactory = new Config();
-            modelFile = modelFileArgv;
-            await fs.promises.chmod(modelFile, 0o755);
-        }
 
-        const runner = new LinuxImpulseRunner(modelFile);
-        const model = await runner.init();
+        // create the runner and init (get info from model file)
+        runner = new LinuxImpulseRunner(modelFile);
+        model = await runner.init();
 
         // if downloaded? then store...
         if (!modelFileArgv && modelPath) {
@@ -227,11 +358,86 @@ process.on('SIGINT', onSignal);
             }
         }
 
-        if (!projectStudioUrl) {
-            projectStudioUrl = 'https://studio.edgeimpulse.com/studio/' + model.project.id;
+        let param = model.modelParameters;
+        if (monitorArgv) {
+            let device = new LinuxDevice();
+            modelMonitor = await ModelMonitor.getModelMonitor(configFactory, model);
+            let storageStatus = await modelMonitor?.getStorageStatus();
+
+            if (!projectId) {
+                throw new Error('No project ID found');
+            }
+
+            remoteMgmt = new RemoteMgmt(projectId, {
+                projectId: model.project.id,
+                projectName: model.project.name,
+                projectOwner: model.project.owner,
+                deploymentVersion: model.project.deploy_version,
+                modelType: model.modelParameters.model_type,
+            }, devKeys, Object.assign({
+                command: <'edge-impulse-linux'>'edge-impulse-linux'
+            }, config), device, modelMonitor,
+                url => new WebSocket(url),
+                async (currName) => {
+                    let nameDevice = <{ nameDevice: string }>await inquirer.prompt([{
+                        type: 'input',
+                        message: 'What name do you want to give this device?',
+                        name: 'nameDevice',
+                        default: currName
+                    }]);
+                    return nameDevice.nameDevice;
+                });
+            await remoteMgmt.connect();
+
+            // wait 30 sec for the connection to be established (WS connection + setting device name by user)
+            let isConnected = false;
+            let timeout = 0;
+            while (!isConnected && timeout < 30) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                isConnected = await remoteMgmt.isConnected;
+                timeout++;
+            }
+
+            modelMonitor.on('inference-summary', remoteMgmt?.inferenceSummaryListener.bind(remoteMgmt));
+            modelMonitor.on('impulse-record', remoteMgmt?.impulseRecordListener.bind(remoteMgmt));
+            modelMonitor.on('impulse-records-response', remoteMgmt?.impulseRecordsResponseListener.bind(remoteMgmt));
         }
 
-        let param = model.modelParameters;
+        remoteMgmt?.on('newModelAvailable', async ( ) => {
+            console.log(RUNNER_PREFIX, 'New model available, downloading...');
+            try {
+                if (!config) {
+                    // this should never happen, as we are in online mode
+                    throw new Error('No config found');
+                }
+                ({ modelFile, modelPath } = await downloadModel(projectId, config));
+
+                // pause features streaming
+                imageClassifier?.pause();
+                audioClassifier?.pause();
+
+                // load the new model
+                model = await runner?.init(modelFile);
+
+                console.log(RUNNER_PREFIX, 'Model updated successfully');
+                // resume (refresh the model info internally as well)
+                if (model.modelParameters.sensorType === 'microphone') {
+                    audioClassifierHelloMsg(model);
+                    audioClassifier?.resume();
+                    await remoteMgmt?.sendModelUpdateStatus(model, true);
+                }
+                else if (model.modelParameters.sensorType === 'camera') {
+                    imageClassifierHelloMsg(model);
+                    imageClassifier?.resume();
+                    await remoteMgmt?.sendModelUpdateStatus(model, true);
+                }
+            }
+            catch (ex) {
+                let exErr = <Error>ex;
+                await remoteMgmt?.sendModelUpdateStatus(model, false);
+                throw Error('Model update failed: ' + exErr.message);
+            }
+        });
 
         if (runHttpServerPort) {
             console.log(RUNNER_PREFIX, 'Starting HTTP server for',
@@ -249,6 +455,10 @@ process.on('SIGINT', onSignal);
                     'classes', param.labels);
             }
 
+            if (!projectStudioUrl) {
+                projectStudioUrl = 'https://studio.edgeimpulse.com/studio/' + model.project.id;
+            }
+
             await startApiServer(model, runner, projectStudioUrl, runHttpServerPort);
 
             console.log(RUNNER_PREFIX, '');
@@ -259,11 +469,7 @@ process.on('SIGINT', onSignal);
         }
 
         if (param.sensorType === 'microphone') {
-            console.log(RUNNER_PREFIX, 'Starting the audio classifier for',
-                model.project.owner + ' / ' + model.project.name, '(v' + model.project.deploy_version + ')');
-            console.log(RUNNER_PREFIX, 'Parameters', 'freq', param.frequency + 'Hz',
-                'window length', ((param.input_features_count / param.frequency / param.axis_count) * 1000) + 'ms.',
-                'classes', param.labels);
+            audioClassifierHelloMsg(model);
 
             if (enableCameraArgv) {
                 await connectCamera(configFactory);
@@ -312,12 +518,19 @@ process.on('SIGINT', onSignal);
 
             await audioClassifier.start(audioDevice);
 
-            audioClassifier.on('result', (ev, timeMs, audioAsPcm) => {
+            audioClassifier.on('result', async (ev, timeMs, audioAsPcm) => {
                 if (!ev.result.classification) return;
+
+                if (modelMonitor) {
+                    await modelMonitor.processResult(ev, {
+                        type: 'wav',
+                        buffer: audioAsPcm,
+                    });
+                }
 
                 // print the raw predicted values for this frame
                 // (turn into string here so the content does not jump around)
-                // tslint:disable-next-line: no-unsafe-any
+                // eslint-disable-next-line
                 let c = <{ [k: string]: string | number }>(<any>ev.result.classification);
                 for (let k of Object.keys(c)) {
                     c[k] = (<number>c[k]).toFixed(4);
@@ -329,17 +542,7 @@ process.on('SIGINT', onSignal);
             });
         }
         else if (param.sensorType === 'camera') {
-            let labels = param.labels;
-            if (param.has_anomaly === RunnerHelloHasAnomaly.VisualGMM) {
-                labels.push('anomaly');
-            }
-
-            console.log(RUNNER_PREFIX, 'Starting the image classifier for',
-                model.project.owner + ' / ' + model.project.name, '(v' + model.project.deploy_version + ')');
-            console.log(RUNNER_PREFIX, 'Parameters',
-                'image size', param.image_input_width + 'x' + param.image_input_height + ' px (' +
-                    param.image_channel_count + ' channels)',
-                'classes', labels);
+            imageClassifierHelloMsg(model);
 
             let camera = await connectCamera(configFactory);
 
@@ -353,11 +556,18 @@ process.on('SIGINT', onSignal);
                 'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + webserverPort);
             console.log('');
 
-            imageClassifier.on('result', (ev, timeMs, imgAsJpg) => {
+            imageClassifier.on('result', async (ev, timeMs, imgAsJpg) => {
+                if (modelMonitor) {
+                    await modelMonitor.processResult(ev, {
+                        type: 'jpg',
+                        buffer: imgAsJpg,
+                    });
+                }
+
                 if (ev.result.classification) {
                     // print the raw predicted values for this frame
                     // (turn into string here so the content does not jump around)
-                    // tslint:disable-next-line: no-unsafe-any
+                    // eslint-disable-next-line
                     let c = <{ [k: string]: string | number }>(<any>ev.result.classification);
                     for (let k of Object.keys(c)) {
                         c[k] = (<number>c[k]).toFixed(4);
@@ -387,6 +597,9 @@ process.on('SIGINT', onSignal);
             console.log('You will need to install the flex delegates ' +
                 'shared library to run this model. Learn more at https://docs.edgeimpulse.com/docs/edge-impulse-for-linux/flex-delegates');
             console.log('');
+        }
+        else if (verboseArgv) {
+            console.log(ex);
         }
 
         if (audioClassifier) {
@@ -471,20 +684,20 @@ function buildWavFileBuffer(data: Buffer, intervalMs: number) {
     let headerArr = new Uint8Array(44);
     let h = [
         0x52, 0x49, 0x46, 0x46, // RIFF
-        // tslint:disable-next-line: no-bitwise
+        // eslint-disable-next-line no-bitwise
         fileSize & 0xff, (fileSize >> 8) & 0xff, (fileSize >> 16) & 0xff, (fileSize >> 24) & 0xff,
         0x57, 0x41, 0x56, 0x45, // WAVE
         0x66, 0x6d, 0x74, 0x20, // fmt
         0x10, 0x00, 0x00, 0x00, // length of format data
         0x01, 0x00, // type of format (1=PCM)
         0x01, 0x00, // number of channels
-        // tslint:disable-next-line: no-bitwise
+        // eslint-disable-next-line no-bitwise
         wavFreq & 0xff, (wavFreq >> 8) & 0xff, (wavFreq >> 16) & 0xff, (wavFreq >> 24) & 0xff,
-        // tslint:disable-next-line: no-bitwise
+        // eslint-disable-next-line no-bitwise
         srBpsC8 & 0xff, (srBpsC8 >> 8) & 0xff, (srBpsC8 >> 16) & 0xff, (srBpsC8 >> 24) & 0xff,
         0x02, 0x00, 0x10, 0x00,
         0x64, 0x61, 0x74, 0x61, // data
-        // tslint:disable-next-line: no-bitwise
+        // eslint-disable-next-line no-bitwise
         dataSize & 0xff, (dataSize >> 8) & 0xff, (dataSize >> 16) & 0xff, (dataSize >> 24) & 0xff,
     ];
     for (let hx = 0; hx < 44; hx++) {
@@ -524,13 +737,15 @@ function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier:
         if (model.modelParameters.image_channel_count === 3) {
             img = sharp(data).resize({
                 height: model.modelParameters.image_input_height,
-                width: model.modelParameters.image_input_width
+                width: model.modelParameters.image_input_width,
+                fastShrinkOnLoad: false
             });
         }
         else {
             img = sharp(data).resize({
                 height: model.modelParameters.image_input_height,
-                width: model.modelParameters.image_input_width
+                width: model.modelParameters.image_input_width,
+                fastShrinkOnLoad: false
             }).toColourspace('b-w');
         }
 

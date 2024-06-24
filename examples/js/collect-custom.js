@@ -4,7 +4,7 @@ const { DataForwarder, getIps } = require('../../build/library');
 const API_KEY = process.env.API_KEY || 'ei_...';
 const HMAC_KEY = process.env.HMAC_KEY || '0';
 
-// tslint:disable-next-line: no-floating-promises
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try {
         // instantiate a DataForwarder object to collect custom data from a sensor

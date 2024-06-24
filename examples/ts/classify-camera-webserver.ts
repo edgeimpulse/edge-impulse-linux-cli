@@ -6,7 +6,7 @@ import http from 'http';
 import Path from 'path';
 import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-runner";
 
-// tslint:disable-next-line: no-floating-promises
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try  {
 
@@ -106,7 +106,7 @@ import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-ru
             if (ev.result.classification) {
                 // print the raw predicted values for this frame
                 // (turn into string here so the content does not jump around)
-                // tslint:disable-next-line: no-unsafe-any
+                // eslint-disable-next-line
                 let c = <{ [k: string]: string | number }>(<any>ev.result.classification);
                 for (let k of Object.keys(c)) {
                     c[k] = (<number>c[k]).toFixed(4);

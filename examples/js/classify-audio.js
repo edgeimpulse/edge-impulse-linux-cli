@@ -3,7 +3,7 @@ const { AudioClassifier, LinuxImpulseRunner, AudioRecorder } = require("../../bu
 // This script expects one argument:
 // 1. The model file
 
-// tslint:disable-next-line: no-floating-promises
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try  {
         if (!process.argv[2]) {
