@@ -13,7 +13,7 @@
 import { DSPGroup } from './dSPGroup';
 import { DSPInfo } from './dSPInfo';
 
-export class DSPConfigResponseAllOf {
+export class DSPConfig {
     'dsp'?: DSPInfo;
     'config'?: Array<DSPGroup>;
     'configError'?: string;
@@ -38,7 +38,7 @@ export class DSPConfigResponseAllOf {
         }    ];
 
     static getAttributeTypeMap() {
-        return DSPConfigResponseAllOf.attributeTypeMap;
+        return DSPConfig.attributeTypeMap;
     }
 }
 

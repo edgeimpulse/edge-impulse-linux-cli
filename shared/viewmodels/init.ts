@@ -46,12 +46,16 @@ export enum PageType {
     TrialSignup = 46,
     ThankYou = 47,
     CommunityProSignUp = 48,
+    SyntheticData = 49,
+    MigrateImpulse = 50,
+    ImpulseList = 51,
     AccountSettingsAccountInfo = 60,
     AccountSettingsAuthentication = 61,
     AccountSettingsOrganizations = 62,
     AccountSettingsExperiments = 63,
     AccountSettingsMfa = 64,
     AccountSettingsSubscription = 65,
+    AccountSettingsSecrets = 66,
     OrganizationDashboard = 90,
     OrganizationUsers = 91,
     OrganizationKeys = 92,
@@ -77,3 +81,10 @@ export enum PageType {
     UploadPortal = 200,
     Announcement = 201,
 }
+
+export const getPageTypeName = (pageTypeValue: number): string | undefined => {
+    if (PageType[pageTypeValue] !== undefined) {
+        return PageType[pageTypeValue];
+    }
+    return undefined;
+};

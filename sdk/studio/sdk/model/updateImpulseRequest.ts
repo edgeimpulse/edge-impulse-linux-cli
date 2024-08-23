@@ -10,22 +10,21 @@
  * Do not edit the class manually.
  */
 
-import { OrganizationUsageReport } from './organizationUsageReport';
 
-export class AdminGetOrganizationUsageReportResponseAllOf {
-    'report': OrganizationUsageReport;
+export class UpdateImpulseRequest {
+    'name'?: string;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "report",
-            "baseName": "report",
-            "type": "OrganizationUsageReport"
+            "name": "name",
+            "baseName": "name",
+            "type": "string"
         }    ];
 
     static getAttributeTypeMap() {
-        return AdminGetOrganizationUsageReportResponseAllOf.attributeTypeMap;
+        return UpdateImpulseRequest.attributeTypeMap;
     }
 }
 

@@ -12,21 +12,28 @@ export class RunnerDownloader extends EventEmitter<{
     'build-progress': (msg: string) => void
 }> {
     private _projectId: number;
+    private _impulseId: number;
     private _config: EdgeImpulseConfig;
     private _modelType: 'int8' | 'float32';
     private _forceTarget: string | undefined;
     private _forceEngine: string | undefined;
 
-    constructor(projectId: number, modelType: 'int8' | 'float32',
-                config: EdgeImpulseConfig, forceTarget: string | undefined,
-                forceEngine: string | undefined) {
+    constructor(opts: {
+        projectId: number,
+        impulseId: number,
+        modelType: 'int8' | 'float32',
+        config: EdgeImpulseConfig,
+        forceTarget: string | undefined,
+        forceEngine: string | undefined,
+    }) {
         super();
 
-        this._projectId = projectId;
-        this._config = config;
-        this._modelType = modelType;
-        this._forceTarget = forceTarget;
-        this._forceEngine = forceEngine;
+        this._projectId = opts.projectId;
+        this._impulseId = opts.impulseId;
+        this._config = opts.config;
+        this._modelType = opts.modelType;
+        this._forceTarget = opts.forceTarget;
+        this._forceEngine = opts.forceEngine;
     }
 
     async getDownloadType() {
@@ -75,12 +82,23 @@ export class RunnerDownloader extends EventEmitter<{
                         firmwareModel = await fs.promises.readFile('/proc/device-tree/model', 'utf-8');
                     }
 
-                    if (firmwareModel && firmwareModel.indexOf('NVIDIA Jetson Nano') > -1) {
+                    if ((process.env.INFERENCE_CONTAINER_JETSON_NANO === '1') ||
+                        (firmwareModel && firmwareModel.indexOf('NVIDIA Jetson Nano') > -1)) {
                         downloadType = 'runner-linux-aarch64-jetson-nano';
                     }
 
-                    if (process.env.INFERENCE_CONTAINER_JETSON_NANO === '1') {
-                        downloadType = 'runner-linux-aarch64-jetson-nano';
+                    if (process.env.INFERENCE_CONTAINER_JETSON_ORIN_6_0 === '1') {
+                        downloadType = 'runner-linux-aarch64-jetson-orin-6-0';
+                    }
+
+                    const cudaLib = (await spawnHelper('find', ["/usr", "-type", "f", "-name", 'libcudart.so.1[0-9]'])).trim();
+                    const nvinferLib = (await spawnHelper('find', ["/usr", "-type", "f", "-name", 'libnvinfer.so.[7-9]'])).trim();
+                    const cudnnLib = (await spawnHelper('find', ["/usr", "-type", "f", "-name", 'libcudnn.so.[7-9]'])).trim();
+
+                    if ((cudaLib.indexOf('12') > -1)
+                        && (nvinferLib.indexOf('8') > -1)
+                        && (cudnnLib.indexOf('8') > -1)) {
+                        downloadType = 'runner-linux-aarch64-jetson-orin-6-0';
                     }
 
                 }
@@ -111,7 +129,11 @@ export class RunnerDownloader extends EventEmitter<{
         let downloadType = await this.getDownloadType();
 
         let deployInfo = await this._config.api.deployment.getDeployment(
-            this._projectId, { type: downloadType, modelType: this._modelType });
+            this._projectId, {
+                type: downloadType,
+                modelType: this._modelType,
+                impulseId: this._impulseId,
+            });
 
         return deployInfo.hasDeployment && typeof deployInfo.version === 'number' ?
             deployInfo.version :
@@ -122,20 +144,30 @@ export class RunnerDownloader extends EventEmitter<{
         let downloadType = await this.getDownloadType();
 
         let deployInfo = await this._config.api.deployment.getDeployment(
-            this._projectId, { type: downloadType, modelType: this._modelType });
+            this._projectId, {
+                type: downloadType,
+                modelType: this._modelType,
+                impulseId: this._impulseId,
+            });
 
         if (!deployInfo.hasDeployment) {
             await this.buildModel(downloadType);
         }
 
         let deployment = await this._config.api.deployment.downloadBuild(
-            this._projectId, { type: downloadType, modelType: this._modelType });
+            this._projectId, {
+                type: downloadType,
+                modelType: this._modelType,
+                impulseId: this._impulseId,
+            });
         return deployment;
     }
 
     private async buildModel(downloadType: string) {
         // list all deploy targets
-        const dt = await this._config.api.deployment.listDeploymentTargetsForProjectDataSources(this._projectId);
+        const dt = await this._config.api.deployment.listDeploymentTargetsForProjectDataSources(this._projectId, {
+            impulseId: this._impulseId,
+        });
 
         let deployInfo = dt.targets.find(x => x.format === downloadType);
         if (!deployInfo) {
@@ -154,8 +186,11 @@ export class RunnerDownloader extends EventEmitter<{
 
         let buildRes = await this._config.api.jobs.buildOnDeviceModelJob(this._projectId, {
             engine: engine,
-            modelType: this._modelType
-        }, { type: downloadType });
+            modelType: this._modelType,
+        }, {
+            type: downloadType,
+            impulseId: this._impulseId,
+        });
 
         let jobId = buildRes.id;
         this.emit('build-progress', 'Created build job with ID ' + jobId);
@@ -172,17 +207,23 @@ export class RunnerDownloader extends EventEmitter<{
 
 export class RunnerModelPath {
     private _projectId: number;
+    private _impulseId: number;
     private _modelType: 'int8' | 'float32';
     private _forceTarget: string | undefined;
     private _forceEngine: string | undefined;
 
-    constructor(projectId: number, modelType: 'int8' | 'float32',
-                forceTarget: string | undefined,
-                forceEngine: string | undefined) {
-        this._projectId = projectId;
-        this._modelType = modelType;
-        this._forceTarget = forceTarget;
-        this._forceEngine = forceEngine;
+    constructor(opts: {
+        projectId: number,
+        impulseId: number,
+        modelType: 'int8' | 'float32',
+        forceTarget: string | undefined,
+        forceEngine: string | undefined
+    }) {
+        this._projectId = opts.projectId;
+        this._impulseId = opts.impulseId;
+        this._modelType = opts.modelType;
+        this._forceTarget = opts.forceTarget;
+        this._forceEngine = opts.forceEngine;
     }
 
     getModelPath(version: number) {
@@ -195,6 +236,10 @@ export class RunnerModelPath {
         }
         if (this._forceEngine) {
             versionId += '-' + this._forceEngine;
+        }
+
+        if (this._impulseId !== 1) {
+            versionId += '-impulse' + this._impulseId;
         }
 
         return Path.join(os.homedir(), '.ei-linux-runner', 'models', this._projectId + '',

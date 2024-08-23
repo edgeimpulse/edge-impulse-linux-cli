@@ -10,9 +10,9 @@
  * Do not edit the class manually.
  */
 
-import { AdminGetOrganizationUsageReportResponseAllOf } from './adminGetOrganizationUsageReportResponseAllOf';
+import { AdminGetReportResponseAllOf } from './adminGetReportResponseAllOf';
 import { GenericApiResponse } from './genericApiResponse';
-import { OrganizationUsageReport } from './organizationUsageReport';
+import { Report } from './report';
 
 export class GetOrganizationUsageReportResponse {
     /**
@@ -23,7 +23,7 @@ export class GetOrganizationUsageReportResponse {
     * Optional error description (set if \'success\' was false)
     */
     'error'?: string;
-    'report': OrganizationUsageReport;
+    'report': Report;
 
     static discriminator: string | undefined = undefined;
 
@@ -41,7 +41,7 @@ export class GetOrganizationUsageReportResponse {
         {
             "name": "report",
             "baseName": "report",
-            "type": "OrganizationUsageReport"
+            "type": "Report"
         }    ];
 
     static getAttributeTypeMap() {

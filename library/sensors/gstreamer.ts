@@ -514,7 +514,8 @@ export class GStreamer extends EventEmitter<{
             const ex = <Error>ex2;
             const message = ex.message || ex.toString();
 
-            if (typeof message === 'string' && message.indexOf('Failed to start device monitor') > -1) {
+            if (typeof message === 'string' && ((message.indexOf('Failed to start device monitor') > -1) ||
+                                                (message.indexOf('Failed to query video capabilities') > -1))) {
                 if (this._verbose) {
                     console.log(PREFIX, 'Failed to start gst-device-monitor-1.0, retrying with only video sources...');
                 }

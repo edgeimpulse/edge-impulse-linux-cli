@@ -52,6 +52,7 @@ program
     .option('--list-targets', 'List all supported targets and inference engines')
     .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand (e.g. "runner-linux-aarch64")')
     .option('--force-engine <engine>', 'Do not autodetect the inference engine, but set it by hand (e.g. "tflite")')
+    .option('--impulse-id <impulseId>', 'Select the impulse ID (if you have multiple impulses)')
     .option('--run-http-server <port>', 'Do not run using a sensor, but instead expose an API server at the specified port')
     .option('--monitor', 'Enable model monitoring', false)
     .option('--clean', 'Clear credentials')
@@ -79,6 +80,8 @@ const modelFileArgv = <string | undefined>program.modelFile;
 const downloadArgv = <string | undefined>program.download;
 const forceTargetArgv = <string | undefined>program.forceTarget;
 const forceEngineArgv = <string | undefined>program.forceEngine;
+const impulseIdArgvStr = <string | undefined>program.impulseId;
+const impulseIdArgv = impulseIdArgvStr && !isNaN(Number(impulseIdArgvStr)) ? Number(impulseIdArgvStr) : undefined;
 const monitorArgv: boolean = !!program.monitor;
 const listTargetsArgv: boolean = !!program.listTargets;
 const gstLaunchArgsArgv = <string | undefined>program.gstLaunchArgs;
@@ -166,19 +169,21 @@ class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
     }
 }
 
-async function downloadModel(projectId: number | undefined,
-                             config: EdgeImpulseConfig): Promise<{
-                                modelFile: string,
-                                modelPath: RunnerModelPath }> {
-
-    if (!projectId) {
-        throw new Error('No project ID found');
-    }
+async function downloadModel(opts: {
+    projectId: number,
+    impulseId: number,
+    config: EdgeImpulseConfig,
+}): Promise<{
+    modelFile: string,
+    modelPath: RunnerModelPath,
+}> {
 
     // configFactory should be set by now (global variable)
     if (!configFactory) {
         throw new Error('No config factory found');
     }
+
+    const { projectId, impulseId, config } = opts;
 
     const studioUrl = await configFactory.getStudioUrl(null);
     let projectStudioUrl = studioUrl + '/studio/' + projectId;
@@ -187,13 +192,24 @@ async function downloadModel(projectId: number | undefined,
 
     await configFactory.setLinuxProjectId(projectId);
 
-    const downloader = new RunnerDownloader(projectId, quantizedArgv ? 'int8' : 'float32',
-                                            config, forceTargetArgv, forceEngineArgv);
+    const downloader = new RunnerDownloader({
+        projectId: projectId,
+        impulseId: impulseId,
+        modelType: quantizedArgv ? 'int8' : 'float32',
+        config,
+        forceTarget: forceTargetArgv,
+        forceEngine: forceEngineArgv,
+    });
     downloader.on('build-progress', msg => {
         console.log(BUILD_PREFIX, msg);
     });
-    modelPath = new RunnerModelPath(projectId, quantizedArgv ? 'int8' : 'float32',
-        forceTargetArgv, forceEngineArgv);
+    modelPath = new RunnerModelPath({
+        projectId,
+        impulseId,
+        modelType: quantizedArgv ? 'int8' : 'float32',
+        forceTarget: forceTargetArgv,
+        forceEngine: forceEngineArgv,
+    });
 
     // no new version? and already downloaded? return that model
     let currVersion = await downloader.getLastDeploymentVersion();
@@ -311,7 +327,7 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                 // this should never happen, as we are in online mode
                 throw new Error('No config found');
             }
-            const targets = await config.api.deployment.listDeploymentTargetsForProjectDataSources(projectId);
+            const targets = await config.api.deployment.listDeploymentTargetsForProjectDataSources(projectId, { });
             console.log('Listing all available targets');
             console.log('-----------------------------');
             for (let t of targets.targets.filter(x => x.format.startsWith('runner'))) {
@@ -328,13 +344,52 @@ function imageClassifierHelloMsg(model: ModelInformation) {
             await fs.promises.chmod(modelFile, 0o755);
         }
         else {
+            if (!projectId) {
+                throw new Error('projectId is null');
+            }
+
             // make sure the config is set
             if (!config) {
                 // this should never happen, as we are in online mode
                 throw new Error('No config found');
             }
+
+            let impulseId: number;
+            if (impulseIdArgv) {
+                impulseId = impulseIdArgv;
+            }
+            else {
+                const impulses = (await config.api.impulse.getAllImpulses(projectId)).impulses;
+                if (impulses.length === 1) {
+                    // use the first impulse
+                    impulseId = impulses[0].id;
+                }
+                else {
+                    const selectedImpulseId = await configFactory.getRunnerImpulseIdForProjectId(projectId);
+                    const selectedImpulse = impulses.find(x => x.id === selectedImpulseId);
+                    if (selectedImpulse) {
+                        impulseId = selectedImpulse.id;
+                    }
+                    else {
+                        let inqRes = await inquirer.prompt([{
+                            type: 'list',
+                            choices: impulses.map(p => ({ name: p.name, value: p.id })),
+                            name: 'impulseId',
+                            message: 'Which impulse do you want to run?',
+                            pageSize: 20
+                        }]);
+                        impulseId = Number(inqRes.impulseId);
+                        await configFactory.setRunnerImpulseIdForProjectId(projectId, impulseId);
+                    }
+                }
+            }
+
             // if we don't have the model file, download it
-            ({ modelFile, modelPath } = await downloadModel(projectId, config));
+            ({ modelFile, modelPath } = await downloadModel({
+                projectId,
+                impulseId,
+                config
+            }));
             if (downloadArgv) {
                 await fs.promises.mkdir(Path.dirname(downloadArgv), { recursive: true });
                 await fs.promises.copyFile(modelFile, downloadArgv);
@@ -406,11 +461,46 @@ function imageClassifierHelloMsg(model: ModelInformation) {
         remoteMgmt?.on('newModelAvailable', async ( ) => {
             console.log(RUNNER_PREFIX, 'New model available, downloading...');
             try {
+                if (!projectId) {
+                    throw new Error('projectId is null');
+                }
                 if (!config) {
                     // this should never happen, as we are in online mode
                     throw new Error('No config found');
                 }
-                ({ modelFile, modelPath } = await downloadModel(projectId, config));
+                if (!configFactory) {
+                    // this should never happen, as we are in online mode
+                    throw new Error('configFactory is null');
+                }
+
+                let impulseId: number;
+                if (impulseIdArgv) {
+                    impulseId = impulseIdArgv;
+                }
+                else {
+                    const impulses = (await config.api.impulse.getAllImpulses(projectId)).impulses;
+                    if (impulses.length === 1) {
+                        // use the first impulse
+                        impulseId = impulses[0].id;
+                    }
+                    else {
+                        const selectedImpulseId = await configFactory.getRunnerImpulseIdForProjectId(projectId);
+                        const selectedImpulse = impulses.find(x => x.id === selectedImpulseId);
+                        if (selectedImpulse) {
+                            impulseId = selectedImpulse.id;
+                        }
+                        else {
+                            // don't prompt here, just take the first
+                            impulseId = impulses[0].id;
+                        }
+                    }
+                }
+
+                ({ modelFile, modelPath } = await downloadModel({
+                    projectId: projectId,
+                    impulseId: impulseId,
+                    config
+                }));
 
                 // pause features streaming
                 imageClassifier?.pause();
@@ -782,7 +872,7 @@ function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier:
 function startApiServer(model: ModelInformation, runner: LinuxImpulseRunner, projectStudioUrl: string, port: number) {
     const app = express();
     app.disable('x-powered-by');
-    app.use(express.json());
+    app.use(express.json({ limit: '150mb' }));
     app.use(express.urlencoded({ extended: true }));
     app.use((req, res, next) => {
         res.header('x-ei-owner', model.project.owner);

@@ -10,31 +10,24 @@
  * Do not edit the class manually.
  */
 
-import { OrganizationUsageReport } from './organizationUsageReport';
 
-export class AdminGetOrganizationUsageReportsResponseAllOf {
+export class CreateImpulseResponseAllOf {
     /**
-    * List of organization usage reports.
+    * ID of the new impulse
     */
-    'reports': Array<OrganizationUsageReport>;
-    'totalCount': number;
+    'id': number;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "reports",
-            "baseName": "reports",
-            "type": "Array<OrganizationUsageReport>"
-        },
-        {
-            "name": "totalCount",
-            "baseName": "totalCount",
+            "name": "id",
+            "baseName": "id",
             "type": "number"
         }    ];
 
     static getAttributeTypeMap() {
-        return AdminGetOrganizationUsageReportsResponseAllOf.attributeTypeMap;
+        return CreateImpulseResponseAllOf.attributeTypeMap;
     }
 }
 

@@ -10,11 +10,12 @@
  * Do not edit the class manually.
  */
 
-import { AdminGetOrganizationUsageReportsResponseAllOf } from './adminGetOrganizationUsageReportsResponseAllOf';
+import { DetailedImpulse } from './detailedImpulse';
 import { GenericApiResponse } from './genericApiResponse';
-import { OrganizationUsageReport } from './organizationUsageReport';
+import { GetAllDetailedImpulsesResponseAllOf } from './getAllDetailedImpulsesResponseAllOf';
+import { GetAllDetailedImpulsesResponseAllOfMetricKeysByCategory } from './getAllDetailedImpulsesResponseAllOfMetricKeysByCategory';
 
-export class AdminGetOrganizationUsageReportsResponse {
+export class GetAllDetailedImpulsesResponse {
     /**
     * Whether the operation succeeded
     */
@@ -23,11 +24,8 @@ export class AdminGetOrganizationUsageReportsResponse {
     * Optional error description (set if \'success\' was false)
     */
     'error'?: string;
-    /**
-    * List of organization usage reports.
-    */
-    'reports': Array<OrganizationUsageReport>;
-    'totalCount': number;
+    'impulses': Array<DetailedImpulse>;
+    'metricKeysByCategory': Array<GetAllDetailedImpulsesResponseAllOfMetricKeysByCategory>;
 
     static discriminator: string | undefined = undefined;
 
@@ -43,18 +41,18 @@ export class AdminGetOrganizationUsageReportsResponse {
             "type": "string"
         },
         {
-            "name": "reports",
-            "baseName": "reports",
-            "type": "Array<OrganizationUsageReport>"
+            "name": "impulses",
+            "baseName": "impulses",
+            "type": "Array<DetailedImpulse>"
         },
         {
-            "name": "totalCount",
-            "baseName": "totalCount",
-            "type": "number"
+            "name": "metricKeysByCategory",
+            "baseName": "metricKeysByCategory",
+            "type": "Array<GetAllDetailedImpulsesResponseAllOfMetricKeysByCategory>"
         }    ];
 
     static getAttributeTypeMap() {
-        return AdminGetOrganizationUsageReportsResponse.attributeTypeMap;
+        return GetAllDetailedImpulsesResponse.attributeTypeMap;
     }
 }
 

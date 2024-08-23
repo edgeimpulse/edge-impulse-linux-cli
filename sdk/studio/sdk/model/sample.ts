@@ -123,6 +123,10 @@ export class Sample {
     'sha256Hash': string;
     'structuredLabels'?: Array<StructuredLabel>;
     'structuredLabelsList'?: Array<string>;
+    /**
+    * If this sample was created by a synthetic data job, it\'s referenced here.
+    */
+    'createdBySyntheticDataJobId'?: number;
 
     static discriminator: string | undefined = undefined;
 
@@ -321,6 +325,11 @@ export class Sample {
             "name": "structuredLabelsList",
             "baseName": "structuredLabelsList",
             "type": "Array<string>"
+        },
+        {
+            "name": "createdBySyntheticDataJobId",
+            "baseName": "createdBySyntheticDataJobId",
+            "type": "number"
         }    ];
 
     static getAttributeTypeMap() {
@@ -332,8 +341,8 @@ export class Sample {
 export type SampleBoundingBoxesTypeEnum = 'object_detection' | 'constrained_object_detection';
 export const SampleBoundingBoxesTypeEnumValues: string[] = ['object_detection', 'constrained_object_detection'];
 
-export type SampleChartTypeEnum = 'chart' | 'image' | 'video';
-export const SampleChartTypeEnumValues: string[] = ['chart', 'image', 'video'];
+export type SampleChartTypeEnum = 'chart' | 'image' | 'video' | 'table';
+export const SampleChartTypeEnumValues: string[] = ['chart', 'image', 'video', 'table'];
 
 export type SampleProjectLabelingMethodEnum = 'single_label' | 'object_detection';
 export const SampleProjectLabelingMethodEnumValues: string[] = ['single_label', 'object_detection'];
