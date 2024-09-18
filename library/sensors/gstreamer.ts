@@ -144,10 +144,10 @@ export class GStreamer extends EventEmitter<{
             if (this._verbose) {
                 console.log(PREFIX, 'Detected RZ/G2L target, initializing camera...');
             }
-            await spawnHelper('media-ctl', ['-d', '/dev/media0', '-r']);
-            await spawnHelper('media-ctl', ['-d', '/dev/media0', '-l', "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"]);
-            await spawnHelper('media-ctl', ['-d', '/dev/media0', '-V', "'rzg2l_csi2 10830400.csi2':1 [fmt:UYVY8_2X8/640x480 field:none]"]);
-            await spawnHelper('media-ctl', ['-d', '/dev/media0', '-V', "'ov5645 0-003c':0 [fmt:UYVY8_2X8/640x480 field:none]"]);
+            await spawnHelper('media-ctl', [ '-d', '/dev/media0', '-r' ]);
+            await spawnHelper('media-ctl', [ '-d', '/dev/media0', '-l', "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]" ]);
+            await spawnHelper('media-ctl', [ '-d', '/dev/media0', '-V', "'rzg2l_csi2 10830400.csi2':1 [fmt:UYVY8_2X8/640x480 field:none]" ]);
+            await spawnHelper('media-ctl', [ '-d', '/dev/media0', '-V', "'ov5645 0-003c':0 [fmt:UYVY8_2X8/640x480 field:none]" ]);
             if (this._verbose) {
                 console.log(PREFIX, 'Detected RZ/G2L target, initializing camera OK');
             }
@@ -493,16 +493,16 @@ export class GStreamer extends EventEmitter<{
                 height = Number(heightM[1]);
             }
 
-            return [{
+            return [ {
                 id: CUSTOM_GST_LAUNCH_COMMAND,
                 name: CUSTOM_GST_LAUNCH_COMMAND,
-                caps: [{
+                caps: [ {
                     type: 'video/x-raw',
                     framerate: 60,
                     width: width,
                     height: height,
-                }],
-            }];
+                } ],
+            } ];
         }
 
         let lines;
@@ -520,7 +520,7 @@ export class GStreamer extends EventEmitter<{
                     console.log(PREFIX, 'Failed to start gst-device-monitor-1.0, retrying with only video sources...');
                 }
                 lines = (await this._spawnHelper('gst-device-monitor-1.0',
-                        ['Video/Source', 'Source/Video', 'Video/CameraSource']))
+                        [ 'Video/Source', 'Source/Video', 'Video/CameraSource' ]))
                     .split('\n').filter(x => !!x).map(x => x.trim());
             }
             else {
@@ -592,7 +592,7 @@ export class GStreamer extends EventEmitter<{
                     let framerate = (l.match(/framerate=[^\d]+(\d+)/) || [])[1];
 
                     // Rpi on bullseye has lines like this..
-                    // eslint-disable-next-line max-len
+                    // eslint-disable-next-line @stylistic/max-len
                     // image/jpeg, width=160, height=120, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
                     if (!width) {
                         width = (l.match(/width=(\d+)/) || [])[1];
@@ -783,7 +783,7 @@ export class GStreamer extends EventEmitter<{
                 name: 'CSI camera',
                 rawCaps: [],
             };
-            return [d];
+            return [ d ];
         }
         else {
             return [];
@@ -870,13 +870,13 @@ export class GStreamer extends EventEmitter<{
             if (line.indexOf('AutoFunctionROIWidth-ROI1') > -1) {
                 inRoiWidth = true;
                 expectedIndent = currIndent;
-                currProp = [line];
+                currProp = [ line ];
                 continue;
             }
             else if (line.indexOf('AutoFunctionROIHeight-ROI1') > -1) {
                 inRoiHeight = true;
                 expectedIndent = currIndent;
-                currProp = [line];
+                currProp = [ line ];
                 continue;
             }
 
@@ -999,7 +999,7 @@ export class GStreamer extends EventEmitter<{
                 name: 'Basler camera',
                 rawCaps: [],
             };
-            return [d];
+            return [ d ];
         }
         else {
             return [];

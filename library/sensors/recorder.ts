@@ -202,7 +202,7 @@ export class AudioRecorder {
                 'testtesttest'
             ], { ignoreErrors: true });
 
-            let devices = [...new Set(data.split('\n')
+            let devices = [ ...new Set(data.split('\n')
                 .filter(d => d.startsWith('sox INFO coreaudio: Found Audio Device'))
                 .map(d => d.split('Found Audio Device ')[1])
                 .map(d => d.substr(1, d.length - 2)))
@@ -216,10 +216,10 @@ export class AudioRecorder {
             });
         }
         else {
-            return [{
+            return [ {
                 name: 'Default audio device',
                 id: ''
-            }];
+            } ];
         }
     }
 

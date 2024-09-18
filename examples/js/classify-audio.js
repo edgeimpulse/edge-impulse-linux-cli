@@ -27,7 +27,7 @@ const { AudioClassifier, LinuxImpulseRunner, AudioRecorder } = require("../../bu
         // Find the right microphone to run this model with (can be passed in as argument to the script)
         let devices = await AudioRecorder.ListDevices();
         if (devices.length === 0) {
-            devices = [{ id: '', name: 'Default microphone' }];
+            devices = [ { id: '', name: 'Default microphone' } ];
         }
         if (devices.length > 1 && !process.argv[3]) {
             throw new Error('Multiple microphones found (' + devices.map(n => '"' + n.name + '"').join(', ') + '), ' +

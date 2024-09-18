@@ -136,7 +136,7 @@ GST_ARGUS: Done Success
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, 'nvarguscamerasrc');
             assert.equal(devices[0].name, 'CSI camera');
-            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
+            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([ {
                     framerate: 21,
                     height: 2464,
                     width: 3264,
@@ -689,12 +689,12 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
             assert.equal(devices[0].name, 'USB');
-            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
+            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([ {
                 type: "image/jpeg",
                 width: 1280,
                 height: 720,
                 framerate: 30
-            }]));
+            } ]));
         });
 
         // https://forum.edgeimpulse.com/t/edge-impulse-on-coral-edgetpu/2311
@@ -736,7 +736,7 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
             assert.equal(devices[0].name, 'i.MX6S_CSI');
-            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
+            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([ {
                     type: "video/x-raw",
                     width: 2592,
                     height: 1944,
@@ -1111,7 +1111,7 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
             assert.equal(devices[0].name, 'UvcH264 Video Capture 4 (/dev/video0)');
-            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
+            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([ {
                     type: "video/x-raw",
                     width: 2304,
                     height: 1536,
@@ -1701,7 +1701,7 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video1');
             assert.equal(devices[0].name, 'HD Pro Webcam C920');
-            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
+            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([ {
                     type: "video/x-raw",
                     width: 2304,
                     height: 1536,
@@ -1906,12 +1906,12 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
             assert.equal(devices[0].name, 'RZG2L_CRU');
-            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
+            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([ {
                 type: "video/x-raw",
                 width: 640,
                 height: 480,
                 framerate: 0
-            }]));
+            } ]));
         });
 
         // Tested locally (Jan)
@@ -2381,7 +2381,7 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video2');
             assert.equal(devices[0].name, 'HD Pro Webcam C920');
-            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
+            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([ {
                     type: "video/x-raw",
                     width: 176,
                     height: 144,
@@ -4207,7 +4207,7 @@ Freeing pipeline ...
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, 'pylonsrc');
             assert.equal(devices[0].name, 'Basler camera');
-            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
+            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([ {
                     framerate: 60,
                     height: 1080,
                     width: 1440,
@@ -4244,12 +4244,12 @@ Freeing pipeline ...
             const launchResp = gstreamer.getGstreamerLaunchCommand({
                 id: 'pylonsrc',
                 name: 'Basler camera',
-                caps: [{
+                caps: [ {
                     framerate: 60,
                     height: 1080,
                     width: 1440,
                     type: "pylonsrc",
-                }],
+                } ],
             }, { width: 1440, height: 1080 });
 
             // console.log('launchResp', launchResp);

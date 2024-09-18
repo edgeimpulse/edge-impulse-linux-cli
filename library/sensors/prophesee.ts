@@ -48,7 +48,7 @@ export class Prophesee extends EventEmitter<{
      * List all available cameras
      */
     async listDevices() {
-        return ['Prophesee camera'];
+        return [ 'Prophesee camera' ];
     }
 
     /**

@@ -100,13 +100,13 @@ let isExiting = false;
             cameraDevice = cameraDevices[0];
         }
         else {
-            let inqRes = await inquirer.prompt([{
+            let inqRes = await inquirer.prompt([ {
                 type: 'list',
                 choices: (cameraDevices || []).map(p => ({ name: p, value: p })),
                 name: 'camera',
                 message: 'Select a camera',
                 pageSize: 20
-            }]);
+            } ]);
             cameraDevice = <string>inqRes.camera;
         }
 

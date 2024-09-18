@@ -464,12 +464,12 @@ let isExiting = false;
         }, config), linuxDevice,
             url => new Websocket(url),
             async (currName) => {
-                let nameDevice = <{ nameDevice: string }>await inquirer.prompt([{
+                let nameDevice = <{ nameDevice: string }>await inquirer.prompt([ {
                     type: 'input',
                     message: 'What name do you want to give this device?',
                     name: 'nameDevice',
                     default: currName
-                }]);
+                } ]);
                 return nameDevice.nameDevice;
             });
 
@@ -519,13 +519,13 @@ let isExiting = false;
                 audioDevice = '';
             }
             else {
-                let inqRes = await inquirer.prompt([{
+                let inqRes = await inquirer.prompt([ {
                     type: 'list',
                     choices: (audioDevices || []).map(p => ({ name: p.name, value: p.id })),
                     name: 'microphone',
                     message: 'Select a microphone (or run this command with --disable-microphone to skip selection)',
                     pageSize: 20
-                }]);
+                } ]);
                 audioDevice = <string>inqRes.microphone;
             }
             await configFactory.storeAudio(audioDevice);
@@ -548,13 +548,13 @@ let isExiting = false;
                 cameraDevice = cameraDevices[0];
             }
             else {
-                let inqRes = await inquirer.prompt([{
+                let inqRes = await inquirer.prompt([ {
                     type: 'list',
                     choices: (cameraDevices || []).map(p => ({ name: p, value: p })),
                     name: 'camera',
                     message: 'Select a camera (or run this command with --disable-camera to skip selection)',
                     pageSize: 20
-                }]);
+                } ]);
                 cameraDevice = <string>inqRes.camera;
             }
             await configFactory.storeCamera(cameraDevice);

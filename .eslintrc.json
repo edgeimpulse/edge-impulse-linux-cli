@@ -1,7 +1,7 @@
 {
     "extends": "../../.eslintrc.json",
     "parser": "@typescript-eslint/parser",
-    "plugins": ["@typescript-eslint", "@stylistic/ts"],
+    "plugins": ["@typescript-eslint", "@stylistic"],
     "rules": {
         "@typescript-eslint/no-var-requires": "off"
     },

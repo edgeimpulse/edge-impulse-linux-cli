@@ -51,7 +51,7 @@ export class RunnerDownloader extends EventEmitter<{
         }
         else if (process.platform === 'linux') {
             if (process.arch === 'arm') {
-                let uname = (await spawnHelper('uname', ['-m'])).trim();
+                let uname = (await spawnHelper('uname', [ '-m' ])).trim();
                 if (uname !== 'armv7l') {
                     throw new Error('Unsupported architecture "' + uname + '", only ' +
                         'armv7l or aarch64 supported for now');
@@ -60,7 +60,7 @@ export class RunnerDownloader extends EventEmitter<{
                 downloadType = 'runner-linux-armv7';
             }
             else if (process.arch === 'arm64') {
-                let uname = (await spawnHelper('uname', ['-m'])).trim();
+                let uname = (await spawnHelper('uname', [ '-m' ])).trim();
                 if (uname !== 'aarch64') {
                     throw new Error('Unsupported architecture "' + uname + '", only ' +
                         'armv7l or aarch64 supported for now');
@@ -91,9 +91,9 @@ export class RunnerDownloader extends EventEmitter<{
                         downloadType = 'runner-linux-aarch64-jetson-orin-6-0';
                     }
 
-                    const cudaLib = (await spawnHelper('find', ["/usr", "-type", "f", "-name", 'libcudart.so.1[0-9]'])).trim();
-                    const nvinferLib = (await spawnHelper('find', ["/usr", "-type", "f", "-name", 'libnvinfer.so.[7-9]'])).trim();
-                    const cudnnLib = (await spawnHelper('find', ["/usr", "-type", "f", "-name", 'libcudnn.so.[7-9]'])).trim();
+                    const cudaLib = (await spawnHelper('find', [ "/usr", "-type", "f", "-name", 'libcudart.so.1[0-9]' ])).trim();
+                    const nvinferLib = (await spawnHelper('find', [ "/usr", "-type", "f", "-name", 'libnvinfer.so.[7-9]' ])).trim();
+                    const cudnnLib = (await spawnHelper('find', [ "/usr", "-type", "f", "-name", 'libcudnn.so.[7-9]' ])).trim();
 
                     if ((cudaLib.indexOf('12') > -1)
                         && (nvinferLib.indexOf('8') > -1)
