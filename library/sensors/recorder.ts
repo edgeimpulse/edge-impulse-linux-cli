@@ -216,10 +216,10 @@ export class AudioRecorder {
             });
         }
         else {
-            return [ {
+            return [{
                 name: 'Default audio device',
                 id: ''
-            } ];
+            }];
         }
     }
 

@@ -493,16 +493,16 @@ export class GStreamer extends EventEmitter<{
                 height = Number(heightM[1]);
             }
 
-            return [ {
+            return [{
                 id: CUSTOM_GST_LAUNCH_COMMAND,
                 name: CUSTOM_GST_LAUNCH_COMMAND,
-                caps: [ {
+                caps: [{
                     type: 'video/x-raw',
                     framerate: 60,
                     width: width,
                     height: height,
-                } ],
-            } ];
+                }],
+            }];
         }
 
         let lines;

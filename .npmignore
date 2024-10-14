@@ -1,9 +1,0 @@
-library/
-img/
-examples/ts/
-examples/features.txt
-build/examples/
-tsconfig.json
-.eslintrc.json
-.eslintignore
-webserver/*.ts

@@ -366,13 +366,13 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                         impulseId = selectedImpulse.id;
                     }
                     else {
-                        let inqRes = await inquirer.prompt([ {
+                        let inqRes = await inquirer.prompt([{
                             type: 'list',
                             choices: impulses.map(p => ({ name: p.name, value: p.id })),
                             name: 'impulseId',
                             message: 'Which impulse do you want to run?',
                             pageSize: 20
-                        } ]);
+                        }]);
                         impulseId = Number(inqRes.impulseId);
                         await configFactory.setRunnerImpulseIdForProjectId(projectId, impulseId);
                     }
@@ -429,12 +429,12 @@ function imageClassifierHelloMsg(model: ModelInformation) {
             }, config), device, modelMonitor,
                 url => new WebSocket(url),
                 async (currName) => {
-                    let nameDevice = <{ nameDevice: string }>await inquirer.prompt([ {
+                    let nameDevice = <{ nameDevice: string }>await inquirer.prompt([{
                         type: 'input',
                         message: 'What name do you want to give this device?',
                         name: 'nameDevice',
                         default: currName
-                    } ]);
+                    }]);
                     return nameDevice.nameDevice;
                 });
             await remoteMgmt.connect();
@@ -574,13 +574,13 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                 audioDevice = '';
             }
             else {
-                let inqRes = await inquirer.prompt([ {
+                let inqRes = await inquirer.prompt([{
                     type: 'list',
                     choices: (audioDevices || []).map(p => ({ name: p.name, value: p.id })),
                     name: 'microphone',
                     message: 'Select a microphone',
                     pageSize: 20
-                } ]);
+                }]);
                 audioDevice = <string>inqRes.microphone;
             }
             await configFactory.storeAudio(audioDevice);
@@ -729,13 +729,13 @@ async function connectCamera(cf: Config) {
         device = devices[0];
     }
     else {
-        let inqRes = await inquirer.prompt([ {
+        let inqRes = await inquirer.prompt([{
             type: 'list',
             choices: (devices || []).map(p => ({ name: p, value: p })),
             name: 'camera',
             message: 'Select a camera',
             pageSize: 20
-        } ]);
+        }]);
         device = <string>inqRes.camera;
     }
     await cf.storeCamera(device);
@@ -994,7 +994,7 @@ function startApiServer(model: ModelInformation, runner: LinuxImpulseRunner, pro
 
         try {
             const multipartUpload = multer({ limits: { files: 1, fileSize: 100 * 1024 * 1024 } });
-            const fields: multer.Field[] = [ { name: "file", maxCount: 1 } ];
+            const fields: multer.Field[] = [{ name: "file", maxCount: 1 }];
             await util.promisify(multipartUpload.fields(fields))(req, res);
 
             if (!req.files) {
