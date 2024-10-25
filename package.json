@@ -36,7 +36,7 @@
     "borc": "2.1.2",
     "cbor": "5.0.2",
     "commander": "4.1.1",
-    "express": "4.21.0",
+    "express": "4.21.1",
     "form-data": "4.0.0",
     "inquirer": "7.0.0",
     "jpeg-js": "0.4.4",
