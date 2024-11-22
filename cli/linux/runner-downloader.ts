@@ -1,4 +1,4 @@
-import { EdgeImpulseConfig } from "../config";
+import { EdgeImpulseApi } from "../../sdk/studio/api";
 import { EventEmitter } from 'tsee';
 import { spawnHelper } from "../../library/sensors/spawn-helper";
 import fs from 'fs';
@@ -7,13 +7,14 @@ import Path from 'path';
 import os from 'os';
 
 const BUILD_PREFIX = '\x1b[32m[BLD]\x1b[0m';
+const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
 export class RunnerDownloader extends EventEmitter<{
     'build-progress': (msg: string) => void
 }> {
     private _projectId: number;
     private _impulseId: number;
-    private _config: EdgeImpulseConfig;
+    private _api: EdgeImpulseApi;
     private _modelType: 'int8' | 'float32';
     private _forceTarget: string | undefined;
     private _forceEngine: string | undefined;
@@ -22,7 +23,7 @@ export class RunnerDownloader extends EventEmitter<{
         projectId: number,
         impulseId: number,
         modelType: 'int8' | 'float32',
-        config: EdgeImpulseConfig,
+        api: EdgeImpulseApi,
         forceTarget: string | undefined,
         forceEngine: string | undefined,
     }) {
@@ -30,7 +31,7 @@ export class RunnerDownloader extends EventEmitter<{
 
         this._projectId = opts.projectId;
         this._impulseId = opts.impulseId;
-        this._config = opts.config;
+        this._api = opts.api;
         this._modelType = opts.modelType;
         this._forceTarget = opts.forceTarget;
         this._forceEngine = opts.forceEngine;
@@ -128,7 +129,7 @@ export class RunnerDownloader extends EventEmitter<{
     async getLastDeploymentVersion() {
         let downloadType = await this.getDownloadType();
 
-        let deployInfo = await this._config.api.deployment.getDeployment(
+        let deployInfo = await this._api.deployment.getDeployment(
             this._projectId, {
                 type: downloadType,
                 modelType: this._modelType,
@@ -143,7 +144,7 @@ export class RunnerDownloader extends EventEmitter<{
     async downloadDeployment() {
         let downloadType = await this.getDownloadType();
 
-        let deployInfo = await this._config.api.deployment.getDeployment(
+        let deployInfo = await this._api.deployment.getDeployment(
             this._projectId, {
                 type: downloadType,
                 modelType: this._modelType,
@@ -154,7 +155,7 @@ export class RunnerDownloader extends EventEmitter<{
             await this.buildModel(downloadType);
         }
 
-        let deployment = await this._config.api.deployment.downloadBuild(
+        let deployment = await this._api.deployment.downloadBuild(
             this._projectId, {
                 type: downloadType,
                 modelType: this._modelType,
@@ -165,7 +166,7 @@ export class RunnerDownloader extends EventEmitter<{
 
     private async buildModel(downloadType: string) {
         // list all deploy targets
-        const dt = await this._config.api.deployment.listDeploymentTargetsForProjectDataSources(this._projectId, {
+        const dt = await this._api.deployment.listDeploymentTargetsForProjectDataSources(this._projectId, {
             impulseId: this._impulseId,
         });
 
@@ -184,7 +185,7 @@ export class RunnerDownloader extends EventEmitter<{
             engine = <models.DeploymentTargetEngine>this._forceEngine;
         }
 
-        let buildRes = await this._config.api.jobs.buildOnDeviceModelJob(this._projectId, {
+        let buildRes = await this._api.jobs.buildOnDeviceModelJob(this._projectId, {
             engine: engine,
             modelType: this._modelType,
         }, {
@@ -195,7 +196,7 @@ export class RunnerDownloader extends EventEmitter<{
         let jobId = buildRes.id;
         this.emit('build-progress', 'Created build job with ID ' + jobId);
 
-        await this._config.api.runJobUntilCompletion({
+        await this._api.runJobUntilCompletion({
             type: 'project',
             projectId: this._projectId,
             jobId: jobId
@@ -245,4 +246,71 @@ export class RunnerModelPath {
         return Path.join(os.homedir(), '.ei-linux-runner', 'models', this._projectId + '',
             versionId, 'model.eim');
     }
+}
+
+function checkFileExists(file: string) {
+    return new Promise(resolve => {
+        return fs.promises.access(file, fs.constants.F_OK)
+            .then(() => resolve(true))
+            .catch(() => resolve(false));
+    });
+}
+
+export async function downloadModel(opts: {
+    projectId: number,
+    impulseId: number,
+    api: EdgeImpulseApi,
+    quantizedModel: boolean,
+    forcedTarget: string | undefined,
+    forcedEngine: string | undefined
+}): Promise<{
+       modelFile: string,
+       modelPath: RunnerModelPath }> {
+
+    const { projectId, impulseId, api, quantizedModel, forcedTarget, forcedEngine } = opts;
+
+    let modelPath: RunnerModelPath | undefined;
+    let modelFile: string;
+
+    const downloader = new RunnerDownloader({
+        projectId: projectId,
+        impulseId: impulseId,
+        modelType: quantizedModel ? 'int8' : 'float32',
+        api,
+        forceTarget: forcedTarget,
+        forceEngine: forcedEngine,
+    });
+    downloader.on('build-progress', msg => {
+        console.log(BUILD_PREFIX, msg);
+    });
+    modelPath = new RunnerModelPath({
+        projectId,
+        impulseId,
+        modelType: quantizedModel ? 'int8' : 'float32',
+        forceTarget: forcedTarget,
+        forceEngine: forcedEngine,
+    });
+
+    // no new version and already downloaded? return that model
+    let currVersion = await downloader.getLastDeploymentVersion();
+    if (currVersion && await checkFileExists(modelPath.getModelPath(currVersion))) {
+        modelFile = modelPath.getModelPath(currVersion);
+        console.log(RUNNER_PREFIX, 'Already have model', modelFile, 'not downloading...');
+    }
+    else {
+        console.log(RUNNER_PREFIX, 'Downloading model...');
+
+        let deployment = await downloader.downloadDeployment();
+        let tmpDir = await fs.promises.mkdtemp(Path.join(os.tmpdir(), 'ei-' + Date.now()));
+        tmpDir = Path.join(os.tmpdir(), tmpDir);
+        await fs.promises.mkdir(tmpDir, { recursive: true });
+        let ret = await downloader.getDownloadType();
+        modelFile = Path.join(tmpDir, ret[0]);
+        await fs.promises.writeFile(modelFile, deployment);
+        await fs.promises.chmod(modelFile, 0o755);
+
+        console.log(RUNNER_PREFIX, 'Downloading model OK');
+    }
+
+    return { modelFile, modelPath };
 }

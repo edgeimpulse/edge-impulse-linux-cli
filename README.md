@@ -42,7 +42,12 @@ You can pass in options to the CLI. Here are the key ones:
 * `--disable-microphone` - disable the microphone.
 * `--clean` - clear credentials, and re-authenticate. Use this to switch projects or devices.
 * `--api-key <apikey>` - set an API key, useful for automatic authentication with a new project.
+* `--greengrass` - utilize the AWS IoT Greengrass authentication context and AWS Secrets Manager to authenticate with a new project. See additional Greegrass notes below.
 * `--help` - see all options.
+
+#### Greengrass Integration Note
+
+edge-impulse-linux and edge-impulse-linux-runner can be run as a service via a custom AWS IoT Greengrass component(s). When provided with the "--greengrass" option, both services will utilize the AWS IoT Greengrass authentication context (ONLY present when launched as a AWS IoT Greengrass custom component) as well as AWS Secrets Manager to extract the api key to be used to authenticate to a new project. If the authentication context is abscent and/or incorrect, both services will simply ignore the "--greengrass" option that was provided and continue with any of the other provided options normally. 
 
 ## Classifying data
 

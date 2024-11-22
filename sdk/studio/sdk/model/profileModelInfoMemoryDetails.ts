@@ -10,34 +10,42 @@
  * Do not edit the class manually.
  */
 
-import { SampleProposedChanges } from './sampleProposedChanges';
 
-export class AIActionLastPreviewStateProposedChanges {
-    'sampleId': number;
-    'step': number;
-    'proposedChanges': SampleProposedChanges;
+export class ProfileModelInfoMemoryDetails {
+    /**
+    * Estimated amount of RAM required by the model, measured in bytes
+    */
+    'ram': number;
+    /**
+    * Estimated amount of ROM required by the model, measured in bytes
+    */
+    'rom': number;
+    /**
+    * Estimated arena size required for model inference, measured in bytes
+    */
+    'arenaSize': number;
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "sampleId",
-            "baseName": "sampleId",
+            "name": "ram",
+            "baseName": "ram",
             "type": "number"
         },
         {
-            "name": "step",
-            "baseName": "step",
+            "name": "rom",
+            "baseName": "rom",
             "type": "number"
         },
         {
-            "name": "proposedChanges",
-            "baseName": "proposedChanges",
-            "type": "SampleProposedChanges"
+            "name": "arenaSize",
+            "baseName": "arenaSize",
+            "type": "number"
         }    ];
 
     static getAttributeTypeMap() {
-        return AIActionLastPreviewStateProposedChanges.attributeTypeMap;
+        return ProfileModelInfoMemoryDetails.attributeTypeMap;
     }
 }
 

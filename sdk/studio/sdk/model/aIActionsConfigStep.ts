@@ -10,34 +10,33 @@
  * Do not edit the class manually.
  */
 
-import { SampleProposedChanges } from './sampleProposedChanges';
 
-export class AIActionLastPreviewStateProposedChanges {
-    'sampleId': number;
-    'step': number;
-    'proposedChanges': SampleProposedChanges;
+export class AIActionsConfigStep {
+    /**
+    * The selected transformation block ID.
+    */
+    'transformationBlockId': number;
+    /**
+    * Parameters for the transformation block. These map back to the parameters in OrganizationTransformationBlock \'parameters\' property.
+    */
+    'parameters': { [key: string]: string; };
 
     static discriminator: string | undefined = undefined;
 
     static attributeTypeMap: Array<{name: string, baseName: string, type: string}> = [
         {
-            "name": "sampleId",
-            "baseName": "sampleId",
+            "name": "transformationBlockId",
+            "baseName": "transformationBlockId",
             "type": "number"
         },
         {
-            "name": "step",
-            "baseName": "step",
-            "type": "number"
-        },
-        {
-            "name": "proposedChanges",
-            "baseName": "proposedChanges",
-            "type": "SampleProposedChanges"
+            "name": "parameters",
+            "baseName": "parameters",
+            "type": "{ [key: string]: string; }"
         }    ];
 
     static getAttributeTypeMap() {
-        return AIActionLastPreviewStateProposedChanges.attributeTypeMap;
+        return AIActionsConfigStep.attributeTypeMap;
     }
 }
 

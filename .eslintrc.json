@@ -1,9 +1,17 @@
 {
     "extends": "../../.eslintrc.json",
     "parser": "@typescript-eslint/parser",
-    "plugins": ["@typescript-eslint", "@stylistic"],
+    "plugins": ["@typescript-eslint", "@stylistic", "mocha"],
     "rules": {
-        "@typescript-eslint/no-var-requires": "off"
+        "@typescript-eslint/no-var-requires": "off",
+        "mocha/no-setup-in-describe": "off",
+        "mocha/no-async-describe": "off",
+        "mocha/no-exclusive-tests": "error",
+        "mocha/no-skipped-tests": "error",
+        "mocha/no-identical-title": "off",
+        "mocha/no-mocha-arrows": "off",
+        "mocha/consistent-spacing-between-blocks": "off",
+        "mocha/no-exports": "off"
     },
     "overrides": [
         {

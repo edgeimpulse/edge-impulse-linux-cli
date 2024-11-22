@@ -27,6 +27,8 @@ type GStreamerDevice = {
     caps: GStreamerCap[],
 };
 
+export type GStreamerMode = 'default' | 'rpi' | 'microchip';
+
 const CUSTOM_GST_LAUNCH_COMMAND = 'custom-gst-launch-command';
 
 export class GStreamer extends EventEmitter<{
@@ -41,7 +43,8 @@ export class GStreamer extends EventEmitter<{
     private _lastHash = '';
     private _processing = false;
     private _lastOptions?: ICameraStartOptions;
-    private _mode: 'default' | 'rpi-bullseye' | 'microchip' = 'default';
+    private _mode: GStreamerMode = 'default';
+    private _modeOverride: GStreamerMode | undefined;
     private _keepAliveTimeout: NodeJS.Timeout | undefined;
     private _isStarted = false;
     private _isRestarting = false;
@@ -51,12 +54,14 @@ export class GStreamer extends EventEmitter<{
     constructor(verbose: boolean, options?: {
         spawnHelperOverride?: SpawnHelperType,
         customLaunchCommand?: string,
+        modeOverride?: GStreamerMode,
     }) {
         super();
 
         this._verbose = verbose;
         this._customLaunchCommand = options?.customLaunchCommand;
         this._spawnHelper = options?.spawnHelperOverride || spawnHelper;
+        this._modeOverride = options?.modeOverride;
     }
 
     async init() {
@@ -85,18 +90,25 @@ export class GStreamer extends EventEmitter<{
             firmwareModel = await fs.promises.readFile('/proc/device-tree/model', 'utf-8');
         }
 
-        if (osRelease && osRelease.indexOf('bullseye') > -1) {
+        if (osRelease &&
+            // bullseye or bookworm
+            ((osRelease.indexOf('bullseye') > -1)
+                || (osRelease.indexOf('bookworm') > -1))) {
+
             if (osRelease.indexOf('ID=raspbian') > -1) {
-                this._mode = 'rpi-bullseye';
+                this._mode = 'rpi';
             }
 
             if (firmwareModel && firmwareModel.indexOf('Raspberry Pi') > -1) {
-                this._mode = 'rpi-bullseye';
+                this._mode = 'rpi';
             }
         }
+
         if (firmwareModel && firmwareModel.indexOf('Microchip SAMA7G5') > -1) {
             this._mode = 'microchip';
         }
+
+        this._mode = (this._modeOverride) ? this._modeOverride : this._mode;
     }
 
     async listDevices(): Promise<string[]> {
@@ -153,7 +165,7 @@ export class GStreamer extends EventEmitter<{
             }
         }
 
-        const { invokeProcess, command, args } = this.getGstreamerLaunchCommand(device, dimensions);
+        const { invokeProcess, command, args } = await this.getGstreamerLaunchCommand(device, dimensions);
 
         if (this._verbose) {
             console.log(PREFIX, `Starting ${command} with`, args);
@@ -303,7 +315,7 @@ export class GStreamer extends EventEmitter<{
         return p;
     }
 
-    getGstreamerLaunchCommand(device: {
+    async getGstreamerLaunchCommand(device: {
         id: string,
         name: string,
         caps: GStreamerCap[],
@@ -356,15 +368,27 @@ export class GStreamer extends EventEmitter<{
         }
 
         let videoSource = [ 'v4l2src', 'device=' + device.id ];
-        if (this._mode === 'rpi-bullseye' || this._mode === 'microchip') {
+
+        if ((this._mode === 'rpi') || (this._mode === 'microchip')) {
             // Rpi camera
-            if (!device.id) {
+            if ((!device.id)
+                || (device.name.indexOf('unicam') > -1)
+                || (device.name.indexOf('bcm2835-isp') > -1)) {
                 videoSource = [ 'libcamerasrc' ];
+                const hasPlugin = await this.hasGstPlugin('libcamerasrc');
+                if (!hasPlugin) {
+                    throw new Error('Missing "libcamerasrc" gstreamer plugin. Install via `sudo apt install -y gstreamer1.0-libcamera`');
+                }
             }
             else {
-                videoSource = [ 'uvch264src', 'device=' + device.id ];
+                const hasPlugin = await this.hasGstPlugin('uvch264src');
+                // fallback to `v4l2src' if plugin doesn't exist.
+                if (hasPlugin) {
+                    videoSource = [ 'uvch264src', 'device=' + device.id ];
+                }
             }
         }
+
         if (device.id === 'pylonsrc') {
             videoSource = [ 'pylonsrc' ];
         }
@@ -372,9 +396,21 @@ export class GStreamer extends EventEmitter<{
         let invokeProcess: 'spawn' | 'exec';
         let args: string[];
         if (cap.type === 'video/x-raw') {
+
+            if (this._mode === 'rpi' && device.name.indexOf('arducam') > -1) {
+                videoSource = videoSource.concat([
+                    `!`,
+                    `video/x-raw,width=${cap.width},height=${cap.height},format=YUY2`
+                    ]);
+            }
+            else {
+                videoSource = videoSource.concat([
+                    `!`,
+                    `video/x-raw,width=${cap.width},height=${cap.height}`
+                ]);
+            }
+
             args = videoSource.concat([
-                `!`,
-                `video/x-raw,width=${cap.width},height=${cap.height}`,
                 `!`,
                 `videoconvert`,
                 `!`,
@@ -613,7 +649,7 @@ export class GStreamer extends EventEmitter<{
                     return r;
                 });
 
-            if (this._mode === 'rpi-bullseye' || this._mode === 'microchip') { // no framerate here...
+            if (this._mode === 'rpi' || this._mode === 'microchip') { // no framerate here...
                 c = c.filter(x => x.width && x.height);
             }
             else if (d.name === 'RZG2L_CRU') {
@@ -670,7 +706,7 @@ export class GStreamer extends EventEmitter<{
             };
         });
 
-        // deduplicate (by name)
+        // deduplicate (by id)
         mapped = mapped.reduce((curr: { id: string, name: string, caps: GStreamerCap[] }[], m) => {
             if (curr.find(x => x.id === m.id)) return curr;
             curr.push(m);
@@ -680,10 +716,10 @@ export class GStreamer extends EventEmitter<{
         return mapped;
     }
 
-    private async listNvarguscamerasrcDevices(): Promise<GStreamerDevice[]> {
+    private async hasGstPlugin(plugin: string): Promise<boolean> {
         let hasPlugin: boolean;
         try {
-            hasPlugin = (await this._spawnHelper('gst-inspect-1.0', [])).indexOf('nvarguscamerasrc') > -1;
+            hasPlugin = (await this._spawnHelper('gst-inspect-1.0', [])).indexOf(plugin) > -1;
         }
         catch (ex) {
             if (this._verbose) {
@@ -691,7 +727,12 @@ export class GStreamer extends EventEmitter<{
             }
             hasPlugin = false;
         }
+        return hasPlugin;
+    }
 
+    private async listNvarguscamerasrcDevices(): Promise<GStreamerDevice[]> {
+
+        const hasPlugin: boolean = await this.hasGstPlugin('nvarguscamerasrc');
         if (!hasPlugin) {
             return [];
         }

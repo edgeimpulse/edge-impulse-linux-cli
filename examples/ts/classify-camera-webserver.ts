@@ -1,4 +1,5 @@
-import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap, ModelInformation, getIps } from "../../library";
+import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap, ModelInformation } from "../../library";
+import { ips } from "../../cli-common/get-ips";
 import sharp from 'sharp';
 import express = require('express');
 import socketIO from 'socket.io';
@@ -96,7 +97,6 @@ import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-ru
         await imageClassifier.start();
 
         let webserverPort = await startWebServer(model, camera, imageClassifier, port);
-        const ips = getIps();
         console.log('');
         console.log('Want to see a feed of the camera and live classification in your browser? ' +
             'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + webserverPort);

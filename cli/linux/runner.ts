@@ -1,43 +1,35 @@
 #!/usr/bin/env node
 
 import Path from 'path';
-import { LinuxImpulseRunner, ModelInformation, RunnerHelloHasAnomaly,
-         RunnerHelloInferencingEngine, RunnerHelloResponseModelParameters } from '../../library/classifier/linux-impulse-runner';
+import { LinuxImpulseRunner, ModelInformation } from '../../library/classifier/linux-impulse-runner';
 import { AudioClassifier } from '../../library/classifier/audio-classifier';
 import { ImageClassifier } from '../../library/classifier/image-classifier';
-import { Imagesnap } from '../../library/sensors/imagesnap';
 import inquirer from 'inquirer';
-import { initCliApp, setupCliApp } from '../init-cli-app';
+import { initCliApp, setupCliApp } from "../../cli-common/init-cli-app";
 import fs from 'fs';
-import os from 'os';
-import { RunnerDownloader, RunnerModelPath } from './runner-downloader';
-import { GStreamer } from '../../library/sensors/gstreamer';
-import { ICamera } from '../../library/sensors/icamera';
+import { RunnerModelPath, downloadModel } from './runner-downloader';
 import program from 'commander';
-import express = require('express');
-import http from 'http';
-import socketIO from 'socket.io';
-import sharp from 'sharp';
-import { AudioRecorder } from '../../library';
-import { ips } from '../get-ips';
-import { Prophesee } from '../../library/sensors/prophesee';
-import { asyncMiddleware } from './webserver/middleware/asyncMiddleware';
-import { RemoteMgmt, RemoteMgmtConfig, RemoteMgmtInferenceDevice } from './remote-mgmt-service';
-import { EventEmitter } from "tsee";
-import TypedEmitter from "typed-emitter";
+import { ips } from '../../cli-common/get-ips';
+import { RemoteMgmt } from '../../cli-common/remote-mgmt-service';
 import WebSocket from 'ws';
-import { Config, EdgeImpulseConfig } from "../config";
-import multer from 'multer';
-import util from 'util';
-import { InferenceServerModelViewModel, InferenceServerViewModel, renderInferenceServerView } from './webserver/views/inference-server-view';
-import { ModelMonitor } from './model-monitor';
+import { Config, EdgeImpulseConfig } from "../../cli-common/config";
+import { LinuxDevice } from './linux-device';
+import { ModelMonitor } from '../../cli-common/model-monitor';
+import { listTargets, audioClassifierHelloMsg, imageClassifierHelloMsg, startApiServer, startWebServer } from './runner-utils';
+import { initCamera, CameraType, initMicrophone } from '../../library/sensors/sensors-helper';
+
+import { AWSSecretsManagerUtils } from "../../cli-common/aws-sm-utils";
+import { AWSIoTCoreConnector, Payload, AwsResult, AwsResultKey } from "../../cli-common/aws-iotcore-connector";
+import { v4 as uuidv4 } from 'uuid';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
-const BUILD_PREFIX = '\x1b[32m[BLD]\x1b[0m';
 
 let audioClassifier: AudioClassifier | undefined;
 let imageClassifier: ImageClassifier | undefined;
 let configFactory: Config | undefined;
+
+// total inference count
+let totalInferenceCount = 0;
 
 const packageVersion = (<{ version: string }>JSON.parse(fs.readFileSync(
     Path.join(__dirname, '..', '..', '..', 'package.json'), 'utf-8'))).version;
@@ -66,6 +58,7 @@ program
     .option('--dev', 'List development servers, alternatively you can use the EI_HOST environmental variable ' +
         'to specify the Edge Impulse instance.')
     .option('--verbose', 'Enable debug logs')
+    .option('--greengrass', 'Enable AWS IoT greengrass integration mode')
     .allowUnknownOption(true)
     .parse(process.argv);
 
@@ -76,6 +69,7 @@ const quantizedArgv: boolean = !!program.quantized;
 const enableCameraArgv: boolean = !!program.enableCamera;
 const verboseArgv: boolean = !!program.verbose;
 const apiKeyArgv = <string | undefined>program.apiKey;
+const greengrassArgv: boolean = !!program.greengrass;
 const modelFileArgv = <string | undefined>program.modelFile;
 const downloadArgv = <string | undefined>program.download;
 const forceTargetArgv = <string | undefined>program.forceTarget;
@@ -86,12 +80,14 @@ const monitorArgv: boolean = !!program.monitor;
 const listTargetsArgv: boolean = !!program.listTargets;
 const gstLaunchArgsArgv = <string | undefined>program.gstLaunchArgs;
 const runHttpServerPort = program.runHttpServer ? Number(program.runHttpServer) : undefined;
+const enableVideo = (process.env.PROPHESEE_CAM === '1') || (process.env.ENABLE_VIDEO === '1');
 
 process.on('warning', e => console.warn(e.stack));
 
 const cliOptions = {
     appName: 'Edge Impulse Linux runner',
     apiKeyArgv: apiKeyArgv,
+    greengrassArgv: greengrassArgv,
     cleanArgv: cleanArgv,
     devArgv: devArgv,
     hmacKeyArgv: undefined,
@@ -141,118 +137,41 @@ const onSignal = async () => {
 process.on('SIGHUP', onSignal);
 process.on('SIGINT', onSignal);
 
-class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
-    snapshot: (buffer: Buffer, filename: string) => void
-}>) implements RemoteMgmtInferenceDevice  {
-
-    async getDeviceId() {
-        return ips.length > 0 ? ips[0].mac : '00:00:00:00:00:00';
-    }
-
-    getDeviceType() {
-        let id = (ips.length > 0 ? ips[0].mac : '00:00:00:00:00:00').toLowerCase();
-
-        if (id.startsWith('dc:a6:32') || id.startsWith('b8:27:eb')) {
-            return 'RASPBERRY_PI';
-        }
-
-        if (id.startsWith('00:04:4b') || id.startsWith('48:b0:2d')) {
-            return 'NVIDIA_JETSON_NANO';
-        }
-
-        return 'EDGE_IMPULSE_LINUX';
-    }
-}
-
-async function downloadModel(opts: {
-    projectId: number,
-    impulseId: number,
-    config: EdgeImpulseConfig,
-}): Promise<{
-    modelFile: string,
-    modelPath: RunnerModelPath,
-}> {
-
-    // configFactory should be set by now (global variable)
+async function startCamera(cameraType: CameraType) {
     if (!configFactory) {
-        throw new Error('No config factory found');
+        throw new Error('No config factory');
     }
-
-    const { projectId, impulseId, config } = opts;
-
-    const studioUrl = await configFactory.getStudioUrl(null);
-    let projectStudioUrl = studioUrl + '/studio/' + projectId;
-    let modelPath: RunnerModelPath | undefined;
-    let modelFile: string;
-
-    await configFactory.setLinuxProjectId(projectId);
-
-    const downloader = new RunnerDownloader({
-        projectId: projectId,
-        impulseId: impulseId,
-        modelType: quantizedArgv ? 'int8' : 'float32',
-        config,
-        forceTarget: forceTargetArgv,
-        forceEngine: forceEngineArgv,
+    let cameraDevicedName = await configFactory.getCamera();
+    let camera = await initCamera(cameraType, cameraDevicedName, undefined, gstLaunchArgsArgv, verboseArgv);
+    camera.on('error', error => {
+        if (isExiting) return;
+        console.log(RUNNER_PREFIX, 'camera error', error);
+        // AWS shutdown sematic check
+        if (greengrassArgv) {
+            // in greengrass context
+            const shutdownBehavior = (<string>process.env.EI_SHUTDOWN_BEHAVIOR);
+            if (shutdownBehavior !== undefined && shutdownBehavior === "wait_on_restart") {
+                // wait for the shutdown command... it will close runner down
+                console.log(RUNNER_PREFIX, "Waiting for restart command via IoTCore...");
+            }
+            else {
+                // just default...
+                console.log(RUNNER_PREFIX, "In greengrass context using default shutdown behavior...");
+                process.exit(1);
+            }
+        }
+        else {
+            process.exit(1);
+        }
     });
-    downloader.on('build-progress', msg => {
-        console.log(BUILD_PREFIX, msg);
-    });
-    modelPath = new RunnerModelPath({
-        projectId,
-        impulseId,
-        modelType: quantizedArgv ? 'int8' : 'float32',
-        forceTarget: forceTargetArgv,
-        forceEngine: forceEngineArgv,
-    });
-
-    // no new version? and already downloaded? return that model
-    let currVersion = await downloader.getLastDeploymentVersion();
-    if (currVersion && await checkFileExists(modelPath.getModelPath(currVersion))) {
-        modelFile = modelPath.getModelPath(currVersion);
-        console.log(RUNNER_PREFIX, 'Already have model', modelFile, 'not downloading...');
+    let opts = camera.getLastOptions();
+    if (!opts) {
+        throw new Error('Could not get selected camera details');
     }
-    else {
-        console.log(RUNNER_PREFIX, 'Downloading model...');
+    console.log(RUNNER_PREFIX, 'Connected to camera ' + opts.device);
+    await configFactory.storeCamera(opts.device);
 
-        let deployment = await downloader.downloadDeployment();
-        let tmpDir = await fs.promises.mkdtemp(Path.join(os.tmpdir(), 'ei-' + Date.now()));
-        tmpDir = Path.join(os.tmpdir(), tmpDir);
-        await fs.promises.mkdir(tmpDir, { recursive: true });
-        let ret = await downloader.getDownloadType();
-        modelFile = Path.join(tmpDir, ret[0]);
-        await fs.promises.writeFile(modelFile, deployment);
-        await fs.promises.chmod(modelFile, 0o755);
-
-        console.log(RUNNER_PREFIX, 'Downloading model OK');
-    }
-
-    return { modelFile, modelPath };
-}
-
-function audioClassifierHelloMsg(model: ModelInformation) {
-    let param = model.modelParameters;
-    console.log(RUNNER_PREFIX, 'Starting the audio classifier for',
-        model.project.owner + ' / ' + model.project.name, '(v' + model.project.deploy_version + ')');
-    console.log(RUNNER_PREFIX, 'Parameters', 'freq', param.frequency + 'Hz',
-        'window length', ((param.input_features_count / param.frequency / param.axis_count) * 1000) + 'ms.',
-        'classes', param.labels);
-}
-
-function imageClassifierHelloMsg(model: ModelInformation) {
-    let param = model.modelParameters;
-    let labels = param.labels;
-
-    if (param.has_anomaly === RunnerHelloHasAnomaly.VisualGMM) {
-        labels.push('anomaly');
-    }
-
-    console.log(RUNNER_PREFIX, 'Starting the image classifier for',
-        model.project.owner + ' / ' + model.project.name, '(v' + model.project.deploy_version + ')');
-    console.log(RUNNER_PREFIX, 'Parameters',
-        'image size', param.image_input_width + 'x' + param.image_input_height + ' px (' +
-            param.image_channel_count + ' channels)',
-        'classes', labels);
+    return camera;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -271,6 +190,15 @@ function imageClassifierHelloMsg(model: ModelInformation) {
         let modelMonitor: ModelMonitor | undefined;
         let runner: LinuxImpulseRunner;
         let model: ModelInformation;
+        const cameraType =
+            process.env.PROPHESEE_CAM === '1' ? CameraType.PropheseeCamera :
+            process.platform === 'darwin' ? CameraType.ImagesnapCamera :
+            process.platform === 'linux' ? CameraType.GStreamerCamera :
+                CameraType.UnknownCamera;
+
+        // AWS Support
+        let awsSM: AWSSecretsManagerUtils | undefined;
+        let awsIOT: AWSIoTCoreConnector | undefined;
 
         // make sanity checks on the arguments
         if (listTargetsArgv && modelFileArgv) {
@@ -299,12 +227,60 @@ function imageClassifierHelloMsg(model: ModelInformation) {
             config = init.config;
             configFactory = init.configFactory;
 
+            // AWS Support
+            awsSM = init.awsSM;
+            awsIOT = init.awsIOT;
+
+            // TODO: setuCliApp tries to get projectId from UploaderProjectId form config,
+            // if failed then it tries getLinuxProjectId (see getProjectFromConfig in cliOptions)
+            // if that failed too, it lists projects and asks user to select one
             ({ projectId, devKeys } = await setupCliApp(configFactory, config, cliOptions, undefined));
 
             // store project id in case user just selected one
             await configFactory.setLinuxProjectId(projectId);
         }
         else {
+            // If no connection needed... still look for --greengrass and connect to IoTCore if present and able...
+            if (greengrassArgv) {
+                // FUDGE
+                let opts = {
+                    appName: cliOptions.appName,
+                    silentArgv: silentArgv,
+                    cleanArgv: false,
+                    apiKeyArgv: "",
+                    greengrassArgv: true,
+                    devArgv: false,
+                    hmacKeyArgv: "",
+                    connectProjectMsg: ""
+                };
+
+                // make sure we dont already have a connection
+                if (awsIOT === undefined) {
+                    awsIOT = new AWSIoTCoreConnector(opts);
+                    if (awsIOT !== undefined) {
+                        if (!silentArgv) {
+                            console.log(opts.appName + ": Connecting to IoTCore...");
+                        }
+                        const connected = await awsIOT.connect();
+                        if (!silentArgv) {
+                            if (connected) {
+                                // success
+                                console.log(opts.appName + ": Connected to IoTCore Successfully!");
+
+                                // launch command receiver
+                                // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                                awsIOT.launchCommandReceiver();
+                            }
+                            else {
+                                // failure
+                                console.log(opts.appName + ": FAILED to connect to IoTCore");
+                            }
+                        }
+                    }
+                }
+            }
+
+            // TODO: cleanArgv is not used in this case
             configFactory = new Config();
             devKeys = {
                 apiKey: apiKeyArgv ?? '',
@@ -317,18 +293,14 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                 // this should never happen, as we are in online mode
                 projectId = await configFactory.getLinuxProjectId() || -1;
             }
+
             // make sure the config is set
             if (!config) {
                 // this should never happen, as we are in online mode
                 throw new Error('No config found');
             }
-            const targets = await config.api.deployment.listDeploymentTargetsForProjectDataSources(projectId, { });
-            console.log('Listing all available targets');
-            console.log('-----------------------------');
-            for (let t of targets.targets.filter(x => x.format.startsWith('runner'))) {
-                console.log(`target: ${t.format}, name: ${t.name}, supported engines: [${t.supportedEngines.join(', ')}]`);
-            }
-            console.log('');
+
+            await listTargets(projectId, config.api);
             console.log('You can force a target via "edge-impulse-linux-runner --force-target <target> [--force-engine <engine>]"');
             process.exit(0);
         }
@@ -339,8 +311,11 @@ function imageClassifierHelloMsg(model: ModelInformation) {
             await fs.promises.chmod(modelFile, 0o755);
         }
         else {
+            // projectId should exist in config or be requested from Studio,
+            // no -1 value or undefined at this stage
             if (!projectId) {
-                throw new Error('projectId is null');
+                // this should never happen, as we are in online mode
+                projectId = await configFactory.getLinuxProjectId() || -1;
             }
 
             // make sure the config is set
@@ -381,9 +356,12 @@ function imageClassifierHelloMsg(model: ModelInformation) {
 
             // if we don't have the model file, download it
             ({ modelFile, modelPath } = await downloadModel({
-                projectId,
-                impulseId,
-                config
+                projectId: projectId,
+                impulseId: impulseId,
+                api: config.api,
+                quantizedModel: quantizedArgv,
+                forcedTarget: forceTargetArgv,
+                forcedEngine: forceEngineArgv
             }));
             if (downloadArgv) {
                 await fs.promises.mkdir(Path.dirname(downloadArgv), { recursive: true });
@@ -410,7 +388,12 @@ function imageClassifierHelloMsg(model: ModelInformation) {
 
         let param = model.modelParameters;
         if (monitorArgv) {
-            let device = new LinuxDevice();
+            // make sure the config is set
+            if (!config) {
+                // this should never happen, as we are in online mode
+                throw new Error('No config found');
+            }
+            let device = new LinuxDevice(config, devKeys, param.sensorType === 'microphone', enableVideo, verboseArgv);
             modelMonitor = await ModelMonitor.getModelMonitor(configFactory, model);
             let storageStatus = await modelMonitor?.getStorageStatus();
 
@@ -418,15 +401,13 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                 throw new Error('No project ID found');
             }
 
-            remoteMgmt = new RemoteMgmt(projectId, {
-                projectId: model.project.id,
-                projectName: model.project.name,
-                projectOwner: model.project.owner,
-                deploymentVersion: model.project.deploy_version,
-                modelType: model.modelParameters.model_type,
-            }, devKeys, Object.assign({
-                command: <'edge-impulse-linux'>'edge-impulse-linux'
-            }, config), device, modelMonitor,
+            remoteMgmt = new RemoteMgmt(projectId,
+                devKeys,
+                Object.assign({
+                    command: <'edge-impulse-linux'>'edge-impulse-linux'
+                }, config),
+                device,
+                modelMonitor,
                 url => new WebSocket(url),
                 async (currName) => {
                     let nameDevice = <{ nameDevice: string }>await inquirer.prompt([{
@@ -437,14 +418,20 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                     }]);
                     return nameDevice.nameDevice;
                 });
-            await remoteMgmt.connect();
+            await remoteMgmt.connect(true, {
+                projectId: model.project.id,
+                projectName: model.project.name,
+                projectOwner: model.project.owner,
+                deploymentVersion: model.project.deploy_version,
+                modelType: model.modelParameters.model_type,
+            });
 
             // wait 30 sec for the connection to be established (WS connection + setting device name by user)
             let isConnected = false;
             let timeout = 0;
             while (!isConnected && timeout < 30) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                isConnected = await remoteMgmt.isConnected;
+                isConnected = remoteMgmt.isConnected;
                 timeout++;
             }
 
@@ -494,7 +481,10 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                 ({ modelFile, modelPath } = await downloadModel({
                     projectId: projectId,
                     impulseId: impulseId,
-                    config
+                    api: config.api,
+                    quantizedModel: quantizedArgv,
+                    forcedTarget: forceTargetArgv,
+                    forcedEngine: forceEngineArgv
                 }));
 
                 // pause features streaming
@@ -557,35 +547,20 @@ function imageClassifierHelloMsg(model: ModelInformation) {
             audioClassifierHelloMsg(model);
 
             if (enableCameraArgv) {
-                await connectCamera(configFactory);
+                await startCamera(cameraType);
             }
 
-            let audioDevice: string | undefined;
-            const audioDevices = await AudioRecorder.ListDevices();
-            const storedAudio = await configFactory.getAudio();
-            if (storedAudio && audioDevices.find(d => d.id === storedAudio)) {
-                audioDevice = storedAudio;
+            let audioDeviceName = await configFactory.getAudio();
+            try {
+                audioDeviceName = await initMicrophone(audioDeviceName);
             }
-            else if (audioDevices.length === 1) {
-                audioDevice = audioDevices[0].id;
+            catch (ex) {
+                console.warn(RUNNER_PREFIX, 'Could not find any microphones');
+                audioDeviceName = '';
             }
-            else if (audioDevices.length === 0) {
-                console.warn(RUNNER_PREFIX, 'Could not find any microphones...');
-                audioDevice = '';
-            }
-            else {
-                let inqRes = await inquirer.prompt([{
-                    type: 'list',
-                    choices: (audioDevices || []).map(p => ({ name: p.name, value: p.id })),
-                    name: 'microphone',
-                    message: 'Select a microphone',
-                    pageSize: 20
-                }]);
-                audioDevice = <string>inqRes.microphone;
-            }
-            await configFactory.storeAudio(audioDevice);
+            await configFactory.storeAudio(audioDeviceName);
 
-            console.log(RUNNER_PREFIX, 'Using microphone ' + audioDevice);
+            console.log(RUNNER_PREFIX, 'Using microphone ' + audioDeviceName);
 
             audioClassifier = new AudioClassifier(runner, verboseArgv);
 
@@ -601,9 +576,11 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                 process.exit(1);
             });
 
-            await audioClassifier.start(audioDevice);
+            await audioClassifier.start(audioDeviceName);
 
             audioClassifier.on('result', async (ev, timeMs, audioAsPcm) => {
+                let count = 0;
+
                 if (!ev.result.classification) return;
 
                 if (modelMonitor) {
@@ -620,7 +597,24 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                 for (let k of Object.keys(c)) {
                     c[k] = (<number>c[k]).toFixed(4);
                 }
+
+                if (Array.isArray(c)) {
+                    count = c.length;
+                }
+
+                // total inferences update...
+                totalInferenceCount += count;
+
                 console.log('classifyRes', timeMs + 'ms.', c);
+
+                // AWS Integration - send to IoTCore if running in Greengrass
+                if (awsIOT !== undefined && awsIOT.isConnected()) {
+                    const payload = { time_ms: timeMs, c: c, info:ev.info, inference_count: count,
+                        total_inferences: totalInferenceCount, id: uuidv4(), ts: Date.now()};
+                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                    awsIOT.sendInference(payload, "c");
+                }
+
                 if (ev.info) {
                     console.log('additionalInfo:', ev.info);
                 }
@@ -628,8 +622,7 @@ function imageClassifierHelloMsg(model: ModelInformation) {
         }
         else if (param.sensorType === 'camera') {
             imageClassifierHelloMsg(model);
-
-            let camera = await connectCamera(configFactory);
+            let camera = await startCamera(cameraType);
 
             imageClassifier = new ImageClassifier(runner, camera);
 
@@ -642,12 +635,10 @@ function imageClassifierHelloMsg(model: ModelInformation) {
             console.log('');
 
             imageClassifier.on('result', async (ev, timeMs, imgAsJpg) => {
-                if (modelMonitor) {
-                    await modelMonitor.processResult(ev, {
-                        type: 'jpg',
-                        buffer: imgAsJpg,
-                    });
-                }
+                // AWS Integration
+                let awsResult: AwsResult | undefined;
+                let awsResultKey: AwsResultKey | undefined;
+                let count = 0;
 
                 if (ev.result.classification) {
                     // print the raw predicted values for this frame
@@ -658,13 +649,83 @@ function imageClassifierHelloMsg(model: ModelInformation) {
                         c[k] = (<number>c[k]).toFixed(4);
                     }
                     console.log('classifyRes', timeMs + 'ms.', c);
+
+                    // AWS Integration
+                    awsResult = c;
+                    awsResultKey = "c";
+                    ++count;
                 }
+
                 if (ev.result.bounding_boxes) {
                     console.log('boundingBoxes', timeMs + 'ms.', JSON.stringify(ev.result.bounding_boxes));
+
+                    // AWS Integration
+                    awsResult = ev.result.bounding_boxes;
+                    awsResultKey = "box";
+                    ++count;
                 }
+
                 if (ev.result.visual_anomaly_grid) {
                     console.log('visual anomalies', timeMs + 'ms.', JSON.stringify(ev.result.visual_anomaly_grid));
+
+                    // AWS Integration
+                    awsResult = ev.result.visual_anomaly_grid;
+                    awsResultKey = "grid";
+                    ++count;
                 }
+
+                if (Array.isArray(awsResult)) {
+                    count = awsResult.length;
+                }
+
+                // total inferences update...
+                totalInferenceCount += count;
+
+                if (modelMonitor) {
+                    await modelMonitor.processResult(ev, {
+                        type: 'jpg',
+                        buffer: imgAsJpg,
+                    });
+                }
+
+                // AWS Integration - send to IoTCore if running in Greengrass...
+                if (awsIOT !== undefined && awsIOT.isConnected() === true &&
+                    awsResult !== undefined && awsResultKey !== undefined) {
+                    // create a timestamp
+                    let infTimestamp = Date.now();
+
+                    // check if we enable sending the image via IoTCore
+                    const includeBase64Image = (<string>process.env.EI_INCLUDE_BASE64_IMAGE);
+                    if (includeBase64Image === "yes") {
+                        let imageStr = "";
+                        // Set the payload structure that will be sent to IoTCore
+                        if (imgAsJpg !== undefined) {
+                            imageStr = Buffer.from(imgAsJpg).toString('base64');
+                        }
+
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        var payload = JSON.parse(
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            JSON.stringify({ time_ms: timeMs, info:ev.info, inference_count: count,
+                                image: imageStr, total_inferences: totalInferenceCount,
+                                id: uuidv4(), ts: infTimestamp }));
+                    }
+                    else {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        var payload = JSON.parse(
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            JSON.stringify({ time_ms: timeMs, info:ev.info, inference_count: count,
+                                total_inferences: totalInferenceCount,  id: uuidv4(), ts: infTimestamp }));
+                    }
+
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    payload[awsResultKey] = awsResult;
+
+                    // Send to IoTCore and note the inference key in the payload...
+                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                    awsIOT.sendInference(<Payload>(payload), awsResultKey, imgAsJpg);
+                }
+
                 if (ev.info) {
                     console.log('additionalInfo:', ev.info);
                 }
@@ -696,382 +757,3 @@ function imageClassifierHelloMsg(model: ModelInformation) {
         process.exit(1);
     }
 })();
-
-async function connectCamera(cf: Config) {
-    let camera: ICamera;
-    if (process.env.PROPHESEE_CAM === '1') {
-        camera = new Prophesee(verboseArgv);
-    }
-    else if (process.platform === 'darwin') {
-        camera = new Imagesnap(verboseArgv);
-    }
-    else if (process.platform === 'linux') {
-        camera = new GStreamer(verboseArgv, {
-            customLaunchCommand: gstLaunchArgsArgv,
-        });
-    }
-    else {
-        throw new Error('Unsupported platform "' + process.platform + '"');
-    }
-    await camera.init();
-
-    let device: string | undefined;
-    const devices = await camera.listDevices();
-    if (devices.length === 0) {
-        throw new Error('Cannot find any webcams');
-    }
-
-    const storedCamera = await cf.getCamera();
-    if (storedCamera && devices.find(d => d === storedCamera)) {
-        device = storedCamera;
-    }
-    else if (devices.length === 1) {
-        device = devices[0];
-    }
-    else {
-        let inqRes = await inquirer.prompt([{
-            type: 'list',
-            choices: (devices || []).map(p => ({ name: p, value: p })),
-            name: 'camera',
-            message: 'Select a camera',
-            pageSize: 20
-        }]);
-        device = <string>inqRes.camera;
-    }
-    await cf.storeCamera(device);
-
-    console.log(RUNNER_PREFIX, 'Using camera', device, 'starting...');
-
-    await camera.start({
-        device: device,
-        intervalMs: 100,
-    });
-
-    camera.on('error', error => {
-        if (isExiting) return;
-
-        console.log(RUNNER_PREFIX, 'camera error', error);
-        process.exit(1);
-    });
-
-    console.log(RUNNER_PREFIX, 'Connected to camera');
-
-    return camera;
-}
-
-function buildWavFileBuffer(data: Buffer, intervalMs: number) {
-    // let's build a WAV file!
-    let wavFreq = 1 / intervalMs * 1000;
-    let fileSize = 44 + (data.length);
-    let dataSize = (data.length);
-    let srBpsC8 = (wavFreq * 16 * 1) / 8;
-
-    let headerArr = new Uint8Array(44);
-    let h = [
-        0x52, 0x49, 0x46, 0x46, // RIFF
-        // eslint-disable-next-line no-bitwise
-        fileSize & 0xff, (fileSize >> 8) & 0xff, (fileSize >> 16) & 0xff, (fileSize >> 24) & 0xff,
-        0x57, 0x41, 0x56, 0x45, // WAVE
-        0x66, 0x6d, 0x74, 0x20, // fmt
-        0x10, 0x00, 0x00, 0x00, // length of format data
-        0x01, 0x00, // type of format (1=PCM)
-        0x01, 0x00, // number of channels
-        // eslint-disable-next-line no-bitwise
-        wavFreq & 0xff, (wavFreq >> 8) & 0xff, (wavFreq >> 16) & 0xff, (wavFreq >> 24) & 0xff,
-        // eslint-disable-next-line no-bitwise
-        srBpsC8 & 0xff, (srBpsC8 >> 8) & 0xff, (srBpsC8 >> 16) & 0xff, (srBpsC8 >> 24) & 0xff,
-        0x02, 0x00, 0x10, 0x00,
-        0x64, 0x61, 0x74, 0x61, // data
-        // eslint-disable-next-line no-bitwise
-        dataSize & 0xff, (dataSize >> 8) & 0xff, (dataSize >> 16) & 0xff, (dataSize >> 24) & 0xff,
-    ];
-    for (let hx = 0; hx < 44; hx++) {
-        headerArr[hx] = h[hx];
-    }
-
-    return Buffer.concat([ Buffer.from(headerArr), data ]);
-}
-
-function checkFileExists(file: string) {
-    return new Promise(resolve => {
-        return fs.promises.access(file, fs.constants.F_OK)
-            .then(() => resolve(true))
-            .catch(() => resolve(false));
-    });
-}
-
-function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier: ImageClassifier) {
-    const app = express();
-    app.use(express.static(Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public')));
-
-    const server = new http.Server(app);
-    const io = socketIO(server);
-
-    // you can also get the actual image being classified from 'imageClassifier.on("result")',
-    // but then you're limited by the inference speed.
-    // here we get a direct feed from the camera so we guarantee the fps that we set earlier.
-
-    let nextFrame = Date.now();
-    let processingFrame = false;
-    camera.on('snapshot', async (data) => {
-        if (nextFrame > Date.now() || processingFrame) return;
-
-        processingFrame = true;
-
-        let img;
-        if (model.modelParameters.image_channel_count === 3) {
-            img = sharp(data).resize({
-                height: model.modelParameters.image_input_height,
-                width: model.modelParameters.image_input_width,
-                fastShrinkOnLoad: false
-            });
-        }
-        else {
-            img = sharp(data).resize({
-                height: model.modelParameters.image_input_height,
-                width: model.modelParameters.image_input_width,
-                fastShrinkOnLoad: false
-            }).toColourspace('b-w');
-        }
-
-        io.emit('image', {
-            img: 'data:image/jpeg;base64,' + (await img.jpeg().toBuffer()).toString('base64')
-        });
-
-        nextFrame = Date.now() + 50;
-        processingFrame = false;
-    });
-
-    imgClassifier.on('result', async (result, timeMs, imgAsJpg) => {
-        io.emit('classification', {
-            modelType: model.modelParameters.model_type,
-            result: result.result,
-            timeMs: timeMs,
-            additionalInfo: result.info,
-        });
-    });
-
-    io.on('connection', socket => {
-        socket.emit('hello', {
-            projectName: model.project.owner + ' / ' + model.project.name
-        });
-    });
-
-    return new Promise<number>((resolve) => {
-        server.listen(Number(process.env.PORT) || 4912, process.env.HOST || '0.0.0.0', async () => {
-            resolve((Number(process.env.PORT) || 4912));
-        });
-    });
-}
-
-function startApiServer(model: ModelInformation, runner: LinuxImpulseRunner, projectStudioUrl: string, port: number) {
-    const app = express();
-    app.disable('x-powered-by');
-    app.use(express.json({ limit: '150mb' }));
-    app.use(express.urlencoded({ extended: true }));
-    app.use((req, res, next) => {
-        res.header('x-ei-owner', model.project.owner);
-        res.header('x-ei-project-name', model.project.name);
-        res.header('x-ei-project-version', model.project.deploy_version.toString());
-        next();
-    });
-
-    const server = new http.Server(app);
-
-    app.get('/', asyncMiddleware(async (req, res) => {
-        let text = [
-            'Edge Impulse inference server for ' +
-            model.project.owner + ' / ' + model.project.name + ' (v' + model.project.deploy_version + ')',
-            '',
-            'How to run inference:',
-            '',
-        ];
-        if (model.modelParameters.sensorType === 'camera') {
-            text = text.concat([
-                `curl -v -X POST -F 'file=@path-to-an-image.jpg' http://localhost:${port}/api/image`,
-            ]);
-        }
-        else {
-            text = text.concat([
-                `curl -v -X POST -H "Content-Type: application/json" -d '{"features": [5, 10, 15, 20]}' http://localhost:${port}/api/features`,
-                '',
-                '(Expecting ' + model.modelParameters.input_features_count + ' features for this model)',
-            ]);
-        }
-
-        const isObjectDetection = model.modelParameters.model_type === 'constrained_object_detection' ||
-            model.modelParameters.model_type === 'object_detection';
-        const isVisualAd = model.modelParameters.has_anomaly === RunnerHelloHasAnomaly.VisualGMM;
-
-        let modelVm: InferenceServerModelViewModel;
-        if (model.modelParameters.sensorType === 'camera') {
-            modelVm = {
-                mode: 'image',
-                width: model.modelParameters.image_input_width,
-                height: model.modelParameters.image_input_height,
-                depth: model.modelParameters.image_channel_count === 3 ? 'RGB' : 'Grayscale',
-                showImagePreview: isObjectDetection || isVisualAd,
-            };
-        }
-        else {
-            modelVm = {
-                mode: 'features',
-                featuresCount: model.modelParameters.input_features_count,
-            };
-        }
-
-        const view = renderInferenceServerView({
-            owner: model.project.owner,
-            projectName: model.project.name,
-            projectVersion: model.project.deploy_version,
-            serverPort: port,
-            studioLink: projectStudioUrl,
-            model: modelVm,
-        });
-
-        res.status(200);
-        res.header('Content-Type', 'text/html');
-        res.end(view.toString());
-    }));
-
-    app.get('/api/info', asyncMiddleware(async (req, res) => {
-        res.header('Content-Type', 'application/json');
-
-        let modelParametersCloned = Object.assign({
-            has_visual_anomaly_detection: model.modelParameters.has_anomaly === RunnerHelloHasAnomaly.VisualGMM,
-        }, model.modelParameters);
-
-        res.end(JSON.stringify({
-            project: model.project,
-            modelParameters: modelParametersCloned,
-        }, null, 4) + '\n');
-    }));
-
-    app.post('/api/features', asyncMiddleware(async (req, res) => {
-        const body = <{ features: number[] }>req.body;
-
-        try {
-            if (!req.body) {
-                throw new Error('Missing body on request. Did you set "Content-Type: application/json" ?');
-            }
-            if (!body.features) {
-                throw new Error('Missing "features" on body');
-            }
-            if (!Array.isArray(body.features)) {
-                throw new Error('"features" on body is not an array');
-            }
-            if (!body.features.every(n => !isNaN(Number(n)))) {
-                throw new Error('Not every element of the "features" array is a number');
-            }
-            if (body.features.length !== runner.getModel().modelParameters.input_features_count) {
-                throw new Error('Expected ' + runner.getModel().modelParameters.input_features_count +
-                    ' features, but received ' + body.features.length);
-            }
-        }
-        catch (ex2) {
-            const ex = <Error>ex2;
-            res.status(400);
-            res.header('Content-Type', 'text/plain');
-            return res.end(ex.message || ex.toString() + '\n');
-        }
-
-        console.log(RUNNER_PREFIX, 'Incoming inference request (/api/features)');
-
-        let response = await runner.classify(body.features);
-
-        res.header('Content-Type', 'application/json');
-        res.end(JSON.stringify(response, null, 4) + '\n');
-    }));
-
-    app.post('/api/image', asyncMiddleware(async (req, res) => {
-        let resized: {
-            features: number[],
-            originalWidth: number,
-            originalHeight: number,
-            newWidth: number,
-            newHeight: number,
-        };
-
-        try {
-            const multipartUpload = multer({ limits: { files: 1, fileSize: 100 * 1024 * 1024 } });
-            const fields: multer.Field[] = [{ name: "file", maxCount: 1 }];
-            await util.promisify(multipartUpload.fields(fields))(req, res);
-
-            if (!req.files) {
-                throw new Error('No files posted, requiring a multipart/form-data body with 1 item "file"');
-            }
-            const allFiles = Object.keys(req.files || { }).reduce((curr: { [k: string]: Express.Multer.File[] }, v) => {
-                if (req.files instanceof Array) return curr;
-                curr[v.replace('[]', '')] = req.files![v];
-                return curr;
-            }, { });
-            const file = allFiles.file[0];
-            if (!file) {
-                throw new Error('Missing "file" in the multipart/form-data');
-            }
-
-            console.log(RUNNER_PREFIX, 'Incoming inference request (/api/image) for ' +
-                (file.originalname || 'a file with size ' + file.size + ' bytes'));
-
-            resized = (await ImageClassifier.resizeImage(model, file.buffer, 'contain'));
-        }
-        catch (ex2) {
-            const ex = <Error>ex2;
-            res.status(400);
-            res.header('Content-Type', 'text/plain');
-            return res.end(ex.message || ex.toString() + '\n');
-        }
-
-        let response = await runner.classify(resized.features);
-
-        let origFactor = resized.originalWidth / resized.originalHeight;
-        let newFactor = resized.newWidth / resized.newHeight;
-
-        let factor: number;
-        let offsetX: number;
-        let offsetY: number;
-
-        if (origFactor > newFactor) {
-            // boxed in with bands top/bottom
-            factor = resized.newWidth / resized.originalWidth;
-            offsetX = 0;
-            offsetY = (resized.newHeight - (resized.originalHeight * factor)) / 2;
-        }
-        else if (origFactor < newFactor) {
-            // boxed in with bands left/right
-            factor = resized.newHeight / resized.originalHeight;
-            offsetX = (resized.newWidth - (resized.originalWidth * factor)) / 2;
-            offsetY = 0;
-        }
-        else {
-            // image was already at the right aspect ratio
-            offsetX = 0;
-            offsetY = 0;
-            factor = resized.newWidth / resized.originalWidth;
-        }
-
-        for (const bb of response.result.bounding_boxes || []) {
-            bb.x = Math.round((bb.x / factor) - (offsetX / factor));
-            bb.width = Math.round((bb.width / factor));
-            bb.y = Math.round((bb.y / factor) - (offsetY / factor));
-            bb.height = Math.round((bb.height / factor));
-        }
-        for (const bb of response.result.visual_anomaly_grid || []) {
-            bb.x = Math.round((bb.x / factor) - (offsetX / factor));
-            bb.width = Math.round((bb.width / factor));
-            bb.y = Math.round((bb.y / factor) - (offsetY / factor));
-            bb.height = Math.round((bb.height / factor));
-        }
-
-        res.header('Content-Type', 'application/json');
-        res.end(JSON.stringify(response, null, 4) + '\n');
-    }));
-
-    app.use(express.static(Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public')));
-
-    return new Promise<void>((resolve) => {
-        server.listen(port, process.env.HOST || '0.0.0.0', async () => {
-            resolve();
-        });
-    });
-}

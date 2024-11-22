@@ -1,11 +1,11 @@
 import fs from 'fs';
 import Path from 'path';
 import util from 'util';
-import { Config } from '../config';
-import { RunnerClassifyResponseSuccess } from "../../library/classifier/linux-impulse-runner";
-import { ModelInformation } from '../../library/classifier/linux-impulse-runner';
+import { Config } from './config';
+import { RunnerClassifyResponseSuccess } from "../library/classifier/linux-impulse-runner";
+import { ModelInformation } from '../library/classifier/linux-impulse-runner';
 import { EventEmitter } from 'tsee';
-import { MgmtInterfaceImpulseRecordRawData } from '../../shared/MgmtInterfaceTypes';
+import { MgmtInterfaceImpulseRecordRawData } from '../shared/MgmtInterfaceTypes';
 
 const MONITOR_PREFIX = '\x1b[34m[MON]\x1b[0m';
 
@@ -701,6 +701,10 @@ export class ModelMonitor extends EventEmitter<{
         }
         if (enabled) {
             this._streamState = 'debug';
+            this._streamPrevState = 'idle';
+        }
+        else {
+            this._streamState = 'idle';
             this._streamPrevState = 'idle';
         }
     }

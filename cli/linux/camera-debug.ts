@@ -4,7 +4,7 @@ import { Imagesnap } from "../../library/sensors/imagesnap";
 import inquirer from 'inquirer';
 import { ICamera } from "../../library/sensors/icamera";
 import { GStreamer } from "../../library/sensors/gstreamer";
-import { ips } from "../../library/get-ips";
+import { ips } from "../../cli-common/get-ips";
 import program from 'commander';
 import Path from 'path';
 import fs from 'fs';

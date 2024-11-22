@@ -1,4 +1,5 @@
-const { DataForwarder, getIps } = require('../../build/library');
+const { DataForwarder } = require('../../build/library');
+const { ips } = require('../../build/cli-common/get-ips');
 
 // Your API & HMAC keys here (go to your project > Dashboard > Keys to find this)
 const API_KEY = process.env.API_KEY || 'ei_...';
@@ -10,7 +11,7 @@ const HMAC_KEY = process.env.HMAC_KEY || '0';
         // instantiate a DataForwarder object to collect custom data from a sensor
         let dataForwarder = new DataForwarder({
             // use MAC address of network interface as deviceId
-            deviceId: getIps().length > 0 ? getIps()[0].mac : undefined,
+            deviceId: ips.length > 0 ? ips[0].mac : undefined,
             deviceType: 'CUSTOM-COLLECTOR',
             apiKey: API_KEY,
             // This is the interval between samples (alt. you can use `frequency` here)
