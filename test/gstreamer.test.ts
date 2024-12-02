@@ -137,6 +137,7 @@ GST_ARGUS: Done Success
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, 'nvarguscamerasrc');
             assert.equal(devices[0].name, 'CSI camera');
+            assert.equal(devices[0].videoSource, 'nvarguscamerasrc');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     framerate: 21,
                     height: 2464,
@@ -415,6 +416,7 @@ Freeing pipeline ...
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
             assert.equal(devices[0].name, 'C922 Pro Stream Webcam');
+            assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([
                 {
                     type: "video/x-raw",
@@ -692,6 +694,7 @@ Device found:
 
             assert.equal(devices[0].id, '/dev/video0');
             assert.equal(devices[0].name, 'USB');
+            assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                 type: "image/jpeg",
                 width: 1280,
@@ -701,6 +704,7 @@ Device found:
 
             assert.equal(devices[1].id, '/dev/video14');
             assert.equal(devices[1].name, 'bcm2835-isp (/dev/video14)');
+            assert.equal(devices[1].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[1].caps), JSON.stringify([{
                 type: "video/x-raw",
                 width: 64,
@@ -710,6 +714,7 @@ Device found:
 
             assert.equal(devices[2].id, '/dev/video15');
             assert.equal(devices[2].name, 'bcm2835-isp (/dev/video15)');
+            assert.equal(devices[2].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[2].caps), JSON.stringify([{
                 type: "video/x-raw",
                 width: 64,
@@ -718,7 +723,7 @@ Device found:
             }]));
         });
 
-        it("rpi camera v3 and c920 webcam on bookworm", async () => {
+        it("rpi cam v3 c920 webcam bookworm no libcamerasrc", async () => {
             const gstOutput = `Probing devices...
 
 
@@ -1112,6 +1117,7 @@ Device found:
 
             assert.equal(devices[0].id, '/dev/video2');
             assert.equal(devices[0].name, 'HD Pro Webcam C920');
+            assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: 'video/x-raw',
                     width: 2560,
@@ -1231,6 +1237,7 @@ Device found:
 
             assert.equal(devices[1].id, '/dev/video14');
             assert.equal(devices[1].name, 'bcm2835-isp (/dev/video14)');
+            assert.equal(devices[1].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[1].caps), JSON.stringify([{
                 type: "video/x-raw",
                 width: 64,
@@ -1240,6 +1247,7 @@ Device found:
 
             assert.equal(devices[2].id, '/dev/video15');
             assert.equal(devices[2].name, 'bcm2835-isp (/dev/video15)');
+            assert.equal(devices[2].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[2].caps), JSON.stringify([{
                 type: "video/x-raw",
                 width: 64,
@@ -1249,6 +1257,7 @@ Device found:
 
             assert.equal(devices[3].id, '/dev/video21');
             assert.equal(devices[3].name, 'bcm2835-isp (/dev/video21)');
+            assert.equal(devices[3].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[4].caps), JSON.stringify([{
                 type: "video/x-raw",
                 width: 64,
@@ -1258,6 +1267,7 @@ Device found:
 
             assert.equal(devices[4].id, '/dev/video22');
             assert.equal(devices[4].name, 'bcm2835-isp (/dev/video22)');
+            assert.equal(devices[4].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[4].caps), JSON.stringify([{
                 type: "video/x-raw",
                 width: 64,
@@ -1267,6 +1277,7 @@ Device found:
 
             assert.equal(devices[5].id, '/dev/video0');
             assert.equal(devices[5].name, 'unicam');
+            assert.equal(devices[5].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[5].caps), JSON.stringify([{
                 type: "video/x-raw",
                 width: 16,
@@ -1317,6 +1328,7 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
             assert.equal(devices[0].name, 'i.MX6S_CSI');
+            assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: "video/x-raw",
                     width: 2592,
@@ -1695,6 +1707,7 @@ Device found:
 
             assert.equal(devices[0].id, '');
             assert.equal(devices[0].name, '/base/scb/pcie@7d500000/pci@0,0/usb@0,0-1.2');
+            assert.equal(devices[0].videoSource, 'libcamerasrc');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: "image/jpeg",
                     width: 160,
@@ -1794,6 +1807,7 @@ Device found:
 
             assert.equal(devices[1].id, '/dev/video0');
             assert.equal(devices[1].name, 'UvcH264 Video Capture 4 (/dev/video0)');
+            assert.equal(devices[1].videoSource, 'uvch264src');
             assert.equal(JSON.stringify(devices[1].caps), JSON.stringify([{
                     type: "video/x-raw",
                     width: 2304,
@@ -2149,6 +2163,7 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
             assert.equal(devices[0].name, 'HD Pro Webcam C920');
+            assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([
                 {
                    "type":"video/x-raw",
@@ -2384,6 +2399,7 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video1');
             assert.equal(devices[0].name, 'HD Pro Webcam C920');
+            assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: "video/x-raw",
                     width: 2304,
@@ -2589,6 +2605,7 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
             assert.equal(devices[0].name, 'RZG2L_CRU');
+            assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                 type: "video/x-raw",
                 width: 640,
@@ -2881,6 +2898,7 @@ Device found:
 
             assert.equal(devices[0].id, '');
             assert.equal(devices[0].name, '/base/scb/pcie@7d500000/pci@1,0/usb@1,0-1.1');
+            assert.equal(devices[0].videoSource, 'libcamerasrc');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: "image/jpeg",
                     width: 160,
@@ -2980,6 +2998,7 @@ Device found:
 
             assert.equal(devices[1].id, '/dev/video0');
             assert.equal(devices[1].name, 'UvcH264 C922 Pro Stream Webcam (/dev/video0)');
+            assert.equal(devices[1].videoSource, 'uvch264src');
             assert.equal(JSON.stringify(devices[1].caps), JSON.stringify([
                 {
                     type: "video/x-raw",
@@ -3166,6 +3185,7 @@ Device found:
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video2');
             assert.equal(devices[0].name, 'HD Pro Webcam C920');
+            assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: "video/x-raw",
                     width: 176,
@@ -4992,6 +5012,7 @@ Freeing pipeline ...
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, 'pylonsrc');
             assert.equal(devices[0].name, 'Basler camera');
+            assert.equal(devices[0].videoSource, 'pylonsrc');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     framerate: 60,
                     height: 1080,
@@ -5035,6 +5056,7 @@ Freeing pipeline ...
                     width: 1440,
                     type: "pylonsrc",
                 }],
+                videoSource: 'pylonsrc',
             }, { width: 1440, height: 1080 });
 
             // console.log('launchResp', launchResp);
