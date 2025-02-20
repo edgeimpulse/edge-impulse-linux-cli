@@ -10,6 +10,7 @@ import { upload } from '../../cli-common/make-image';
 import { RemoteMgmtDevice, RemoteMgmtDeviceSampleEmitter } from "../../cli-common/remote-mgmt-service";
 import { EdgeImpulseConfig } from "../../cli-common/config";
 import { ICamera } from "../../library/sensors/icamera";
+import fs from 'fs';
 
 const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
 
@@ -91,7 +92,7 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
         return ips.length > 0 ? ips[0].mac : '00:00:00:00:00:00';
     }
 
-    getDeviceType() {
+    async getDeviceType() {
         let id = (ips.length > 0 ? ips[0].mac : '00:00:00:00:00:00').toLowerCase();
 
         if (id.startsWith('dc:a6:32') || id.startsWith('b8:27:eb')) {
@@ -100,6 +101,10 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
 
         if (id.startsWith('00:04:4b') || id.startsWith('48:b0:2d')) {
             return 'NVIDIA_JETSON_NANO';
+        }
+
+        if (await this.checkFileExists('/usr/lib/libQnnTFLiteDelegate.so')) {
+            return 'QUALCOMM_LINUX';
         }
 
         return 'EDGE_IMPULSE_LINUX';
@@ -372,5 +377,13 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
         }
 
         return Buffer.concat([ Buffer.from(headerArr), data ]);
+    }
+
+    private checkFileExists(file: string) {
+        return new Promise(resolve => {
+            return fs.promises.access(file, fs.constants.F_OK)
+                .then(() => resolve(true))
+                .catch(() => resolve(false));
+        });
     }
 }

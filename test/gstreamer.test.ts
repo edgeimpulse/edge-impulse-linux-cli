@@ -6,6 +6,7 @@ import {
 import {
     SpawnHelperType
 } from "../library/sensors/spawn-helper";
+import fs from 'node:fs/promises';
 
 describe("gstreamer", () => {
     describe("parse devices", () => {
@@ -5019,6 +5020,194 @@ Freeing pipeline ...
                     width: 1440,
                     type: "pylonsrc",
                 }
+            ]));
+        });
+
+        it("qualcomm rb3 gen 2 (QIMP Linux 1.2) with Logitech Brio", async () => {
+            const gstMonitorOutput = await fs.readFile('./test/qualcomm-rb3-monitor-brio.txt', { encoding: 'utf-8' });
+            const gstInspectOutput = await fs.readFile('./test/qualcomm-rb3-inspect.txt', { encoding: 'utf-8' });
+            const gstInspectOutputQti = await fs.readFile('./test/qualcomm-rb3-inspect-qtiqmmfsrc.txt', { encoding: 'utf-8' });
+
+            const devices = await testGetDevices({
+                gstDeviceMonitor: () => gstMonitorOutput,
+                gstInspect: (args: string[]) => {
+                    if (args.length === 0) {
+                        return gstInspectOutput;
+                    }
+                    else if (args[0] === 'qtiqmmfsrc') {
+                        return gstInspectOutputQti;
+                    }
+                    else {
+                        throw new Error('Cannot handle gstInspect command: ' + JSON.stringify(args));
+                    }
+                }
+            });
+            assert.equal(devices.length, 3);
+            assert.equal(devices[2].id, 'qtiqmmfsrc');
+            assert.equal(devices[2].name, 'CSI Camera 0');
+            assert.equal(devices[2].videoSource, 'qtiqmmfsrc');
+            assert.equal(JSON.stringify(devices[2].caps), JSON.stringify([
+                {
+                    type: "video/x-raw",
+                    width: 640,
+                    height: 480,
+                    framerate: 30,
+                },
+            ]));
+            assert.equal(devices[0].id, '/dev/video2');
+            assert.equal(devices[0].name, 'Logitech BRIO (/dev/video2)');
+            assert.equal(devices[0].videoSource, 'v4l2src');
+            assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([
+                {
+                    "type": "video/x-raw",
+                    "width": 1920,
+                    "height": 1080,
+                    "framerate": 5
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 1600,
+                    "height": 896,
+                    "framerate": 15
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 1280,
+                    "height": 720,
+                    "framerate": 10
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 1024,
+                    "height": 576,
+                    "framerate": 15
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 960,
+                    "height": 540,
+                    "framerate": 15
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 800,
+                    "height": 600,
+                    "framerate": 24
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 848,
+                    "height": 480,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 800,
+                    "height": 448,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 640,
+                    "height": 480,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 640,
+                    "height": 360,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 440,
+                    "height": 440,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 480,
+                    "height": 270,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 340,
+                    "height": 340,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 424,
+                    "height": 240,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 352,
+                    "height": 288,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 320,
+                    "height": 240,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 320,
+                    "height": 180,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 176,
+                    "height": 144,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "video/x-raw",
+                    "width": 160,
+                    "height": 120,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "image/jpeg",
+                    "width": 1920,
+                    "height": 1080,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "image/jpeg",
+                    "width": 1600,
+                    "height": 896,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "image/jpeg",
+                    "width": 1280,
+                    "height": 720,
+                    "framerate": 60
+                  },
+                  {
+                    "type": "image/jpeg",
+                    "width": 1024,
+                    "height": 576,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "image/jpeg",
+                    "width": 960,
+                    "height": 540,
+                    "framerate": 30
+                  },
+                  {
+                    "type": "image/jpeg",
+                    "width": 800,
+                    "height": 600,
+                    "framerate": 30
+                  }
             ]));
         });
     });

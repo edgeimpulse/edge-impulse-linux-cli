@@ -13,9 +13,9 @@
 
 export class EntityCreatedResponseAllOf {
     /**
-    * Unique identifier of the created entity, if any.
+    * Unique identifier of the created entity.
     */
-    'id'?: number | null;
+    'id': number;
 
     static discriminator: string | undefined = undefined;
 

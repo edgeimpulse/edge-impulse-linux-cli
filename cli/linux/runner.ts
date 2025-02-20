@@ -7,7 +7,7 @@ import { ImageClassifier } from '../../library/classifier/image-classifier';
 import inquirer from 'inquirer';
 import { initCliApp, setupCliApp } from "../../cli-common/init-cli-app";
 import fs from 'fs';
-import { RunnerModelPath, downloadModel } from './runner-downloader';
+import { RunnerDownloader, RunnerModelPath, downloadModel } from './runner-downloader';
 import program from 'commander';
 import { ips } from '../../cli-common/get-ips';
 import { RemoteMgmt } from '../../cli-common/remote-mgmt-service';
@@ -17,10 +17,10 @@ import { LinuxDevice } from './linux-device';
 import { ModelMonitor } from '../../cli-common/model-monitor';
 import { listTargets, audioClassifierHelloMsg, imageClassifierHelloMsg, startApiServer, startWebServer } from './runner-utils';
 import { initCamera, CameraType, initMicrophone } from '../../library/sensors/sensors-helper';
-
 import { AWSSecretsManagerUtils } from "../../cli-common/aws-sm-utils";
 import { AWSIoTCoreConnector, Payload, AwsResult, AwsResultKey } from "../../cli-common/aws-iotcore-connector";
 import { v4 as uuidv4 } from 'uuid';
+import * as models from '../../sdk/studio/sdk/model/models';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
@@ -44,6 +44,7 @@ program
     .option('--list-targets', 'List all supported targets and inference engines')
     .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand (e.g. "runner-linux-aarch64")')
     .option('--force-engine <engine>', 'Do not autodetect the inference engine, but set it by hand (e.g. "tflite")')
+    .option('--force-variant <variant>', 'Do not autodetect the model variant, but set it by hand (e.g. "int8")')
     .option('--impulse-id <impulseId>', 'Select the impulse ID (if you have multiple impulses)')
     .option('--run-http-server <port>', 'Do not run using a sensor, but instead expose an API server at the specified port')
     .option('--monitor', 'Enable model monitoring', false)
@@ -74,6 +75,7 @@ const modelFileArgv = <string | undefined>program.modelFile;
 const downloadArgv = <string | undefined>program.download;
 const forceTargetArgv = <string | undefined>program.forceTarget;
 const forceEngineArgv = <string | undefined>program.forceEngine;
+const forceVariantArgv = <models.KerasModelVariantEnum | undefined>program.forceVariant;
 const impulseIdArgvStr = <string | undefined>program.impulseId;
 const impulseIdArgv = impulseIdArgvStr && !isNaN(Number(impulseIdArgvStr)) ? Number(impulseIdArgvStr) : undefined;
 const monitorArgv: boolean = !!program.monitor;
@@ -210,6 +212,16 @@ async function startCamera(cameraType: CameraType) {
             throw new Error('Cannot combine --model-file and --download');
         }
 
+        if (forceVariantArgv && quantizedArgv) {
+            throw new Error('Cannot combine --force-variant and --quantized');
+        }
+
+        if (forceVariantArgv && models.KerasModelVariantEnumValues.indexOf(forceVariantArgv) === -1) {
+            throw new Error(`Invalid value for --force-variant ` +
+                `(was: "${forceVariantArgv}", ` +
+                `valid: ${JSON.stringify(models.KerasModelVariantEnumValues)})`);
+        }
+
         // any of this arguments implies online mode, so we need to login to the studio or get the API key
         const connectionRequired: boolean =
             monitorArgv ||
@@ -267,9 +279,9 @@ async function startCamera(cameraType: CameraType) {
                                 // success
                                 console.log(opts.appName + ": Connected to IoTCore Successfully!");
 
-                                // launch command receiver
+                                console.log(opts.appName + ": launching async tasks...");
                                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                                awsIOT.launchCommandReceiver();
+                                awsIOT.launchAsyncTasks();
                             }
                             else {
                                 // failure
@@ -301,14 +313,24 @@ async function startCamera(cameraType: CameraType) {
             }
 
             await listTargets(projectId, config.api);
-            console.log('You can force a target via "edge-impulse-linux-runner --force-target <target> [--force-engine <engine>]"');
+            console.log('');
+            console.log('You can force a target via ' +
+                '"edge-impulse-linux-runner --force-target <target> [--force-engine <engine>] [--force-variant <variant>]"');
             process.exit(0);
         }
+
+        let initializedProjectState: {
+            impulseId: number,
+            variant: models.KerasModelVariantEnum,
+            deploymentType: string,
+        } | undefined;
 
         if (modelFileArgv) {
             // if we have the model file, just use that and make it executable
             modelFile = modelFileArgv;
             await fs.promises.chmod(modelFile, 0o755);
+
+            initializedProjectState = undefined;
         }
         else {
             // projectId should exist in config or be requested from Studio,
@@ -354,14 +376,130 @@ async function startCamera(cameraType: CameraType) {
                 }
             }
 
+            const deploymentType = await RunnerDownloader.getDeploymentType(forceTargetArgv);
+            const deployment = (await config.api.deployment.listDeploymentTargetsForProjectDataSources(projectId, {
+                impulseId: impulseId,
+            })).targets.find(x => x.format === deploymentType);
+            if (!deployment) {
+                if (forceTargetArgv) {
+                    throw new Error(`Failed to find deployment target "${deploymentType}" (via --force-target). ` +
+                        `Run 'edge-impulse-linux-runner --list-targets' to see all valid targets.`);
+                }
+                throw new Error(`Failed to find deployment target "${deploymentType}" (auto-detected). ` +
+                    `Run 'edge-impulse-linux-runner --list-targets' to see all valid targets, and run with --force-target <target> ` +
+                    `to force another target.`);
+            }
+
+            let variant: models.KerasModelVariantEnum;
+            if (forceVariantArgv) {
+                variant = forceVariantArgv;
+
+                let variantInfo = deployment.modelVariants.find(x => x.variant === variant);
+                if (!variantInfo || !variantInfo.supported) {
+                    let err: string;
+                    if (variantInfo?.hint) {
+                        err = `Variant "${variant}" (via --force-variant) is not supported on "${deploymentType}": ${variantInfo.hint}.`;
+                    }
+                    else {
+                        err = `Variant "${variant}" (via --force-variant) is not supported on "${deploymentType}".`;
+                    }
+
+                    throw new Error(`${err} ` +
+                        `Run 'edge-impulse-linux-runner --list-targets' to see all valid targets`);
+                }
+            }
+            else if (quantizedArgv) {
+                variant = 'int8';
+
+                let variantInfo = deployment.modelVariants.find(x => x.variant === variant);
+                if (!variantInfo || !variantInfo.supported) {
+                    let err: string;
+                    if (variantInfo?.hint) {
+                        err = `Quantized model (via --quantized) is not supported on "${deploymentType}": ${variantInfo.hint}.`;
+                    }
+                    else {
+                        err = `Quantized model (via --quantized) is not supported on "${deploymentType}".`;
+                    }
+
+                    throw new Error(`${err} ` +
+                        `Run 'edge-impulse-linux-runner --list-targets' to see all valid targets`);
+                }
+            }
+            else {
+                // these are the variants we have
+                const modelVariantsRes = await config.api.projects.getModelVariants(projectId, {
+                    impulseId: impulseId,
+                });
+                const availableKerasModelVariants = modelVariantsRes.modelVariants.map(v => v.variant)
+                    .filter(v => models.KerasModelVariantEnumValues.includes(v)) as models.KerasModelVariantEnum[];
+
+                // now cross-check this against the ones we have in the deployment
+                let unsupported: string[] = [];
+                let choices: { name: string, value: string }[] = [];
+
+                for (let v of availableKerasModelVariants) {
+                    let variantInfo = deployment.modelVariants.find(x => x.variant === v);
+                    if (!variantInfo || !variantInfo.supported) {
+                        // not supported
+                        unsupported.push(`${getFriendlyModelTypeName(v)} (${variantInfo?.hint || 'Model type is not supported on this target'})`);
+                        continue;
+                    }
+                    choices.push({
+                        name: getFriendlyModelTypeName(v) +
+                            (variantInfo.hint ? ` (${variantInfo.hint})` : ``),
+                        value: v,
+                    });
+                }
+
+                if (choices.length === 0) {
+                    console.log('');
+                    console.log(`No available model variants can be deployed on "${deploymentType}":`);
+                    for (let u of unsupported) {
+                        console.log(`    ${u}`);
+                    }
+                    console.log('');
+                    process.exit(1);
+                }
+
+                const selectedVariantInConfig = await configFactory.getRunnerModelVariantForProjectId(projectId);
+                if (selectedVariantInConfig && choices.find(c => c.value === selectedVariantInConfig)) {
+                    variant = selectedVariantInConfig;
+                }
+                else {
+                    if (choices.length > 1 || unsupported.length > 0) {
+                        if (unsupported.length > 0) {
+                            console.log('');
+                            console.log(`Some model variants are disabled for "${deploymentType}":`);
+                            for (let u of unsupported) {
+                                console.log(`    ${u}`);
+                            }
+                            console.log('');
+                        }
+
+                        let inqRes = await inquirer.prompt([{
+                            type: 'list',
+                            choices: choices,
+                            name: 'variant',
+                            message: 'What model variant do you want to run?',
+                            pageSize: 20
+                        }]);
+                        variant = <models.KerasModelVariantEnum>inqRes.variant;
+                        await configFactory.setRunnerModelVariantForProjectId(projectId, variant);
+                    }
+                    else {
+                        variant = <models.KerasModelVariantEnum>choices[0].value;
+                    }
+                }
+            }
+
             // if we don't have the model file, download it
             ({ modelFile, modelPath } = await downloadModel({
                 projectId: projectId,
                 impulseId: impulseId,
                 api: config.api,
-                quantizedModel: quantizedArgv,
-                forcedTarget: forceTargetArgv,
-                forcedEngine: forceEngineArgv
+                deploymentType: deploymentType,
+                variant: variant,
+                forcedEngine: forceEngineArgv,
             }));
             if (downloadArgv) {
                 await fs.promises.mkdir(Path.dirname(downloadArgv), { recursive: true });
@@ -369,11 +507,21 @@ async function startCamera(cameraType: CameraType) {
                 console.log(RUNNER_PREFIX, 'Stored model in', Path.resolve(downloadArgv));
                 return process.exit(0);
             }
+
+            initializedProjectState = {
+                impulseId: impulseId,
+                deploymentType: deploymentType,
+                variant: variant,
+            };
         }
 
         // create the runner and init (get info from model file)
         runner = new LinuxImpulseRunner(modelFile);
         model = await runner.init();
+
+        if (greengrassArgv && awsIOT !== undefined && awsIOT.isConnected() === true) {
+            await awsIOT.initModelInfo(model.project.name, "v" + model.project.deploy_version, model.modelParameters);
+        }
 
         // if downloaded? then store...
         if (!modelFileArgv && modelPath) {
@@ -441,6 +589,8 @@ async function startCamera(cameraType: CameraType) {
         }
 
         remoteMgmt?.on('newModelAvailable', async ( ) => {
+            if (!initializedProjectState) return;
+
             console.log(RUNNER_PREFIX, 'New model available, downloading...');
             try {
                 if (!projectId) {
@@ -482,8 +632,8 @@ async function startCamera(cameraType: CameraType) {
                     projectId: projectId,
                     impulseId: impulseId,
                     api: config.api,
-                    quantizedModel: quantizedArgv,
-                    forcedTarget: forceTargetArgv,
+                    deploymentType: initializedProjectState.deploymentType,
+                    variant: initializedProjectState.variant,
                     forcedEngine: forceEngineArgv
                 }));
 
@@ -537,7 +687,7 @@ async function startCamera(cameraType: CameraType) {
             await startApiServer(model, runner, projectStudioUrl, runHttpServerPort);
 
             console.log(RUNNER_PREFIX, '');
-            console.log(RUNNER_PREFIX, `HTTP Server now running at http://localhost:${runHttpServerPort}`);
+            console.log(RUNNER_PREFIX, `HTTP Server now running at http://${(ips.length > 0 ? ips[0].address : 'localhost')}:${runHttpServerPort}`);
             console.log(RUNNER_PREFIX, '');
 
             return;
@@ -609,10 +759,18 @@ async function startCamera(cameraType: CameraType) {
 
                 // AWS Integration - send to IoTCore if running in Greengrass
                 if (awsIOT !== undefined && awsIOT.isConnected()) {
+                    // create our confidences array
+                    // eslint-disable-next-line @typescript-eslint/dot-notation
+                    const confidences = [ <number>c["value"] ];
+
+                    // update the confidence metrics
+                    awsIOT.updateInferenceMetrics(confidences);
+
+                    // create the payload
                     const payload = { time_ms: timeMs, c: c, info:ev.info, inference_count: count,
                         total_inferences: totalInferenceCount, id: uuidv4(), ts: Date.now()};
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    awsIOT.sendInference(payload, "c");
+                    awsIOT.sendInference(confidences[0], payload, "c");
                 }
 
                 if (ev.info) {
@@ -691,6 +849,27 @@ async function startCamera(cameraType: CameraType) {
                 // AWS Integration - send to IoTCore if running in Greengrass...
                 if (awsIOT !== undefined && awsIOT.isConnected() === true &&
                     awsResult !== undefined && awsResultKey !== undefined) {
+                    // create our confidences array
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                    const confidences: Array<number> = new Array(count);
+                    let aveConfidence = 0;
+                    for(let i=0;i<count;++i) {
+                        // eslint-disable-next-line @stylistic/max-len
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/dot-notation
+                        confidences[i] = (<Array<any>>awsResult)[i]["value"];
+
+                        // update the average
+                        if (aveConfidence === 0) {
+                            aveConfidence = confidences[i];
+                        }
+                        else {
+                            aveConfidence = (aveConfidence + confidences[i])/2;
+                        }
+                    }
+
+                    // update the confidence metrics
+                    awsIOT.updateInferenceMetrics(confidences);
+
                     // create a timestamp
                     let infTimestamp = Date.now();
 
@@ -723,7 +902,7 @@ async function startCamera(cameraType: CameraType) {
 
                     // Send to IoTCore and note the inference key in the payload...
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    awsIOT.sendInference(<Payload>(payload), awsResultKey, imgAsJpg);
+                    awsIOT.sendInference(aveConfidence, <Payload>(payload), awsResultKey, imgAsJpg);
                 }
 
                 if (ev.info) {
@@ -757,3 +936,16 @@ async function startCamera(cameraType: CameraType) {
         process.exit(1);
     }
 })();
+
+function getFriendlyModelTypeName(modelType: models.KerasModelVariantEnum) {
+    switch (modelType) {
+        case 'int8':
+            return 'Quantized (int8)';
+        case 'float32':
+            return 'Unoptimized (float32)';
+        case 'akida':
+            return 'Quantized (akida)';
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    return (<string>modelType).toString();
+}

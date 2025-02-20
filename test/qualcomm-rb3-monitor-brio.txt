@@ -1,0 +1,561 @@
+root@qcs6490-rb3gen2-vision-kit:~# gst-device-monitor-1.0
+Probing devices...
+
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.882: gst_caps_append: assertion 'GST_IS_CAPS (caps2)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.883: gst_caps_append: assertion 'GST_IS_CAPS (caps2)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.914: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.915: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.915: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.916: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.916: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.916: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.917: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.917: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.918: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.918: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.918: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.919: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.919: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.919: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.921: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.922: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.922: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.922: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.923: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.923: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.923: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.924: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.924: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.924: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:1684): GStreamer-CRITICAL **: 00:15:58.925: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+===== BEGIN DUMP OF OVERRIDDEN SETTINGS =====
+===== END DUMP OF OVERRIDDEN SETTINGS =====
+GBM_INFO::msmgbm_mapper(262)::gbm mapper instantiated
+
+gbm_create_device(224): Info: backend name is: msm_drm
+GBM_INFO::~msmgbm_mapper(269)::gbm mapper de-instantiated
+
+GBM_INFO::msmgbm_mapper(262)::gbm mapper instantiated
+
+gbm_create_device(224): Info: backend name is: msm_drm
+QUALCOMM build          : d9d30bd7a4, Ie95c9f2887
+Build Date              : 08/26/24
+Shader Compiler Version : E031.47.12.01
+Local Branch            :
+Remote Branch           :
+Remote Branch           :
+Reconstruct Branch      :
+
+Build Config            : G QGL_C_COMPILER_OPT 4.4.0 AArch64
+Driver Path             : /usr/lib/libvulkan_adreno.so
+Driver Version          : 0795.1
+PFP                     : 0x016dc112
+ME                      : 0x00000000
+Application Name    : GStreamer
+Application Version : 0x00000000
+Engine Name         : GStreamer
+Engine Version      : 0x00000000
+Api Version         : 0x004030cc
+
+Device found:
+
+	name  : Monitor of pal sink to play via low-latency path
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.description = Monitor of pal sink to play via low-latency path
+		device.class = monitor
+		device.icon_name = audio-card
+		is-default = false
+	gst-launch-1.0 pulsesrc device=low-latency0.monitor ! ...
+
+
+Device found:
+
+	name  : Monitor of pal sink to play via deep buffer path
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.description = Monitor of pal sink to play via deep buffer path
+		device.class = monitor
+		device.icon_name = audio-card
+		is-default = false
+	gst-launch-1.0 pulsesrc device=deep-buffer0.monitor ! ...
+
+
+Device found:
+
+	name  : Monitor of pal sink to play compressed via offload path
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.description = Monitor of pal sink to play compressed via offload path
+		device.class = monitor
+		device.icon_name = audio-card
+		is-default = false
+	gst-launch-1.0 pulsesrc device=offload0.monitor ! ...
+
+
+Device found:
+
+	name  : Monitor of pal sink to play via voip rx path
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.description = Monitor of pal sink to play via voip rx path
+		device.class = monitor
+		device.icon_name = audio-card
+		is-default = false
+	gst-launch-1.0 pulsesrc device=voip-rx0.monitor ! ...
+
+
+Device found:
+
+	name  : pal source to capture pcm via deep buffer record path
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.string = deep-buffer
+		device.description = pal source to capture pcm via deep buffer record path
+		device.icon_name = audio-card
+		is-default = true
+	gst-launch-1.0 pulsesrc device=regular0 ! ...
+
+
+Device found:
+
+	name  : pal source to capture pcm via RAW record path
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.string = regular
+		device.description = pal source to capture pcm via RAW record path
+		device.icon_name = audio-card
+		is-default = false
+	gst-launch-1.0 pulsesrc device=regular2 ! ...
+
+
+Device found:
+
+	name  : pal source to capture pcm via voip tx record path
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.string = voip_tx
+		device.description = pal source to capture pcm via voip tx record path
+		device.icon_name = audio-card
+		is-default = false
+	gst-launch-1.0 pulsesrc device=voip-tx0 ! ...
+
+
+Device found:
+
+	name  : pal sink to play via low-latency path
+	class : Audio/Sink
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.string = low_latency
+		device.description = pal sink to play via low-latency path
+		device.icon_name = audio-card
+		is-default = true
+	gst-launch-1.0 ... ! pulsesink device=low-latency0
+
+
+Device found:
+
+	name  : pal sink to play via deep buffer path
+	class : Audio/Sink
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.string = deep_buffer
+		device.description = pal sink to play via deep buffer path
+		device.icon_name = audio-card
+		is-default = false
+	gst-launch-1.0 ... ! pulsesink device=deep-buffer0
+
+
+Device found:
+
+	name  : pal sink to play via voip rx path
+	class : Audio/Sink
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+	properties:
+		device.string = voip_rx
+		device.description = pal sink to play via voip rx path
+		device.icon_name = audio-card
+		is-default = false
+	gst-launch-1.0 ... ! pulsesink device=voip-rx0
+
+
+Device found:
+
+	name  : Logitech BRIO
+	class : Video/Source
+	caps  : video/x-raw, format=YUY2, width=1920, height=1080, pixel-aspect-ratio=1/1, framerate=5/1
+	        video/x-raw, format=YUY2, width=1600, height=896, pixel-aspect-ratio=1/1, framerate={ (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=1280, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=1024, height=576, pixel-aspect-ratio=1/1, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=960, height=540, pixel-aspect-ratio=1/1, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=800, height=600, pixel-aspect-ratio=1/1, framerate={ (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=848, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=800, height=448, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=640, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=640, height=360, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=440, height=440, pixel-aspect-ratio=1/1, framerate=30/1
+	        video/x-raw, format=YUY2, width=480, height=270, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=340, height=340, pixel-aspect-ratio=1/1, framerate=30/1
+	        video/x-raw, format=YUY2, width=424, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=352, height=288, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=320, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=320, height=180, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=176, height=144, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=160, height=120, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=1920, height=1080, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=1600, height=896, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=1280, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)60/1, (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=1024, height=576, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=960, height=540, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=800, height=600, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=848, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=800, height=448, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=640, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=640, height=360, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=480, height=270, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=424, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=352, height=288, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=320, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=320, height=180, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=176, height=144, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=160, height=120, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	properties:
+		udev-probed = true
+		device.bus_path = platform-xhci-hcd.2.auto-usb-0:1:1.0
+		sysfs.path = /sys/devices/platform/soc@0/a600000.usb/xhci-hcd.2.auto/usb1/1-1/1-1:1.0/video4linux/video2
+		device.bus = usb
+		device.subsystem = video4linux
+		device.vendor.id = 046d
+		device.vendor.name = 046d
+		device.product.id = 085e
+		device.product.name = Logitech BRIO
+		device.serial = 046d_Logitech_BRIO_97EF2B60
+		device.capabilities = :capture:
+		device.api = v4l2
+		device.path = /dev/video2
+		v4l2.device.driver = uvcvideo
+		v4l2.device.card = Logitech BRIO
+		v4l2.device.bus_info = usb-xhci-hcd.2.auto-1
+		v4l2.device.version = 394790 (0x00060626)
+		v4l2.device.capabilities = 2225078273 (0x84a00001)
+		v4l2.device.device_caps = 69206017 (0x04200001)
+	gst-launch-1.0 v4l2src device=/dev/video2 ! ...
+
+
+Device found:
+
+	name  : Logitech BRIO
+	class : Video/Source
+	caps  : video/x-raw, format=GRAY8, width=340, height=340, pixel-aspect-ratio=1/1, framerate=30/1
+	properties:
+		udev-probed = true
+		device.bus_path = platform-xhci-hcd.2.auto-usb-0:1:1.0
+		sysfs.path = /sys/devices/platform/soc@0/a600000.usb/xhci-hcd.2.auto/usb1/1-1/1-1:1.0/video4linux/video4
+		device.bus = usb
+		device.subsystem = video4linux
+		device.vendor.id = 046d
+		device.vendor.name = 046d
+		device.product.id = 085e
+		device.product.name = Logitech BRIO
+		device.serial = 046d_Logitech_BRIO_97EF2B60
+		device.capabilities = :capture:
+		device.api = v4l2
+		device.path = /dev/video4
+		v4l2.device.driver = uvcvideo
+		v4l2.device.card = Logitech BRIO
+		v4l2.device.bus_info = usb-xhci-hcd.2.auto-1
+		v4l2.device.version = 394790 (0x00060626)
+		v4l2.device.capabilities = 2225078273 (0x84a00001)
+		v4l2.device.device_caps = 69206017 (0x04200001)
+	gst-launch-1.0 v4l2src device=/dev/video4 ! ...
+
+
+Device found:
+
+	name  : qcm6490-rb3-vision-snd-card
+	class : Audio/Sink
+	caps  : audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=1
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=3, channel-mask=0x000000000000000b
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=4, channel-mask=0x0000000000000033
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=6, channel-mask=0x000000000000003f
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=8, channel-mask=0x0000000000000c3f
+	properties:
+		device.api = alsa
+		device.class = sound
+		alsa.card = 0
+		alsa.card_name = qcm6490-rb3-vision-snd-card
+		alsa.driver_name = qcm6490
+		alsa.name = qcm6490-rb3-vision-snd-card
+		alsa.id = qcm6490rb3visio
+		alsa.mixername =
+		alsa.components =
+	gst-launch-1.0 ... ! alsasink device="hw:0\,6"
+
+
+Device found:
+
+	name  : qcm6490-rb3-vision-snd-card
+	class : Audio/Sink
+	caps  : audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=1
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=3, channel-mask=0x000000000000000b
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=4, channel-mask=0x0000000000000033
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=6, channel-mask=0x000000000000003f
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=8, channel-mask=0x0000000000000c3f
+	properties:
+		device.api = alsa
+		device.class = sound
+		alsa.card = 0
+		alsa.card_name = qcm6490-rb3-vision-snd-card
+		alsa.driver_name = qcm6490
+		alsa.name = qcm6490-rb3-vision-snd-card
+		alsa.id = qcm6490rb3visio
+		alsa.mixername =
+		alsa.components =
+	gst-launch-1.0 ... ! alsasink device="hw:0\,4"
+
+
+Device found:
+
+	name  : qcm6490-rb3-vision-snd-card
+	class : Audio/Sink
+	caps  : audio/x-raw, format=S16LE, layout=interleaved, rate=[ 8000, 192000 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format=S16LE, layout=interleaved, rate=[ 8000, 192000 ], channels=1
+	        audio/x-raw, format=S16LE, layout=interleaved, rate=[ 8000, 192000 ], channels=3, channel-mask=0x000000000000000b
+	        audio/x-raw, format=S16LE, layout=interleaved, rate=[ 8000, 192000 ], channels=4, channel-mask=0x0000000000000033
+	        audio/x-raw, format=S16LE, layout=interleaved, rate=[ 8000, 192000 ], channels=6, channel-mask=0x000000000000003f
+	        audio/x-raw, format=S16LE, layout=interleaved, rate=[ 8000, 192000 ], channels=8, channel-mask=0x0000000000000c3f
+	properties:
+		device.api = alsa
+		device.class = sound
+		alsa.card = 0
+		alsa.card_name = qcm6490-rb3-vision-snd-card
+		alsa.driver_name = qcm6490
+		alsa.name = qcm6490-rb3-vision-snd-card
+		alsa.id = qcm6490rb3visio
+		alsa.mixername =
+		alsa.components =
+	gst-launch-1.0 ... ! alsasink device="hw:0\,0"
+
+
+Device found:
+
+	name  : Logitech BRIO at usb-xhci-hcd.2.auto-1, high speed
+	class : Audio/Source
+	caps  : audio/x-raw, format=S16LE, layout=interleaved, rate=[ 16000, 48000 ], channels=2, channel-mask=0x0000000000000003
+	properties:
+		device.api = alsa
+		device.class = sound
+		alsa.card = 1
+		alsa.card_name = Logitech BRIO
+		alsa.driver_name = USB-Audio
+		alsa.name = Logitech BRIO
+		alsa.id = BRIO
+		alsa.mixername = USB Mixer
+		alsa.components = USB046d:085e
+	gst-launch-1.0 alsasrc device="hw:1\,0" ! ...
+
+
+Device found:
+
+	name  : qcm6490-rb3-vision-snd-card
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=1
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=3, channel-mask=0x000000000000000b
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=4, channel-mask=0x0000000000000033
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=6, channel-mask=0x000000000000003f
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 384000 ], channels=8, channel-mask=0x0000000000000c3f
+	properties:
+		device.api = alsa
+		device.class = sound
+		alsa.card = 0
+		alsa.card_name = qcm6490-rb3-vision-snd-card
+		alsa.driver_name = qcm6490
+		alsa.name = qcm6490-rb3-vision-snd-card
+		alsa.id = qcm6490rb3visio
+		alsa.mixername =
+		alsa.components =
+	gst-launch-1.0 alsasrc device="hw:0\,5" ! ...
+
+
+Device found:
+
+	name  : qcm6490-rb3-vision-snd-card
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=1
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=3, channel-mask=0x000000000000000b
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=4, channel-mask=0x0000000000000033
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=6, channel-mask=0x000000000000003f
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=8, channel-mask=0x0000000000000c3f
+	properties:
+		device.api = alsa
+		device.class = sound
+		alsa.card = 0
+		alsa.card_name = qcm6490-rb3-vision-snd-card
+		alsa.driver_name = qcm6490
+		alsa.name = qcm6490-rb3-vision-snd-card
+		alsa.id = qcm6490rb3visio
+		alsa.mixername =
+		alsa.components =
+	gst-launch-1.0 alsasrc device="hw:0\,3" ! ...
+
+
+Device found:
+
+	name  : qcm6490-rb3-vision-snd-card
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=1
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=3, channel-mask=0x000000000000000b
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=4, channel-mask=0x0000000000000033
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=6, channel-mask=0x000000000000003f
+	        audio/x-raw, format={ (string)S32LE, (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=8, channel-mask=0x0000000000000c3f
+	properties:
+		device.api = alsa
+		device.class = sound
+		alsa.card = 0
+		alsa.card_name = qcm6490-rb3-vision-snd-card
+		alsa.driver_name = qcm6490
+		alsa.name = qcm6490-rb3-vision-snd-card
+		alsa.id = qcm6490rb3visio
+		alsa.mixername =
+		alsa.components =
+	gst-launch-1.0 alsasrc device="hw:0\,2" ! ...
+
+
+Device found:
+
+	name  : qcm6490-rb3-vision-snd-card
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=1
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=3, channel-mask=0x000000000000000b
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=4, channel-mask=0x0000000000000033
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=6, channel-mask=0x000000000000003f
+	        audio/x-raw, format={ (string)S24_32LE, (string)S16LE }, layout=interleaved, rate=[ 8000, 48000 ], channels=8, channel-mask=0x0000000000000c3f
+	properties:
+		device.api = alsa
+		device.class = sound
+		alsa.card = 0
+		alsa.card_name = qcm6490-rb3-vision-snd-card
+		alsa.driver_name = qcm6490
+		alsa.name = qcm6490-rb3-vision-snd-card
+		alsa.id = qcm6490rb3visio
+		alsa.mixername =
+		alsa.components =
+	gst-launch-1.0 alsasrc device="hw:0\,1" ! ...
+
+
+Device found:
+
+	name  : Adreno (TM) 643
+	class : Video/Sink
+	caps  : video/x-raw(memory:VulkanImage)
+	properties:
+		vulkan.name = Adreno (TM) 643
+		vulkan.type = integrated
+		vulkan.api.version = 1.1.284
+		vulkan.api.version.major = 1 (0x00000001)
+		vulkan.api.version.minor = 1 (0x00000001)
+		vulkan.api.version.patch = 284 (0x0000011c)
+		vulkan.driver.version = 512.795.1
+		vulkan.driver.version.major = 512 (0x00000200)
+		vulkan.driver.version.minor = 795 (0x0000031b)
+		vulkan.driver.version.patch = 1 (0x00000001)
+		vulkan.vendor.id = 20803 (0x00005143)
+		vulkan.device.id = 100861184 (0x06030500)
+		vulkan.memory.n_heaps = 1 (0x00000001)
+		vulkan.memory.heaps.0.size = 5643628544
+		vulkan.memory.heaps.0.flags = 1 (0x00000001)
+		vulkan.memory.heaps.0.flags.str = device-local
+		vulkan.memory.n_types = 6 (0x00000006)
+		vulkan.memory.types.0.heap = 0 (0x00000000)
+		vulkan.memory.types.0.flags = 1 (0x00000001)
+		vulkan.memory.types.0.flags.str = device-local
+		vulkan.memory.types.1.heap = 0 (0x00000000)
+		vulkan.memory.types.1.flags = 1 (0x00000001)
+		vulkan.memory.types.1.flags.str = device-local
+		vulkan.memory.types.2.heap = 0 (0x00000000)
+		vulkan.memory.types.2.flags = 11 (0x0000000b)
+		vulkan.memory.types.2.flags.str = device-local|host-visible|host-cached
+		vulkan.memory.types.3.heap = 0 (0x00000000)
+		vulkan.memory.types.3.flags = 7 (0x00000007)
+		vulkan.memory.types.3.flags.str = device-local|host-visible|host-coherent
+		vulkan.memory.types.4.heap = 0 (0x00000000)
+		vulkan.memory.types.4.flags = 15 (0x0000000f)
+		vulkan.memory.types.4.flags.str = device-local|host-visible|host-coherent|host-cached
+		vulkan.memory.types.5.heap = 0 (0x00000000)
+		vulkan.memory.types.5.flags = 17 (0x00000011)
+		vulkan.memory.types.5.flags.str = device-local|lazily-allocated
+		vulkan.n_queue_families = 1 (0x00000001)
+		vulkan.queue_family.0.n_queues = 3 (0x00000003)
+		vulkan.queue_family.0.flags = 151 (0x00000097)
+		vulkan.queue_family.0.flags.str = graphics|compute|transfer|protected
+		vulkan.queue_family.0.timestamp_resolution = 48 (0x00000030)
+		vulkan.queue_family.0.min_image_transfer_granuality.width = 1 (0x00000001)
+		vulkan.queue_family.0.min_image_transfer_granuality.height = 1 (0x00000001)
+		vulkan.queue_family.0.min_image_transfer_granuality.depth = 1 (0x00000001)
+		is-default = true
+	gst-launch-1.0 ... ! vulkansink
+
+GBM_INFO::~msmgbm_mapper(269)::gbm mapper de-instantiated
+
+root@qcs6490-rb3gen2-vision-kit:~#

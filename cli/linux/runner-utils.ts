@@ -20,11 +20,12 @@ export async function listTargets(projectId: number, api: EdgeImpulseApi) {
     console.log('Listing all available targets');
     console.log('-----------------------------');
     for (let t of targets.targets.filter(x => x.format.startsWith('runner'))) {
-        console.log(`target: ${t.format}, name: ${t.name}, supported engines: [${t.supportedEngines.join(', ')}]`);
+        console.log(`target: ${t.format}, ` +
+            `name: ${t.name}, ` +
+            `supported engines: [${t.supportedEngines.join(', ')}], ` +
+            `supported variants: [${t.modelVariants.filter(x => x.supported).map(x => x.variant).join(', ')}]`
+        );
     }
-    console.log('');
-    console.log('You can force a target via "edge-impulse-linux-runner --force-target <target> [--force-engine <engine>]"');
-    process.exit(0);
 }
 
 export function audioClassifierHelloMsg(model: ModelInformation) {

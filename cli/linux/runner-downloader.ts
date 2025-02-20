@@ -12,34 +12,9 @@ const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 export class RunnerDownloader extends EventEmitter<{
     'build-progress': (msg: string) => void
 }> {
-    private _projectId: number;
-    private _impulseId: number;
-    private _api: EdgeImpulseApi;
-    private _modelType: 'int8' | 'float32';
-    private _forceTarget: string | undefined;
-    private _forceEngine: string | undefined;
-
-    constructor(opts: {
-        projectId: number,
-        impulseId: number,
-        modelType: 'int8' | 'float32',
-        api: EdgeImpulseApi,
-        forceTarget: string | undefined,
-        forceEngine: string | undefined,
-    }) {
-        super();
-
-        this._projectId = opts.projectId;
-        this._impulseId = opts.impulseId;
-        this._api = opts.api;
-        this._modelType = opts.modelType;
-        this._forceTarget = opts.forceTarget;
-        this._forceEngine = opts.forceEngine;
-    }
-
-    async getDownloadType() {
-        if (this._forceTarget) {
-            return this._forceTarget;
+    static async getDeploymentType(forceTarget: string | undefined) {
+        if (forceTarget) {
+            return forceTarget;
         }
 
         let downloadType: string;
@@ -67,19 +42,19 @@ export class RunnerDownloader extends EventEmitter<{
                         'armv7l or aarch64 supported for now');
                 }
 
-                if (fs.existsSync("/dev/drpai0")) {
+                if (await checkFileExists("/dev/drpai0")) {
                     downloadType = 'runner-linux-aarch64-rzv2l';
                 }
-                else if (fs.existsSync('/dev/akida0')) {
+                else if (await checkFileExists('/dev/akida0')) {
                     downloadType = 'runner-linux-aarch64-akd1000';
                 }
-                else if (fs.existsSync('/dev/nvhost-as-gpu')) {
+                else if (await checkFileExists('/dev/nvhost-as-gpu')) {
 
                     downloadType = 'runner-linux-aarch64-jetson-orin';
 
                     let firmwareModel;
                     // using /proc/device-tree as recommended in user space.
-                    if (fs.existsSync('/proc/device-tree/model')) {
+                    if (await checkFileExists('/proc/device-tree/model')) {
                         firmwareModel = await fs.promises.readFile('/proc/device-tree/model', 'utf-8');
                     }
 
@@ -103,12 +78,15 @@ export class RunnerDownloader extends EventEmitter<{
                     }
 
                 }
+                else if (await checkFileExists('/usr/lib/libQnnTFLiteDelegate.so')) {
+                    downloadType = 'runner-linux-aarch64-qnn';
+                }
                 else {
                     downloadType = 'runner-linux-aarch64';
                 }
             }
             else if (process.arch === 'x64') {
-                if (fs.existsSync('/dev/akida0')) {
+                if (await checkFileExists('/dev/akida0')) {
                     downloadType = 'runner-linux-aarch64-akd1000';
                 }
                 else {
@@ -126,12 +104,35 @@ export class RunnerDownloader extends EventEmitter<{
         return downloadType;
     }
 
-    async getLastDeploymentVersion() {
-        let downloadType = await this.getDownloadType();
+    private _projectId: number;
+    private _impulseId: number;
+    private _api: EdgeImpulseApi;
+    private _modelType: models.KerasModelVariantEnum;
+    private _deploymentType: string;
+    private _forceEngine: string | undefined;
 
+    constructor(opts: {
+        projectId: number,
+        impulseId: number,
+        modelType: models.KerasModelVariantEnum,
+        api: EdgeImpulseApi,
+        deploymentType: string,
+        forceEngine: string | undefined,
+    }) {
+        super();
+
+        this._projectId = opts.projectId;
+        this._impulseId = opts.impulseId;
+        this._api = opts.api;
+        this._modelType = opts.modelType;
+        this._deploymentType = opts.deploymentType;
+        this._forceEngine = opts.forceEngine;
+    }
+
+    async getLastDeploymentVersion() {
         let deployInfo = await this._api.deployment.getDeployment(
             this._projectId, {
-                type: downloadType,
+                type: this._deploymentType,
                 modelType: this._modelType,
                 impulseId: this._impulseId,
             });
@@ -142,37 +143,35 @@ export class RunnerDownloader extends EventEmitter<{
     }
 
     async downloadDeployment() {
-        let downloadType = await this.getDownloadType();
-
         let deployInfo = await this._api.deployment.getDeployment(
             this._projectId, {
-                type: downloadType,
+                type: this._deploymentType,
                 modelType: this._modelType,
                 impulseId: this._impulseId,
             });
 
         if (!deployInfo.hasDeployment) {
-            await this.buildModel(downloadType);
+            await this.buildModel();
         }
 
         let deployment = await this._api.deployment.downloadBuild(
             this._projectId, {
-                type: downloadType,
+                type: this._deploymentType,
                 modelType: this._modelType,
                 impulseId: this._impulseId,
             });
         return deployment;
     }
 
-    private async buildModel(downloadType: string) {
+    private async buildModel() {
         // list all deploy targets
         const dt = await this._api.deployment.listDeploymentTargetsForProjectDataSources(this._projectId, {
             impulseId: this._impulseId,
         });
 
-        let deployInfo = dt.targets.find(x => x.format === downloadType);
+        let deployInfo = dt.targets.find(x => x.format === this._deploymentType);
         if (!deployInfo) {
-            throw new Error('Failed to find deployment type "' + downloadType + '", types found: ' +
+            throw new Error('Failed to find deployment type "' + this._deploymentType + '", types found: ' +
                 JSON.stringify(dt.targets.map(x => x.format)));
         }
 
@@ -180,7 +179,7 @@ export class RunnerDownloader extends EventEmitter<{
         if (this._forceEngine) {
             if (!deployInfo.supportedEngines.find(x => x === this._forceEngine)) {
                 throw new Error('Engine type "' + this._forceEngine + '" is not supported for ' +
-                    '"' + downloadType + '", valid engines: ' + JSON.stringify(deployInfo.supportedEngines));
+                    '"' + this._deploymentType + '", valid engines: ' + JSON.stringify(deployInfo.supportedEngines));
             }
             engine = <models.DeploymentTargetEngine>this._forceEngine;
         }
@@ -189,7 +188,7 @@ export class RunnerDownloader extends EventEmitter<{
             engine: engine,
             modelType: this._modelType,
         }, {
-            type: downloadType,
+            type: this._deploymentType,
             impulseId: this._impulseId,
         });
 
@@ -209,21 +208,21 @@ export class RunnerDownloader extends EventEmitter<{
 export class RunnerModelPath {
     private _projectId: number;
     private _impulseId: number;
-    private _modelType: 'int8' | 'float32';
-    private _forceTarget: string | undefined;
+    private _modelType: models.KerasModelVariantEnum;
+    private _deploymentTarget: string;
     private _forceEngine: string | undefined;
 
     constructor(opts: {
         projectId: number,
         impulseId: number,
-        modelType: 'int8' | 'float32',
-        forceTarget: string | undefined,
+        modelType: models.KerasModelVariantEnum,
+        deploymentType: string,
         forceEngine: string | undefined
     }) {
         this._projectId = opts.projectId;
         this._impulseId = opts.impulseId;
         this._modelType = opts.modelType;
-        this._forceTarget = opts.forceTarget;
+        this._deploymentTarget = opts.deploymentType;
         this._forceEngine = opts.forceEngine;
     }
 
@@ -232,8 +231,8 @@ export class RunnerModelPath {
         if (this._modelType === 'int8') {
             versionId += '-quantized';
         }
-        if (this._forceTarget) {
-            versionId += '-' + this._forceTarget;
+        if (this._deploymentTarget) {
+            versionId += '-' + this._deploymentTarget;
         }
         if (this._forceEngine) {
             versionId += '-' + this._forceEngine;
@@ -260,14 +259,14 @@ export async function downloadModel(opts: {
     projectId: number,
     impulseId: number,
     api: EdgeImpulseApi,
-    quantizedModel: boolean,
-    forcedTarget: string | undefined,
+    variant: models.KerasModelVariantEnum,
+    deploymentType: string,
     forcedEngine: string | undefined
 }): Promise<{
        modelFile: string,
        modelPath: RunnerModelPath }> {
 
-    const { projectId, impulseId, api, quantizedModel, forcedTarget, forcedEngine } = opts;
+    const { projectId, impulseId, api, forcedEngine, variant, deploymentType } = opts;
 
     let modelPath: RunnerModelPath | undefined;
     let modelFile: string;
@@ -275,9 +274,9 @@ export async function downloadModel(opts: {
     const downloader = new RunnerDownloader({
         projectId: projectId,
         impulseId: impulseId,
-        modelType: quantizedModel ? 'int8' : 'float32',
+        modelType: variant,
         api,
-        forceTarget: forcedTarget,
+        deploymentType: deploymentType,
         forceEngine: forcedEngine,
     });
     downloader.on('build-progress', msg => {
@@ -286,8 +285,8 @@ export async function downloadModel(opts: {
     modelPath = new RunnerModelPath({
         projectId,
         impulseId,
-        modelType: quantizedModel ? 'int8' : 'float32',
-        forceTarget: forcedTarget,
+        modelType: variant,
+        deploymentType: deploymentType,
         forceEngine: forcedEngine,
     });
 
@@ -304,8 +303,7 @@ export async function downloadModel(opts: {
         let tmpDir = await fs.promises.mkdtemp(Path.join(os.tmpdir(), 'ei-' + Date.now()));
         tmpDir = Path.join(os.tmpdir(), tmpDir);
         await fs.promises.mkdir(tmpDir, { recursive: true });
-        let ret = await downloader.getDownloadType();
-        modelFile = Path.join(tmpDir, ret[0]);
+        modelFile = Path.join(tmpDir, deploymentType);
         await fs.promises.writeFile(modelFile, deployment);
         await fs.promises.chmod(modelFile, 0o755);
 
