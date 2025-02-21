@@ -185,9 +185,26 @@ window.InferenceServer = async () => {
                     el.style.left = (bb.x) + 'px';
                     el.style.top = (bb.y) + 'px';
 
+                    let scoreFontSize = '';
+                    let scoreText = bb.value.toFixed(2);
+                    if (bb.width < 15) {
+                        scoreFontSize = '4px';
+                        scoreText = bb.value.toFixed(1);
+                    }
+                    else if (bb.width < 20) {
+                        scoreFontSize = '6px';
+                        scoreText = bb.value.toFixed(1);
+                    }
+                    else if (bb.width < 32) {
+                        scoreFontSize = '9px';
+                    }
+
                     let score = document.createElement('div');
                     score.style.color = 'white';
-                    score.textContent = bb.value.toFixed(2);
+                    if (scoreFontSize) {
+                        score.style.fontSize = scoreFontSize;
+                    }
+                    score.textContent = scoreText;
                     el.appendChild(score);
 
                     // Center align the score

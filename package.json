@@ -1,6 +1,6 @@
 {
   "name": "edge-impulse-linux",
-  "version": "1.13.1",
+  "version": "1.14.0",
   "description": "Node.js SDK and tools for Edge Impulse for Linux",
   "directories": {
     "example": "examples"
@@ -39,7 +39,7 @@
     "borc": "2.1.2",
     "cbor": "5.0.2",
     "commander": "4.1.1",
-    "express": "4.21.1",
+    "express": "4.21.2",
     "form-data": "4.0.0",
     "inquirer": "7.0.0",
     "multer": "1.4.5-lts.1",

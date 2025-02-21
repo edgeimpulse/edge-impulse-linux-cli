@@ -4177,3 +4177,9 @@ video {
 #preview-image-container {
     position: relative;
 }
+
+#thresholds-body {
+    min-width: 500px;
+    padding: 1rem;
+    margin-bottom: -1rem;
+}

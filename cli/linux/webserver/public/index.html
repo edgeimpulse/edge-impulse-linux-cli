@@ -6,7 +6,7 @@
     <title>Edge Impulse for Linux</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0,user-scalable=0" />
     <link rel="stylesheet" href="/assets/argon-dashboard.css">
-    <link rel="stylesheet" href="/fontawesome-free/css/all.min.css">
+    <link rel="stylesheet" href="/assets/fontawesome-free-5.15.4-web/css/all.min.css">
     <link rel="stylesheet" href="/assets/mobileclient.css">
     <!-- generics -->
     <link rel="icon" href="/assets/favicon-color/favicon-32.png" sizes="32x32">
@@ -26,7 +26,7 @@
     <meta name="msapplication-TileColor" content="#FFFFFF">
     <meta name="msapplication-TileImage" content="assets/favicon-color/favicon-144.png">
 
-    <!-- (c) Copyright 2021, Edge Impulse Inc. -->
+    <!-- (c) Copyright 2021-2025, EdgeImpulse Inc. -->
 </head>
 
 <body>
@@ -37,6 +37,17 @@
             </div>
             <div class="col align-middle">
                 <h1 class="text-dark mb-0 border-left pl-4">...</h1>
+            </div>
+            <div class="pl-0 col-auto text-right my--1">
+                <div class="dropdown">
+                    <a class="btn btn-icon-only text-gray mr-0" href="#" role="button"
+                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Configure thresholds">
+                        <i class="fas fa-cog"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right dropdown-menu-arrow" id="thresholds-body">
+                        <h3>Thresholds</h3>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="row mt-4" id="loading-view">
@@ -105,6 +116,8 @@
         </div>
     </footer>
 
+    <script src="/assets/js/plugins/jquery/dist/jquery.min.js"></script>
+    <script src="/assets/js/plugins/bootstrap/dist/js/bootstrap.bundle.js"></script>
     <script type="text/javascript" src="/socket.io/socket.io.js"></script>
     <script type="text/javascript" src="/webserver.js"></script>
     <script>

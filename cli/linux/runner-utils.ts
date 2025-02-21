@@ -35,6 +35,7 @@ export function audioClassifierHelloMsg(model: ModelInformation) {
     console.log(RUNNER_PREFIX, 'Parameters', 'freq', param.frequency + 'Hz',
         'window length', ((param.input_features_count / param.frequency / param.axis_count) * 1000) + 'ms.',
         'classes', param.labels);
+    printThresholds(model);
 }
 
 export function imageClassifierHelloMsg(model: ModelInformation) {
@@ -51,6 +52,25 @@ export function imageClassifierHelloMsg(model: ModelInformation) {
         'image size', param.image_input_width + 'x' + param.image_input_height + ' px (' +
             param.image_channel_count + ' channels)',
         'classes', labels);
+    printThresholds(model);
+}
+
+export function printThresholds(model: ModelInformation) {
+    if ((model.modelParameters.thresholds || []).length > 0) {
+        let opts: string[] = [];
+        for (let thresholdObj of model.modelParameters.thresholds || []) {
+            let threshold = <{ [k: string]: number }><unknown>thresholdObj;
+            for (let k of Object.keys(threshold)) {
+                if (k === 'id' || k === 'type') continue;
+                if (typeof threshold[k] !== 'number') continue;
+
+                let rounded = Math.round(threshold[k] * 1000) / 1000;
+                opts.push(`${threshold.id}.${k}=${rounded}`);
+            }
+        }
+
+        console.log(RUNNER_PREFIX, `Thresholds: ${opts.join(',')} (override via --thresholds <value>)`);
+    }
 }
 
 export function startApiServer(model: ModelInformation,
@@ -321,7 +341,40 @@ export function startWebServer(model: ModelInformation, camera: ICamera, imgClas
 
     io.on('connection', socket => {
         socket.emit('hello', {
-            projectName: model.project.owner + ' / ' + model.project.name
+            projectName: model.project.owner + ' / ' + model.project.name,
+            thresholds: model.modelParameters.thresholds,
+        });
+
+        socket.on('threshold-override', async (ev: {
+            id: number,
+            key: string,
+            value: number,
+        }) => {
+            try {
+                process.stdout.write(`Updating threshold for block ID ${ev.id}, key ${ev.key} to: ${ev.value}... `);
+
+                let thresholdObj = (model.modelParameters.thresholds || []).find(x => x.id === ev.id);
+                if (!thresholdObj) {
+                    throw new Error(`Cannot find threshold with ID ` + ev.id);
+                }
+
+                let obj: { [k: string]: string | number } = {
+                    id: ev.id,
+                };
+                obj.type = thresholdObj.type;
+                obj[ev.key] = ev.value;
+
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                await imgClassifier.getRunner().setLearnBlockThreshold(<any>obj);
+
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                (<any>thresholdObj)[ev.key] = ev.value;
+
+                console.log(`OK`);
+            }
+            catch (ex) {
+                console.log('Failed to set threshold:', ex);
+            }
         });
     });
 

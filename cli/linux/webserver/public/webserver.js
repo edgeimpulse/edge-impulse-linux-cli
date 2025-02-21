@@ -19,6 +19,7 @@ window.WebServer = async () => {
         resultsTable: document.querySelector('#results-table'),
         resultsThead: document.querySelector('#results-table thead tr'),
         resultsTbody: document.querySelector('#results-table tbody'),
+        thresholdsBody: document.querySelector('#thresholds-body'),
     };
 
     const colors = [
@@ -34,6 +35,114 @@ window.WebServer = async () => {
         el.style.display = '';
     }
 
+    function bindThresholdSettings(thresholds) {
+        els.thresholdsBody.innerHTML = '';
+
+        let h3 = document.createElement('h3');
+        h3.textContent = 'Thresholds';
+        els.thresholdsBody.appendChild(h3);
+
+        if (!thresholds) {
+            let msgEl = document.createElement('div');
+            let emEl = document.createElement('em');
+            emEl.classList.add('text-sm');
+            emEl.textContent = 'Model does not support setting thresholds. Re-build the eim file to change the thresholds.';
+            msgEl.appendChild(emEl);
+            els.thresholdsBody.appendChild(msgEl);
+            return;
+        }
+
+        if (thresholds.length === 0) {
+            let msgEl = document.createElement('div');
+            let emEl = document.createElement('em');
+            emEl.classList.add('text-sm');
+            emEl.textContent = 'Model does not have any settable thresholds.';
+            msgEl.appendChild(emEl);
+            els.thresholdsBody.appendChild(msgEl);
+            return;
+        }
+
+        let thresholdsDiv = document.createElement('div');
+        thresholdsDiv.classList.add('mb--3');
+
+        let thresholdHintContainer = document.createElement('div');
+        thresholdHintContainer.classList.add('mb-3');
+        function setThresholdHint() {
+            let em = document.createElement('em');
+            em.classList.add('text-sm', 'd-block');
+            em.textContent = `To override the thresholds, start the runner with:`;
+
+            let code = document.createElement('code');
+            code.classList.add('d-block');
+
+            let opts = [];
+            for (let threshold of thresholds) {
+                for (let k of Object.keys(threshold)) {
+                    if (k === 'id' || k === 'type') continue;
+                    if (typeof threshold[k] !== 'number') continue;
+
+                    let rounded = Math.round(threshold[k] * 1000) / 1000;
+                    opts.push(`${threshold.id}.${k}=${rounded}`);
+                }
+            }
+
+            code.textContent = `--thresholds ${opts.join(',')}`;
+
+            thresholdHintContainer.textContent = '';
+            thresholdHintContainer.appendChild(em);
+            thresholdHintContainer.appendChild(code);
+        }
+
+        for (let threshold of thresholds) {
+
+            for (let k of Object.keys(threshold)) {
+                if (k === 'id' || k === 'type') continue;
+                if (typeof threshold[k] !== 'number') continue;
+
+                let rowEl = document.createElement('div');
+                rowEl.classList.add('mb-3');
+
+                let labelEl = document.createElement('label');
+                labelEl.classList.add('form-control-label', 'w-100');
+                labelEl.textContent = `${threshold.type}: ${k} (block ID: ${threshold.id})`;
+
+                let inputEl = document.createElement('input');
+                inputEl.classList.add('form-control', 'form-control-sm', 'text-default', 'font-monospace');
+                let rounded = Math.round(threshold[k] * 1000) / 1000;
+                inputEl.value = rounded;
+
+                rowEl.appendChild(labelEl);
+                rowEl.appendChild(inputEl);
+
+                thresholdsDiv.appendChild(rowEl);
+
+                inputEl.oninput = () => {
+                    if (!inputEl.value || isNaN(Number(inputEl.value))) return;
+
+                    threshold[k] = Number(inputEl.value);
+
+                    socket.emit('threshold-override', {
+                        id: threshold.id,
+                        key: k,
+                        value: Number(inputEl.value),
+                    });
+
+                    setThresholdHint();
+                };
+            }
+        }
+
+        setThresholdHint();
+        thresholdsDiv.appendChild(thresholdHintContainer);
+
+        els.thresholdsBody.appendChild(thresholdsDiv);
+
+        // prevent closing on click inside the dropdown menu
+        document.querySelector('.dropdown-menu').addEventListener('click', ev => {
+            ev.stopPropagation();
+        });
+    }
+
     // Here is how we connect back to the server
     const socket = io.connect(location.origin);
     socket.on('connect', () => {
@@ -41,9 +150,12 @@ window.WebServer = async () => {
     });
 
     socket.on('hello', (opts) => {
+        console.log('hello', opts);
+
         els.title.textContent = opts.projectName;
 
         switchView(els.views.captureCamera);
+        bindThresholdSettings(opts.thresholds);
     });
 
     socket.on('image', (opts) => {
@@ -230,9 +342,26 @@ window.WebServer = async () => {
                 el.style.left = (bb.x) + 'px';
                 el.style.top = (bb.y) + 'px';
 
+                let scoreFontSize = '';
+                let scoreText = bb.value.toFixed(2);
+                if (bb.width < 15) {
+                    scoreFontSize = '4px';
+                    scoreText = bb.value.toFixed(1);
+                }
+                else if (bb.width < 20) {
+                    scoreFontSize = '6px';
+                    scoreText = bb.value.toFixed(1);
+                }
+                else if (bb.width < 32) {
+                    scoreFontSize = '9px';
+                }
+
                 let score = document.createElement('div');
                 score.style.color = 'white';
-                score.textContent = bb.value.toFixed(2);
+                if (scoreFontSize) {
+                    score.style.fontSize = scoreFontSize;
+                }
+                score.textContent = scoreText;
                 el.appendChild(score);
 
                 // Center align the score

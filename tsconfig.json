@@ -15,6 +15,7 @@
     ],
     "exclude": [
         "./build",
-        "./examples/js"
+        "./examples/js",
+        "./cli/linux/webserver/public/assets/**/*.js"
     ]
 }

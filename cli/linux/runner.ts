@@ -15,7 +15,7 @@ import WebSocket from 'ws';
 import { Config, EdgeImpulseConfig } from "../../cli-common/config";
 import { LinuxDevice } from './linux-device';
 import { ModelMonitor } from '../../cli-common/model-monitor';
-import { listTargets, audioClassifierHelloMsg, imageClassifierHelloMsg, startApiServer, startWebServer } from './runner-utils';
+import { listTargets, audioClassifierHelloMsg, imageClassifierHelloMsg, startApiServer, startWebServer, printThresholds } from './runner-utils';
 import { initCamera, CameraType, initMicrophone } from '../../library/sensors/sensors-helper';
 import { AWSSecretsManagerUtils } from "../../cli-common/aws-sm-utils";
 import { AWSIoTCoreConnector, Payload, AwsResult, AwsResultKey } from "../../cli-common/aws-iotcore-connector";
@@ -58,8 +58,11 @@ program
         '"v4l2src device=/dev/video0 ! video/x-raw,width=640,height=480 ! videoconvert ! jpegenc"')
     .option('--dev', 'List development servers, alternatively you can use the EI_HOST environmental variable ' +
         'to specify the Edge Impulse instance.')
-    .option('--verbose', 'Enable debug logs')
     .option('--greengrass', 'Enable AWS IoT greengrass integration mode')
+    .option('--dont-print-predictions', 'If set, suppresses the printing of predictions')
+    .option('--thresholds <values>', 'Override model thresholds. E.g. --thresholds 4.min_anomaly_score=35 overrides the min. anomaly score for block ID 4 to 35.' +
+        'The current thresholds are printed on startup.')
+    .option('--verbose', 'Enable debug logs')
     .allowUnknownOption(true)
     .parse(process.argv);
 
@@ -83,6 +86,8 @@ const listTargetsArgv: boolean = !!program.listTargets;
 const gstLaunchArgsArgv = <string | undefined>program.gstLaunchArgs;
 const runHttpServerPort = program.runHttpServer ? Number(program.runHttpServer) : undefined;
 const enableVideo = (process.env.PROPHESEE_CAM === '1') || (process.env.ENABLE_VIDEO === '1');
+const dontPrintPredictionsArgv: boolean = !!program.dontPrintPredictions;
+const thresholdsArgv = <string | undefined>program.thresholds;
 
 process.on('warning', e => console.warn(e.stack));
 
@@ -518,6 +523,7 @@ async function startCamera(cameraType: CameraType) {
         // create the runner and init (get info from model file)
         runner = new LinuxImpulseRunner(modelFile);
         model = await runner.init();
+        await setThresholdsFromArgv(runner, model);
 
         if (greengrassArgv && awsIOT !== undefined && awsIOT.isConnected() === true) {
             await awsIOT.initModelInfo(model.project.name, "v" + model.project.deploy_version, model.modelParameters);
@@ -642,7 +648,8 @@ async function startCamera(cameraType: CameraType) {
                 audioClassifier?.pause();
 
                 // load the new model
-                model = await runner?.init(modelFile);
+                model = await runner.init(modelFile);
+                await setThresholdsFromArgv(runner, model);
 
                 console.log(RUNNER_PREFIX, 'Model updated successfully');
                 // resume (refresh the model info internally as well)
@@ -673,11 +680,13 @@ async function startCamera(cameraType: CameraType) {
                     'image size', param.image_input_width + 'x' + param.image_input_height + ' px (' +
                         param.image_channel_count + ' channels)',
                     'classes', param.labels);
+                printThresholds(model);
             }
             else {
                 console.log(RUNNER_PREFIX, 'Parameters', 'freq', param.frequency + 'Hz',
                     'window length', ((param.input_features_count / param.frequency / param.axis_count) * 1000) + 'ms.',
                     'classes', param.labels);
+                printThresholds(model);
             }
 
             if (!projectStudioUrl) {
@@ -755,7 +764,9 @@ async function startCamera(cameraType: CameraType) {
                 // total inferences update...
                 totalInferenceCount += count;
 
-                console.log('classifyRes', timeMs + 'ms.', c);
+                if (!dontPrintPredictionsArgv) {
+                    console.log('classifyRes', timeMs + 'ms.', c);
+                }
 
                 // AWS Integration - send to IoTCore if running in Greengrass
                 if (awsIOT !== undefined && awsIOT.isConnected()) {
@@ -806,7 +817,9 @@ async function startCamera(cameraType: CameraType) {
                     for (let k of Object.keys(c)) {
                         c[k] = (<number>c[k]).toFixed(4);
                     }
-                    console.log('classifyRes', timeMs + 'ms.', c);
+                    if (!dontPrintPredictionsArgv) {
+                        console.log('classifyRes', timeMs + 'ms.', c);
+                    }
 
                     // AWS Integration
                     awsResult = c;
@@ -815,7 +828,9 @@ async function startCamera(cameraType: CameraType) {
                 }
 
                 if (ev.result.bounding_boxes) {
-                    console.log('boundingBoxes', timeMs + 'ms.', JSON.stringify(ev.result.bounding_boxes));
+                    if (!dontPrintPredictionsArgv) {
+                        console.log('boundingBoxes', timeMs + 'ms.', JSON.stringify(ev.result.bounding_boxes));
+                    }
 
                     // AWS Integration
                     awsResult = ev.result.bounding_boxes;
@@ -824,7 +839,9 @@ async function startCamera(cameraType: CameraType) {
                 }
 
                 if (ev.result.visual_anomaly_grid) {
-                    console.log('visual anomalies', timeMs + 'ms.', JSON.stringify(ev.result.visual_anomaly_grid));
+                    if (!dontPrintPredictionsArgv) {
+                        console.log('visual anomalies', timeMs + 'ms.', JSON.stringify(ev.result.visual_anomaly_grid));
+                    }
 
                     // AWS Integration
                     awsResult = ev.result.visual_anomaly_grid;
@@ -905,7 +922,7 @@ async function startCamera(cameraType: CameraType) {
                     awsIOT.sendInference(aveConfidence, <Payload>(payload), awsResultKey, imgAsJpg);
                 }
 
-                if (ev.info) {
+                if (ev.info && !dontPrintPredictionsArgv) {
                     console.log('additionalInfo:', ev.info);
                 }
             });
@@ -948,4 +965,40 @@ function getFriendlyModelTypeName(modelType: models.KerasModelVariantEnum) {
     }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     return (<string>modelType).toString();
+}
+
+async function setThresholdsFromArgv(runner: LinuxImpulseRunner, model: ModelInformation) {
+    if (!thresholdsArgv) return;
+
+    for (let opt of thresholdsArgv.split(',')) {
+        // ${threshold.id}.${k}=${threshold[k]}
+        let matches = opt.match(/^(\d+)\.([\w-_]+)=([\d\.]+)$/);
+        if (!matches) {
+            console.log(RUNNER_PREFIX, `Failed to parse threshold "${opt}" (via --thresholds)`);
+            continue;
+        }
+
+        let id = Number(matches[1]);
+        let key = matches[2];
+        let value = Number(matches[3]);
+
+        let thresholdObj = (model.modelParameters.thresholds || []).find(x => x.id === id);
+        if (thresholdObj) {
+            let obj: { [k: string]: string | number } = {
+                id: id,
+            };
+            obj.type = thresholdObj.type;
+            obj[key] = value;
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            await runner.setLearnBlockThreshold(<any>obj);
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            (<any>thresholdObj)[key] = value;
+        }
+        else {
+            console.log(RUNNER_PREFIX, `Invalid threshold "${opt}", could not find block with ID ${id} ` +
+                `(found ${JSON.stringify((model.modelParameters.thresholds || []).map(x => x.id))})`);
+        }
+    }
 }
