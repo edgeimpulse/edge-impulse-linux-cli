@@ -81,7 +81,6 @@ let camera: ICamera | undefined;
 let configFactory: Config;
 let isExiting = false;
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try {
         const cameraType =
@@ -107,6 +106,7 @@ let isExiting = false;
             undefined, // model monitoring object
             url => new Websocket(url),
             async (currName) => {
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
                 let nameDevice = <{ nameDevice: string }>await inquirer.prompt([{
                     type: 'input',
                     message: 'What name do you want to give this device?',

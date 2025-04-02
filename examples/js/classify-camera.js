@@ -1,6 +1,5 @@
-const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap, RunnerHelloHasAnomaly } = require('../../build/library');
+const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, Imagesnap, RunnerHelloHasAnomaly } = require('../../build/library');
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try  {
 
@@ -18,7 +17,7 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap, RunnerH
         const dimensions = (process.argv[5] && process.argv[6]) ? {
             width: Number(process.argv[5]),
             height: Number(process.argv[6])
-        }: {
+        } : {
             width: 640,
             height: 480
         };

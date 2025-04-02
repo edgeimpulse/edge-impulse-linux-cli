@@ -5042,15 +5042,15 @@ Freeing pipeline ...
                     }
                 }
             });
-            assert.equal(devices.length, 3);
-            assert.equal(devices[2].id, 'qtiqmmfsrc');
-            assert.equal(devices[2].name, 'CSI Camera 0');
-            assert.equal(devices[2].videoSource, 'qtiqmmfsrc');
+            assert.equal(devices.length, 4);
+            assert.equal(devices[2].id, 'qtiqmmfsrc-0');
+            assert.equal(devices[2].name, 'Camera 0 (High-resolution, fisheye, IMX577)');
+            assert.equal(devices[2].videoSource, 'qtiqmmfsrc name=camsrc camera=0');
             assert.equal(JSON.stringify(devices[2].caps), JSON.stringify([
                 {
                     type: "video/x-raw",
-                    width: 640,
-                    height: 480,
+                    width: 1280,
+                    height: 720,
                     framerate: 30,
                 },
             ]));

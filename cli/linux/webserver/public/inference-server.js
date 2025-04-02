@@ -15,6 +15,7 @@ window.InferenceServer = async () => {
         '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#42d4f4', '#f032e6', '#fabed4',
         '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3',
     ];
+    let colorIx = 0;
     const labelToColor = { };
 
     if (els.uploadFile) {
@@ -135,8 +136,7 @@ window.InferenceServer = async () => {
                         value: b.value
                     };
                     if (!labelToColor[bb.label]) {
-                        labelToColor[bb.label] = colors[0];
-                        colors.splice(0, 1);
+                        labelToColor[bb.label] = colors[colorIx++ % colors.length];
                     }
                     let color = labelToColor[bb.label];
                     let el = document.createElement('div');

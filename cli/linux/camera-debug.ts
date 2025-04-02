@@ -43,7 +43,6 @@ const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
 
 let isExiting = false;
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     let camera: ICamera | undefined;
     try {

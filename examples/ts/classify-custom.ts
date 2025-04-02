@@ -6,7 +6,6 @@ import fs from 'fs';
 // 2. A features file with raw data. You can get this by going to **Live classification > Load sample**
 //    then copy the features from the 'Raw features' block.
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try  {
         if (!process.argv[2]) {

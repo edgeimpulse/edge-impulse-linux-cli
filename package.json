@@ -1,13 +1,13 @@
 {
   "name": "edge-impulse-linux",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "Node.js SDK and tools for Edge Impulse for Linux",
   "directories": {
     "example": "examples"
   },
   "scripts": {
     "build": "tsc -p .",
-    "eslint": "eslint . -c .eslintrc.json --ext .ts,.js",
+    "eslint": "eslint . -c .eslintrc.json --quiet --ext .ts,.js",
     "lint": "npm run eslint",
     "test": "tsc -b . && TS_NODE_PROJECT=./tsconfig.json mocha --config ./test/.mocharc.js",
     "watch-runner": "func() { tsc-watch -b . --onSuccess \"node build/cli/linux/runner.js $1\" --noClear; }; func",
@@ -24,17 +24,16 @@
     "type": "git",
     "url": "git+https://github.com/edgeimpulse/linux-sdk-node.git"
   },
-  "author": "Jan Jongboom <hello@edgeimpulse.com>",
-  "license": "Apache-2.0",
+  "author": "EdgeImpulse Inc. <hello@edgeimpulse.com>",
+  "license": "BSD-3-Clause-Clear",
   "bugs": {
     "url": "https://github.com/edgeimpulse/linux-sdk-node/issues"
   },
   "homepage": "https://github.com/edgeimpulse/linux-sdk-node#readme",
   "dependencies": {
     "@aws-sdk/client-iot-data-plane": "3.624.0",
-    "@aws-sdk/client-secrets-manager": "3.624.0",
     "@aws-sdk/client-s3": "3.635.0",
-    "@types/uuid": "10.0.0",
+    "@aws-sdk/client-secrets-manager": "3.624.0",
     "async-mutex": "0.2.6",
     "borc": "2.1.2",
     "cbor": "5.0.2",
@@ -44,7 +43,7 @@
     "inquirer": "7.0.0",
     "multer": "1.4.5-lts.1",
     "node-fetch": "2.7.0",
-    "npm-registry-fetch": "5.0.0",
+    "npm-registry-fetch": "18.0.2",
     "request": "2.88.2",
     "sharp": "0.32.6",
     "socket.io": "2.5.1",
@@ -60,16 +59,18 @@
     "@types/inquirer": "6.5.0",
     "@types/mocha": "9.0.0",
     "@types/multer": "1.4.11",
-    "@types/node": "20.14.14",
-    "@types/npm-registry-fetch": "4.0.1",
+    "@types/node": "16.18.126",
+    "@types/npm-registry-fetch": "8.0.7",
     "@types/request": "2.48.12",
     "@types/sharp": "0.32.0",
     "@types/socket.io": "2.1.4",
+    "@types/uuid": "10.0.0",
     "@types/ws": "6.0.4",
     "@typescript-eslint/eslint-plugin": "7.12.0",
     "@typescript-eslint/parser": "7.12.0",
     "eslint": "8.57.0",
     "eslint-plugin-mocha": "10.5.0",
+    "eslint-plugin-n": "16.6.2",
     "mocha": "9.2.2",
     "ts-node": "10.9.2",
     "tsc-watch": "6.2.0",
@@ -90,5 +91,8 @@
     "test/",
     "borc/",
     "utypes.d.ts"
-  ]
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  }
 }

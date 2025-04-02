@@ -22,7 +22,6 @@ export function join(array: (string | HtmlSafeString)[], separator: string | Htm
     if (array.length <= 0) {
         return new HtmlSafeString([ '' ], []);
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     return new HtmlSafeString([ '', ...Array(array.length - 1).fill(separator), '' ], array);
 }
 
@@ -35,7 +34,6 @@ function escapehtml(unsafe: unknown): string {
         return unsafe.toString();
     }
     if (Array.isArray(unsafe)) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         return join(unsafe, '').toString();
     }
     return String(unsafe).replace(ENT_REGEX, (char) => ENTITIES[char]);

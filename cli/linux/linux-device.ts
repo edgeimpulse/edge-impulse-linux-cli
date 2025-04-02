@@ -111,7 +111,6 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
     }
 
     getSensors() {
-        /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
         let sensors: any = [];
         if (!this._microphoneDisabled) {
             sensors.push({
@@ -137,7 +136,6 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 });
             }
         }
-        /* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
         return sensors;
     }
 

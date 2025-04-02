@@ -26,6 +26,7 @@ window.WebServer = async () => {
         '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#42d4f4', '#f032e6', '#fabed4',
         '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3',
     ];
+    let colorIx = 0;
     const labelToColor = { };
 
     function switchView(el) {
@@ -79,10 +80,16 @@ window.WebServer = async () => {
             for (let threshold of thresholds) {
                 for (let k of Object.keys(threshold)) {
                     if (k === 'id' || k === 'type') continue;
-                    if (typeof threshold[k] !== 'number') continue;
-
-                    let rounded = Math.round(threshold[k] * 1000) / 1000;
-                    opts.push(`${threshold.id}.${k}=${rounded}`);
+                    if (typeof threshold[k] === 'number') {
+                        let rounded = Math.round(threshold[k] * 1000) / 1000;
+                        opts.push(`${threshold.id}.${k}=${rounded}`);
+                    }
+                    else if (typeof threshold[k] === 'boolean') {
+                        opts.push(`${threshold.id}.${k}=${threshold[k]}`);
+                    }
+                    else {
+                        continue;
+                    }
                 }
             }
 
@@ -97,7 +104,7 @@ window.WebServer = async () => {
 
             for (let k of Object.keys(threshold)) {
                 if (k === 'id' || k === 'type') continue;
-                if (typeof threshold[k] !== 'number') continue;
+                if (typeof threshold[k] !== 'number' && typeof threshold[k] !== 'boolean') continue;
 
                 let rowEl = document.createElement('div');
                 rowEl.classList.add('mb-3');
@@ -105,26 +112,54 @@ window.WebServer = async () => {
                 let labelEl = document.createElement('label');
                 labelEl.classList.add('form-control-label', 'w-100');
                 labelEl.textContent = `${threshold.type}: ${k} (block ID: ${threshold.id})`;
+                rowEl.appendChild(labelEl);
 
                 let inputEl = document.createElement('input');
-                inputEl.classList.add('form-control', 'form-control-sm', 'text-default', 'font-monospace');
-                let rounded = Math.round(threshold[k] * 1000) / 1000;
-                inputEl.value = rounded;
 
-                rowEl.appendChild(labelEl);
-                rowEl.appendChild(inputEl);
+                if (typeof threshold[k] === 'number') {
+                    inputEl.classList.add('form-control', 'form-control-sm', 'text-default', 'font-monospace');
+                    let rounded = Math.round(threshold[k] * 1000) / 1000;
+                    inputEl.value = rounded;
+                    rowEl.appendChild(inputEl);
+                }
+                else if (typeof threshold[k] === 'boolean') {
+                    let cbWrapperEl = document.createElement('div');
+                    cbWrapperEl.classList.add('custom-control', 'custom-control-alternative', 'custom-checkbox');
+
+                    inputEl.classList.add('custom-control-input');
+                    inputEl.type = 'checkbox';
+                    inputEl.autocomplete = 'off';
+                    inputEl.checked = threshold[k] ? true : false;
+                    inputEl.id = `cb-${threshold.id}-${k}`;
+
+                    let cbLabelEl = document.createElement('label');
+                    cbLabelEl.classList.add('custom-control-label', 'pl-2');
+                    cbLabelEl.setAttribute('for', inputEl.id);
+                    cbLabelEl.textContent = '\xa0'; // &nbsp;
+
+                    cbWrapperEl.appendChild(inputEl);
+                    cbWrapperEl.appendChild(cbLabelEl);
+
+                    rowEl.appendChild(cbWrapperEl);
+                }
+
 
                 thresholdsDiv.appendChild(rowEl);
 
                 inputEl.oninput = () => {
-                    if (!inputEl.value || isNaN(Number(inputEl.value))) return;
+                    if (typeof threshold[k] === 'number') {
+                        if (!inputEl.value || isNaN(Number(inputEl.value))) return;
 
-                    threshold[k] = Number(inputEl.value);
+                        threshold[k] = Number(inputEl.value);
+                    }
+                    else if (typeof threshold[k] === 'boolean') {
+                        threshold[k] = inputEl.checked;
+                    }
 
                     socket.emit('threshold-override', {
                         id: threshold.id,
                         key: k,
-                        value: Number(inputEl.value),
+                        value: threshold[k],
                     });
 
                     setThresholdHint();
@@ -184,7 +219,6 @@ window.WebServer = async () => {
 
         if (result.classification) {
             if (isFirstClassification) {
-                // eslint-disable-next-line @typescript-eslint/prefer-for-of
                 for (let ix = 0; ix < Object.keys(result.classification).length; ix++) {
                     const key = Object.keys(result.classification)[ix];
 
@@ -280,8 +314,7 @@ window.WebServer = async () => {
                 };
 
                 if (!labelToColor[bb.label]) {
-                    labelToColor[bb.label] = colors[0];
-                    colors.splice(0, 1);
+                    labelToColor[bb.label] = colors[colorIx++ % colors.length];
                 }
 
                 let color = labelToColor[bb.label];

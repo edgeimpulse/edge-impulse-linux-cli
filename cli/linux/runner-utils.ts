@@ -62,10 +62,16 @@ export function printThresholds(model: ModelInformation) {
             let threshold = <{ [k: string]: number }><unknown>thresholdObj;
             for (let k of Object.keys(threshold)) {
                 if (k === 'id' || k === 'type') continue;
-                if (typeof threshold[k] !== 'number') continue;
-
-                let rounded = Math.round(threshold[k] * 1000) / 1000;
-                opts.push(`${threshold.id}.${k}=${rounded}`);
+                if (typeof threshold[k] === 'number') {
+                    let rounded = Math.round(threshold[k] * 1000) / 1000;
+                    opts.push(`${threshold.id}.${k}=${rounded}`);
+                }
+                else if (typeof threshold[k] === 'boolean') {
+                    opts.push(`${threshold.id}.${k}=${threshold[k]}`);
+                }
+                else {
+                    continue;
+                }
             }
         }
 
@@ -192,7 +198,7 @@ export function startApiServer(model: ModelInformation,
         let response = await runner.classify(body.features);
 
         res.header('Content-Type', 'application/json');
-        res.end(JSON.stringify(response, null, 4) + '\n');
+        return res.end(JSON.stringify(response, null, 4) + '\n');
     }));
 
     app.post('/api/image', asyncMiddleware(async (req, res) => {
@@ -276,7 +282,7 @@ export function startApiServer(model: ModelInformation,
         }
 
         res.header('Content-Type', 'application/json');
-        res.end(JSON.stringify(response, null, 4) + '\n');
+        return res.end(JSON.stringify(response, null, 4) + '\n');
     }));
 
     app.use(express.static(Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public')));
@@ -364,10 +370,8 @@ export function startWebServer(model: ModelInformation, camera: ICamera, imgClas
                 obj.type = thresholdObj.type;
                 obj[ev.key] = ev.value;
 
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                 await imgClassifier.getRunner().setLearnBlockThreshold(<any>obj);
 
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 (<any>thresholdObj)[ev.key] = ev.value;
 
                 console.log(`OK`);

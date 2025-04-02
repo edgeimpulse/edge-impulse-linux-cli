@@ -1,7 +1,14 @@
 {
     "extends": "../../.eslintrc.json",
     "parser": "@typescript-eslint/parser",
-    "plugins": ["@typescript-eslint", "@stylistic", "mocha"],
+    "plugins": ["@typescript-eslint", "@stylistic", "mocha", "n"],
+    "parserOptions": {
+        "ecmaVersion": 2021
+    },
+    "env": {
+        "node": true,
+        "es6": true
+    },
     "rules": {
         "@typescript-eslint/no-var-requires": "off",
         "mocha/no-setup-in-describe": "off",
@@ -11,7 +18,21 @@
         "mocha/no-identical-title": "off",
         "mocha/no-mocha-arrows": "off",
         "mocha/consistent-spacing-between-blocks": "off",
-        "mocha/no-exports": "off"
+        "mocha/no-exports": "off",
+        "n/no-unsupported-features/es-builtins": [
+            "error",
+            {
+                "version": ">=16.0.0",
+                "ignores": []
+            }
+        ],
+        "n/no-unsupported-features/node-builtins": [
+            "error",
+            {
+                "version": ">=16.0.0",
+                "ignores": []
+            }
+        ]
     },
     "overrides": [
         {

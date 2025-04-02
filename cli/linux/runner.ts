@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import Path from 'path';
+import fs from 'node:fs';
+import Path from 'node:path';
 import { LinuxImpulseRunner, ModelInformation } from '../../library/classifier/linux-impulse-runner';
 import { AudioClassifier } from '../../library/classifier/audio-classifier';
 import { ImageClassifier } from '../../library/classifier/image-classifier';
 import inquirer from 'inquirer';
 import { initCliApp, setupCliApp } from "../../cli-common/init-cli-app";
-import fs from 'fs';
 import { RunnerDownloader, RunnerModelPath, downloadModel } from './runner-downloader';
 import program from 'commander';
 import { ips } from '../../cli-common/get-ips';
@@ -15,7 +15,14 @@ import WebSocket from 'ws';
 import { Config, EdgeImpulseConfig } from "../../cli-common/config";
 import { LinuxDevice } from './linux-device';
 import { ModelMonitor } from '../../cli-common/model-monitor';
-import { listTargets, audioClassifierHelloMsg, imageClassifierHelloMsg, startApiServer, startWebServer, printThresholds } from './runner-utils';
+import {
+    listTargets,
+    audioClassifierHelloMsg,
+    imageClassifierHelloMsg,
+    startApiServer,
+    startWebServer,
+    printThresholds
+} from './runner-utils';
 import { initCamera, CameraType, initMicrophone } from '../../library/sensors/sensors-helper';
 import { AWSSecretsManagerUtils } from "../../cli-common/aws-sm-utils";
 import { AWSIoTCoreConnector, Payload, AwsResult, AwsResultKey } from "../../cli-common/aws-iotcore-connector";
@@ -27,6 +34,11 @@ const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 let audioClassifier: AudioClassifier | undefined;
 let imageClassifier: ImageClassifier | undefined;
 let configFactory: Config | undefined;
+
+type ImagePayload = {
+    image?: string;
+};
+type AWSPayload = Payload & ImagePayload;
 
 // total inference count
 let totalInferenceCount = 0;
@@ -181,7 +193,6 @@ async function startCamera(cameraType: CameraType) {
     return camera;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try {
         let modelFile;
@@ -435,8 +446,9 @@ async function startCamera(cameraType: CameraType) {
                 const modelVariantsRes = await config.api.projects.getModelVariants(projectId, {
                     impulseId: impulseId,
                 });
-                const availableKerasModelVariants = modelVariantsRes.modelVariants.map(v => v.variant)
-                    .filter(v => models.KerasModelVariantEnumValues.includes(v)) as models.KerasModelVariantEnum[];
+                const availableKerasModelVariants =
+                    modelVariantsRes.modelVariants.map(v => v.variant)
+                        .filter(v => models.KerasModelVariantEnumValues.includes(v));
 
                 // now cross-check this against the ones we have in the deployment
                 let unsupported: string[] = [];
@@ -510,7 +522,7 @@ async function startCamera(cameraType: CameraType) {
                 await fs.promises.mkdir(Path.dirname(downloadArgv), { recursive: true });
                 await fs.promises.copyFile(modelFile, downloadArgv);
                 console.log(RUNNER_PREFIX, 'Stored model in', Path.resolve(downloadArgv));
-                return process.exit(0);
+                process.exit(0);
             }
 
             initializedProjectState = {
@@ -525,8 +537,8 @@ async function startCamera(cameraType: CameraType) {
         model = await runner.init();
         await setThresholdsFromArgv(runner, model);
 
-        if (greengrassArgv && awsIOT !== undefined && awsIOT.isConnected() === true) {
-            await awsIOT.initModelInfo(model.project.name, "v" + model.project.deploy_version, model.modelParameters);
+        if (greengrassArgv && awsIOT?.isConnected() === true) {
+            awsIOT.initModelInfo(model.project.name, "v" + model.project.deploy_version, model.modelParameters);
         }
 
         // if downloaded? then store...
@@ -564,6 +576,7 @@ async function startCamera(cameraType: CameraType) {
                 modelMonitor,
                 url => new WebSocket(url),
                 async (currName) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
                     let nameDevice = <{ nameDevice: string }>await inquirer.prompt([{
                         type: 'input',
                         message: 'What name do you want to give this device?',
@@ -751,7 +764,6 @@ async function startCamera(cameraType: CameraType) {
 
                 // print the raw predicted values for this frame
                 // (turn into string here so the content does not jump around)
-                // eslint-disable-next-line
                 let c = <{ [k: string]: string | number }>(<any>ev.result.classification);
                 for (let k of Object.keys(c)) {
                     c[k] = (<number>c[k]).toFixed(4);
@@ -769,7 +781,7 @@ async function startCamera(cameraType: CameraType) {
                 }
 
                 // AWS Integration - send to IoTCore if running in Greengrass
-                if (awsIOT !== undefined && awsIOT.isConnected()) {
+                if (awsIOT?.isConnected()) {
                     // create our confidences array
                     // eslint-disable-next-line @typescript-eslint/dot-notation
                     const confidences = [ <number>c["value"] ];
@@ -780,7 +792,6 @@ async function startCamera(cameraType: CameraType) {
                     // create the payload
                     const payload = { time_ms: timeMs, c: c, info:ev.info, inference_count: count,
                         total_inferences: totalInferenceCount, id: uuidv4(), ts: Date.now()};
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
                     awsIOT.sendInference(confidences[0], payload, "c");
                 }
 
@@ -812,7 +823,6 @@ async function startCamera(cameraType: CameraType) {
                 if (ev.result.classification) {
                     // print the raw predicted values for this frame
                     // (turn into string here so the content does not jump around)
-                    // eslint-disable-next-line
                     let c = <{ [k: string]: string | number }>(<any>ev.result.classification);
                     for (let k of Object.keys(c)) {
                         c[k] = (<number>c[k]).toFixed(4);
@@ -827,7 +837,18 @@ async function startCamera(cameraType: CameraType) {
                     ++count;
                 }
 
-                if (ev.result.bounding_boxes) {
+                // object_tracking also always prints bounding_boxes
+                if (ev.result.object_tracking) {
+                    if (!dontPrintPredictionsArgv) {
+                        console.log('objectTracking', timeMs + 'ms.', JSON.stringify(ev.result.object_tracking));
+                    }
+
+                    // AWS cannot handle object tracking yet, so fall back to bounding boxes
+                    awsResult = ev.result.bounding_boxes;
+                    awsResultKey = "box";
+                    ++count;
+                }
+                else if (ev.result.bounding_boxes) {
                     if (!dontPrintPredictionsArgv) {
                         console.log('boundingBoxes', timeMs + 'ms.', JSON.stringify(ev.result.bounding_boxes));
                     }
@@ -864,23 +885,20 @@ async function startCamera(cameraType: CameraType) {
                 }
 
                 // AWS Integration - send to IoTCore if running in Greengrass...
-                if (awsIOT !== undefined && awsIOT.isConnected() === true &&
+                if (awsIOT?.isConnected() === true &&
                     awsResult !== undefined && awsResultKey !== undefined) {
                     // create our confidences array
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                     const confidences: Array<number> = new Array(count);
                     let aveConfidence = 0;
-                    for(let i=0;i<count;++i) {
-                        // eslint-disable-next-line @stylistic/max-len
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/dot-notation
-                        confidences[i] = (<Array<any>>awsResult)[i]["value"];
+                    for(let i = 0; i < count; ++i) {
+                        confidences[i] = (<Array<any>>awsResult)[i].value;
 
                         // update the average
                         if (aveConfidence === 0) {
                             aveConfidence = confidences[i];
                         }
                         else {
-                            aveConfidence = (aveConfidence + confidences[i])/2;
+                            aveConfidence = (aveConfidence + confidences[i]) / 2;
                         }
                     }
 
@@ -892,34 +910,23 @@ async function startCamera(cameraType: CameraType) {
 
                     // check if we enable sending the image via IoTCore
                     const includeBase64Image = (<string>process.env.EI_INCLUDE_BASE64_IMAGE);
-                    if (includeBase64Image === "yes") {
-                        let imageStr = "";
-                        // Set the payload structure that will be sent to IoTCore
-                        if (imgAsJpg !== undefined) {
-                            imageStr = Buffer.from(imgAsJpg).toString('base64');
-                        }
+                    const payload: AWSPayload = {
+                        time_ms: timeMs,
+                        info: ev.info,
+                        inference_count: count,
+                        total_inferences: totalInferenceCount,
+                        id: uuidv4(),
+                        ts: infTimestamp
+                    };
 
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                        var payload = JSON.parse(
-                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                            JSON.stringify({ time_ms: timeMs, info:ev.info, inference_count: count,
-                                image: imageStr, total_inferences: totalInferenceCount,
-                                id: uuidv4(), ts: infTimestamp }));
-                    }
-                    else {
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                        var payload = JSON.parse(
-                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                            JSON.stringify({ time_ms: timeMs, info:ev.info, inference_count: count,
-                                total_inferences: totalInferenceCount,  id: uuidv4(), ts: infTimestamp }));
+                    if (includeBase64Image === "yes" && imgAsJpg) {
+                        payload.image = imgAsJpg.toString('base64');
                     }
 
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                     payload[awsResultKey] = awsResult;
 
                     // Send to IoTCore and note the inference key in the payload...
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    awsIOT.sendInference(aveConfidence, <Payload>(payload), awsResultKey, imgAsJpg);
+                    awsIOT.sendInference(aveConfidence, payload, awsResultKey, imgAsJpg);
                 }
 
                 if (ev.info && !dontPrintPredictionsArgv) {
@@ -963,7 +970,6 @@ function getFriendlyModelTypeName(modelType: models.KerasModelVariantEnum) {
         case 'akida':
             return 'Quantized (akida)';
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     return (<string>modelType).toString();
 }
 
@@ -980,20 +986,25 @@ async function setThresholdsFromArgv(runner: LinuxImpulseRunner, model: ModelInf
 
         let id = Number(matches[1]);
         let key = matches[2];
-        let value = Number(matches[3]);
+        let valueStr = matches[3];
+        let value: number | boolean;
+        if (valueStr === 'true' || valueStr === 'false') {
+            value = valueStr === 'true';
+        }
+        else {
+            value = Number(matches[3]);
+        }
 
         let thresholdObj = (model.modelParameters.thresholds || []).find(x => x.id === id);
         if (thresholdObj) {
-            let obj: { [k: string]: string | number } = {
+            let obj: { [k: string]: string | number | boolean } = {
                 id: id,
             };
             obj.type = thresholdObj.type;
             obj[key] = value;
 
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             await runner.setLearnBlockThreshold(<any>obj);
 
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             (<any>thresholdObj)[key] = value;
         }
         else {
