@@ -4183,3 +4183,31 @@ video {
     padding: 1rem;
     margin-bottom: -1rem;
 }
+
+#header-row h1 {
+    border-left: 1px solid #e9ecef;
+    padding-left: 1.5rem;
+}
+
+.embed-view #header-row {
+    height: 67px;
+}
+
+.embed-view #header-row h1 {
+    border-left: none;
+    padding-left: 0.5rem;
+}
+
+.embed-view {
+    background-color: white;
+}
+.embed-view .footer {
+    display: none;
+}
+.embed-view #capture-camera > .col {
+    padding-left: 0;
+    padding-right: 0;
+}
+.embed-view .header-logo-col {
+    display: none;
+}

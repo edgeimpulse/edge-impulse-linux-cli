@@ -1,5 +1,6 @@
-window.InferenceServer = async () => {
-    // hello world
+window.InferenceServer = async (opts) => {
+    const { modelType } = JSON.parse(decodeURIComponent(opts));
+
     const els = {
         uploadFile: document.querySelector('#upload-file'),
         runInferenceBtn: document.querySelector('#run-inference'),
@@ -143,21 +144,24 @@ window.InferenceServer = async () => {
                     el.classList.add('bounding-box-container');
                     el.style.position = 'absolute';
                     el.style.border = 'solid 3px ' + color;
-                    // if (modelType === 'object_detection') {
+
+                    if (modelType === 'object_detection') {
                         el.style.width = (bb.width) + 'px';
                         el.style.height = (bb.height) + 'px';
                         el.style.left = (bb.x) + 'px';
                         el.style.top = (bb.y) + 'px';
-                    // }
-                    // else if (modelType === 'constrained_object_detection') {
-                    //     let centerX = bb.x + (bb.width / 2);
-                    //     let centerY = bb.y + (bb.height / 2);
-                    //     el.style.borderRadius = '10px';
-                    //     el.style.width = 20 + 'px';
-                    //     el.style.height = 20 + 'px';
-                    //     el.style.left = (centerX - 10) + 'px';
-                    //     el.style.top = (centerY - 10) + 'px';
-                    // }
+                    }
+                    else if (modelType === 'constrained_object_detection') {
+                        let centerX = bb.x + (bb.width / 2);
+                        let centerY = bb.y + (bb.height / 2);
+
+                        el.style.borderRadius = '10px';
+                        el.style.width = '20px';
+                        el.style.height = '20px';
+                        el.style.left = (centerX - 10) + 'px';
+                        el.style.top = (centerY - 10) + 'px';
+                    }
+
                     let label = document.createElement('div');
                     label.classList.add('bounding-box-label');
                     label.style.background = color;

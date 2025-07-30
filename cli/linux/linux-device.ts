@@ -8,7 +8,7 @@ import { AudioRecorder } from "../../library/sensors/recorder";
 import { MgmtInterfaceSampleRequestSample, ClientConnectionType } from "../../shared/MgmtInterfaceTypes";
 import { upload } from '../../cli-common/make-image';
 import { RemoteMgmtDevice, RemoteMgmtDeviceSampleEmitter } from "../../cli-common/remote-mgmt-service";
-import { EdgeImpulseConfig } from "../../cli-common/config";
+import { Config, EdgeImpulseConfig } from "../../cli-common/config";
 import { ICamera } from "../../library/sensors/icamera";
 import fs from 'fs';
 
@@ -19,6 +19,7 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
 }>) implements RemoteMgmtDevice  {
     private _camera: ICamera | undefined;
     private _config: EdgeImpulseConfig;
+    private _projectId: number;
     private _devKeys: { apiKey: string, hmacKey: string };
     private _snapshotStreaming: boolean = false;
     private _lastSnapshot: Date = new Date(0);
@@ -29,20 +30,25 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
     private _enableVideo: boolean;
     private _sensorVerboseOutput: boolean;
     private _audioDeviceName: string | undefined;
+    private _configFactory: Config;
 
     constructor(config: EdgeImpulseConfig,
+                projectId: number,
                 devKeys: { apiKey: string, hmacKey: string },
                 noMicrophone: boolean,
                 enableVideo: boolean,
-                sensorVerboseOutput: boolean) {
+                sensorVerboseOutput: boolean,
+                configFactory: Config) {
         // eslint-disable-next-line constructor-super
         super();
 
         this._config = config;
+        this._projectId = projectId;
         this._devKeys = devKeys;
         this._microphoneDisabled = noMicrophone;
         this._enableVideo = enableVideo;
         this._sensorVerboseOutput = sensorVerboseOutput;
+        this._configFactory = configFactory;
     }
 
     registerCameraSnapshotHandler(cameraInstance: ICamera) {
@@ -201,6 +207,8 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 boundingBoxes: undefined,
                 metadata: { }, // TODO get this from MgmtInterfaceSampleRequestSample
                 addDateId: true,
+                projectId: this._projectId,
+                configFactory: this._configFactory,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -254,6 +262,8 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 boundingBoxes: undefined,
                 metadata: { }, // TODO get this from MgmtInterfaceSampleRequestSample
                 addDateId: true,
+                projectId: this._projectId,
+                configFactory: this._configFactory,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -331,6 +341,8 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 boundingBoxes: undefined,
                 metadata: { }, // TODO get this from MgmtInterfaceSampleRequestSample
                 addDateId: true,
+                projectId: this._projectId,
+                configFactory: this._configFactory,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');

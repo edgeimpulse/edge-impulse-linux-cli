@@ -20,6 +20,7 @@ window.WebServer = async () => {
         resultsThead: document.querySelector('#results-table thead tr'),
         resultsTbody: document.querySelector('#results-table tbody'),
         thresholdsBody: document.querySelector('#thresholds-body'),
+        websocketAddress: document.querySelector('#websocket-address'),
     };
 
     const colors = [
@@ -187,7 +188,7 @@ window.WebServer = async () => {
     socket.on('hello', (opts) => {
         console.log('hello', opts);
 
-        els.title.textContent = opts.projectName;
+        els.title.textContent = els.title.title = opts.projectName;
 
         switchView(els.views.captureCamera);
         bindThresholdSettings(opts.thresholds);
@@ -406,4 +407,8 @@ window.WebServer = async () => {
             }
         }
     });
+
+    if (els.websocketAddress) {
+        els.websocketAddress.textContent = `ws://${location.host}`;
+    }
 };

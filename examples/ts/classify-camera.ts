@@ -1,4 +1,4 @@
-import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap } from "../../library";
+import { ImageClassifier, LinuxImpulseRunner, ICamera, Imagesnap, GStreamer } from "../../library";
 import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-runner";
 
 (async () => {
@@ -49,7 +49,9 @@ import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-ru
             camera = new Imagesnap();
         }
         else if (process.platform === 'linux') {
-            camera = new Ffmpeg(false /* verbose */);
+            camera = new GStreamer(false /* verbose */, {
+                scaleAndCropInPipeline: true,
+            });
         }
         else {
             throw new Error('Unsupported platform "' + process.platform + '"');
@@ -72,7 +74,12 @@ import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-ru
         await camera.start({
             device: device,
             intervalMs: 1000 / fps,
-            dimensions: dimensions
+            dimensions: dimensions,
+            inferenceDimensions: {
+                width: model.modelParameters.image_input_width,
+                height: model.modelParameters.image_input_height,
+                resizeMode: model.modelParameters.image_resize_mode || 'none',
+            },
         });
 
         camera.on('error', error => {

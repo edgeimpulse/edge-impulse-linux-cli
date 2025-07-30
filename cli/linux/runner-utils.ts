@@ -1,16 +1,20 @@
-import { EdgeImpulseApi } from '../../sdk/studio/api';
-import { LinuxImpulseRunner, ModelInformation, RunnerHelloHasAnomaly } from '../../library/classifier/linux-impulse-runner';
+import { Server as HttpServer} from 'node:http';
+import Path from 'node:path';
+import { promisify } from 'node:util';
+import express from 'express';
 import multer from 'multer';
-import util from 'util';
-import { InferenceServerModelViewModel, renderInferenceServerView } from './webserver/views/inference-server-view';
-import { asyncMiddleware } from './webserver/middleware/asyncMiddleware';
-import express = require('express');
-import http from 'http';
-import { ImageClassifier } from '../../library/classifier/image-classifier';
-import Path from 'path';
-import socketIO from 'socket.io';
 import sharp from 'sharp';
-import { ICamera } from '../../library/sensors/icamera';
+import { Server as SocketIoServer } from 'socket.io';
+import type { EdgeImpulseApi } from '../../sdk/studio/api';
+import { type LinuxImpulseRunner, type ModelInformation, RunnerHelloHasAnomaly } from '../../library/classifier/linux-impulse-runner';
+import { type InferenceServerModelViewModel, renderInferenceServerView } from './webserver/views/inference-server-view';
+import { asyncMiddleware } from './webserver/middleware/asyncMiddleware';
+import { ImageClassifier } from '../../library/classifier/image-classifier';
+import type { ICamera } from '../../library/sensors/icamera';
+import { DEFAULT_SOCKET_IO_V2_PARAMS, startEio3Interceptor } from '../../cli-common/socket-utils';
+import ws from 'ws';
+import Url from 'url';
+import { renderIndexView } from './webserver/views';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
@@ -19,11 +23,11 @@ export async function listTargets(projectId: number, api: EdgeImpulseApi) {
     const targets = await api.deployment.listDeploymentTargetsForProjectDataSources(projectId, { });
     console.log('Listing all available targets');
     console.log('-----------------------------');
-    for (let t of targets.targets.filter(x => x.format.startsWith('runner'))) {
+    for (let t of targets?.targets?.filter(x => x.format?.startsWith('runner')) || []) {
         console.log(`target: ${t.format}, ` +
             `name: ${t.name}, ` +
-            `supported engines: [${t.supportedEngines.join(', ')}], ` +
-            `supported variants: [${t.modelVariants.filter(x => x.supported).map(x => x.variant).join(', ')}]`
+            `supported engines: [${t.supportedEngines?.join(', ') ?? ''}], ` +
+            `supported variants: [${t.modelVariants?.filter(x => x.supported)?.map(x => x.variant).join(', ') ?? ''}]`
         );
     }
 }
@@ -79,10 +83,15 @@ export function printThresholds(model: ModelInformation) {
     }
 }
 
-export function startApiServer(model: ModelInformation,
-                               runner: LinuxImpulseRunner,
-                               projectStudioUrl: string,
-                               port: number) {
+export function startApiServer(opts: {
+    model: ModelInformation,
+    runner: LinuxImpulseRunner,
+    projectStudioUrl: string,
+    port: number
+    printIncomingInferenceReqs: boolean
+}) {
+    const { model, runner, projectStudioUrl, port, printIncomingInferenceReqs } = opts;
+
     const app = express();
     app.disable('x-powered-by');
     app.use(express.json({ limit: '150mb' }));
@@ -94,9 +103,9 @@ export function startApiServer(model: ModelInformation,
         next();
     });
 
-    const server = new http.Server(app);
+    const server = new HttpServer(app);
 
-    app.get('/', asyncMiddleware(async (req, res) => {
+    app.get('/', asyncMiddleware((req, res) => {
         let text = [
             'Edge Impulse inference server for ' +
             model.project.owner + ' / ' + model.project.name + ' (v' + model.project.deploy_version + ')',
@@ -129,12 +138,14 @@ export function startApiServer(model: ModelInformation,
                 height: model.modelParameters.image_input_height,
                 depth: model.modelParameters.image_channel_count === 3 ? 'RGB' : 'Grayscale',
                 showImagePreview: isObjectDetection || isVisualAd,
+                modelType: model.modelParameters.model_type,
             };
         }
         else {
             modelVm = {
                 mode: 'features',
                 featuresCount: model.modelParameters.input_features_count,
+                modelType: model.modelParameters.model_type,
             };
         }
 
@@ -152,7 +163,7 @@ export function startApiServer(model: ModelInformation,
         res.end(view.toString());
     }));
 
-    app.get('/api/info', asyncMiddleware(async (req, res) => {
+    app.get('/api/info', asyncMiddleware((req, res) => {
         res.header('Content-Type', 'application/json');
 
         let modelParametersCloned = Object.assign({
@@ -193,7 +204,9 @@ export function startApiServer(model: ModelInformation,
             return res.end(ex.message || ex.toString() + '\n');
         }
 
-        console.log(RUNNER_PREFIX, 'Incoming inference request (/api/features)');
+        if (printIncomingInferenceReqs) {
+            console.log(RUNNER_PREFIX, 'Incoming inference request (/api/features)');
+        }
 
         let response = await runner.classify(body.features);
 
@@ -213,7 +226,7 @@ export function startApiServer(model: ModelInformation,
         try {
             const multipartUpload = multer({ limits: { files: 1, fileSize: 100 * 1024 * 1024 } });
             const fields: multer.Field[] = [{ name: "file", maxCount: 1 }];
-            await util.promisify(multipartUpload.fields(fields))(req, res);
+            await promisify(multipartUpload.fields(fields))(req, res);
 
             if (!req.files) {
                 throw new Error('No files posted, requiring a multipart/form-data body with 1 item "file"');
@@ -228,8 +241,10 @@ export function startApiServer(model: ModelInformation,
                 throw new Error('Missing "file" in the multipart/form-data');
             }
 
-            console.log(RUNNER_PREFIX, 'Incoming inference request (/api/image) for ' +
-                (file.originalname || 'a file with size ' + file.size + ' bytes'));
+            if (printIncomingInferenceReqs) {
+                console.log(RUNNER_PREFIX, 'Incoming inference request (/api/image) for ' +
+                    (file.originalname || 'a file with size ' + file.size + ' bytes'));
+            }
 
             resized = (await ImageClassifier.resizeImage(model, file.buffer));
         }
@@ -242,44 +257,88 @@ export function startApiServer(model: ModelInformation,
 
         let response = await runner.classify(resized.features);
 
-        let origFactor = resized.originalWidth / resized.originalHeight;
-        let newFactor = resized.newWidth / resized.newHeight;
+        const origFactor = resized.originalWidth / resized.originalHeight;
+        const newFactor = resized.newWidth / resized.newHeight;
 
-        let factor: number;
-        let offsetX: number;
-        let offsetY: number;
+        // Helper function to transform bounding box and anomaly grid coordinates
+        const transformCoordinates = (bb: { x: number, y: number, width: number, height: number }) => {
+            const resizeMode = model.modelParameters.image_resize_mode;
 
-        if (origFactor > newFactor) {
-            // boxed in with bands top/bottom
-            factor = resized.newWidth / resized.originalWidth;
-            offsetX = 0;
-            offsetY = (resized.newHeight - (resized.originalHeight * factor)) / 2;
-        }
-        else if (origFactor < newFactor) {
-            // boxed in with bands left/right
-            factor = resized.newHeight / resized.originalHeight;
-            offsetX = (resized.newWidth - (resized.originalWidth * factor)) / 2;
-            offsetY = 0;
-        }
-        else {
-            // image was already at the right aspect ratio
-            offsetX = 0;
-            offsetY = 0;
-            factor = resized.newWidth / resized.originalWidth;
-        }
+            // For 'squash' mode (fill), we simply scale x and y independently
+            if (resizeMode === 'squash') {
+                const scaleX = resized.newWidth / resized.originalWidth;
+                const scaleY = resized.newHeight / resized.originalHeight;
 
-        for (const bb of response.result.bounding_boxes || []) {
-            bb.x = Math.round((bb.x / factor) - (offsetX / factor));
-            bb.width = Math.round((bb.width / factor));
-            bb.y = Math.round((bb.y / factor) - (offsetY / factor));
-            bb.height = Math.round((bb.height / factor));
-        }
-        for (const bb of response.result.visual_anomaly_grid || []) {
-            bb.x = Math.round((bb.x / factor) - (offsetX / factor));
-            bb.width = Math.round((bb.width / factor));
-            bb.y = Math.round((bb.y / factor) - (offsetY / factor));
-            bb.height = Math.round((bb.height / factor));
-        }
+                bb.x = Math.round(bb.x / scaleX);
+                bb.y = Math.round(bb.y / scaleY);
+                bb.width = Math.round(bb.width / scaleX);
+                bb.height = Math.round(bb.height / scaleY);
+
+                return;
+            }
+
+            const isContainMode = resizeMode === 'fit-longest';
+
+            // Original image is wider than model input
+            if (origFactor > newFactor) {
+                if (isContainMode) {
+                    // Contain mode - scaled by width, padded on height
+                    const scale = resized.newWidth / resized.originalWidth;
+                    const offsetY = (resized.newHeight - (resized.originalHeight * scale)) / 2;
+
+                    bb.x = Math.round(bb.x / scale);
+                    bb.y = Math.round((bb.y - offsetY) / scale);
+                    bb.width = Math.round(bb.width / scale);
+                    bb.height = Math.round(bb.height / scale);
+                }
+                else {
+                    // Cover mode - scaled by height, cropped on width
+                    const scale = resized.newHeight / resized.originalHeight;
+                    const cropX = (resized.originalWidth * scale - resized.newWidth) / 2;
+
+                    bb.x = Math.round((bb.x + cropX) / scale);
+                    bb.y = Math.round(bb.y / scale);
+                    bb.width = Math.round(bb.width / scale);
+                    bb.height = Math.round(bb.height / scale);
+                }
+            }
+            // Original image is taller than model input
+            else if (origFactor < newFactor) {
+                if (isContainMode) {
+                    // Contain mode - scaled by height, padded on width
+                    const scale = resized.newHeight / resized.originalHeight;
+                    const offsetX = (resized.newWidth - (resized.originalWidth * scale)) / 2;
+
+                    bb.x = Math.round((bb.x - offsetX) / scale);
+                    bb.y = Math.round(bb.y / scale);
+                    bb.width = Math.round(bb.width / scale);
+                    bb.height = Math.round(bb.height / scale);
+                }
+                else {
+                    // Cover mode - scaled by width, cropped on height
+                    const scale = resized.newWidth / resized.originalWidth;
+                    const cropY = (resized.originalHeight * scale - resized.newHeight) / 2;
+
+                    bb.x = Math.round(bb.x / scale);
+                    bb.y = Math.round((bb.y + cropY) / scale);
+                    bb.width = Math.round(bb.width / scale);
+                    bb.height = Math.round(bb.height / scale);
+                }
+            }
+            // Same aspect ratio - simple scaling
+            else {
+                const scale = resized.newWidth / resized.originalWidth;
+
+                bb.x = Math.round(bb.x / scale);
+                bb.y = Math.round(bb.y / scale);
+                bb.width = Math.round(bb.width / scale);
+                bb.height = Math.round(bb.height / scale);
+            }
+        };
+
+        // Transform all bounding boxes and anomaly grid coordinates
+        (response.result.bounding_boxes || []).forEach(transformCoordinates);
+        (response.result.visual_anomaly_grid || []).forEach(transformCoordinates);
 
         res.header('Content-Type', 'application/json');
         return res.end(JSON.stringify(response, null, 4) + '\n');
@@ -287,19 +346,62 @@ export function startApiServer(model: ModelInformation,
 
     app.use(express.static(Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public')));
 
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
         server.listen(port, process.env.HOST || '0.0.0.0', async () => {
             resolve();
+        });
+
+        server.on('error', err => {
+            reject(err);
         });
     });
 }
 
-export function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier: ImageClassifier) {
-    const app = express();
-    app.use(express.static(Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public')));
+export function startWebServer(opts: {
+    model: ModelInformation,
+    camera: ICamera,
+    imgClassifier: ImageClassifier,
+    verbose: boolean,
+    host: string,
+    port: number,
+}) {
+    const { model, camera, imgClassifier, verbose } = opts;
 
-    const server = new http.Server(app);
-    const io = socketIO(server);
+    const publicFolder = Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public');
+
+    const app = express();
+
+    app.get('/', asyncMiddleware(async (req, res) => {
+        const view = renderIndexView({
+            isEmbedView: false,
+        });
+
+        res.status(200);
+        res.header('Content-Type', 'text/html');
+        res.end(view.toString());
+    }));
+
+    app.get('/embed', asyncMiddleware(async (req, res) => {
+        const view = renderIndexView({
+            isEmbedView: true,
+        });
+
+        res.status(200);
+        res.header('Content-Type', 'text/html');
+        res.end(view.toString());
+    }));
+
+    app.use(express.static(publicFolder));
+
+    const server = new HttpServer(app);
+    const io = new SocketIoServer(server, DEFAULT_SOCKET_IO_V2_PARAMS);
+
+    startEio3Interceptor(io);
+    const wss = new ws.Server({
+        noServer: true,
+    });
+
+    const websocketsToSendPreviews = new Set<ws>();
 
     // you can also get the actual image being classified from 'imageClassifier.on("result")',
     // but then you're limited by the inference speed.
@@ -307,51 +409,73 @@ export function startWebServer(model: ModelInformation, camera: ICamera, imgClas
 
     let nextFrame = Date.now();
     let processingFrame = false;
-    camera.on('snapshot', async (data) => {
+    camera.on('snapshot', async (data, filename) => {
         if (nextFrame > Date.now() || processingFrame) return;
 
         processingFrame = true;
 
-        let img;
-        if (model.modelParameters.image_channel_count === 3) {
-            img = sharp(data).resize({
-                height: model.modelParameters.image_input_height,
-                width: model.modelParameters.image_input_width,
-                fastShrinkOnLoad: false
+        try {
+            let img;
+            if (model.modelParameters.image_channel_count === 3) {
+                img = sharp(data).resize({
+                    height: model.modelParameters.image_input_height,
+                    width: model.modelParameters.image_input_width,
+                    fastShrinkOnLoad: false
+                });
+            }
+            else {
+                img = sharp(data).resize({
+                    height: model.modelParameters.image_input_height,
+                    width: model.modelParameters.image_input_width,
+                    fastShrinkOnLoad: false
+                }).toColourspace('b-w');
+            }
+
+            const imgBase64 = 'data:image/jpeg;base64,' + (await img.jpeg().toBuffer()).toString('base64');
+
+            io.emit('image', {
+                img: imgBase64,
             });
-        }
-        else {
-            img = sharp(data).resize({
-                height: model.modelParameters.image_input_height,
-                width: model.modelParameters.image_input_width,
-                fastShrinkOnLoad: false
-            }).toColourspace('b-w');
-        }
+            for (const wsClient of websocketsToSendPreviews) {
+                wsClient.send(JSON.stringify({
+                    type: 'camera-preview',
+                    image: imgBase64,
+                }));
+            }
 
-        io.emit('image', {
-            img: 'data:image/jpeg;base64,' + (await img.jpeg().toBuffer()).toString('base64')
-        });
-
-        nextFrame = Date.now() + 50;
-        processingFrame = false;
+            nextFrame = Date.now() + 50;
+        }
+        catch (ex2) {
+            // put this behind a verbose flag, as the ImageClassifier also prints out this error already
+            const ex = <Error>ex2;
+            if (verbose) {
+                console.log(RUNNER_PREFIX, `Failed to handle snapshot "${filename}":`, ex.message || ex.toString());
+            }
+        }
+        finally {
+            processingFrame = false;
+        }
     });
 
-    imgClassifier.on('result', async (result, timeMs, imgAsJpg) => {
+    imgClassifier.on('result', (result, timeMs, imgAsJpg) => {
         io.emit('classification', {
             modelType: model.modelParameters.model_type,
             result: result.result,
             timeMs: timeMs,
             additionalInfo: result.info,
         });
+
+        for (const client of wss.clients) {
+            client.send(JSON.stringify({
+                type: 'classification',
+                result: result.result,
+                timeMs: timeMs,
+                additionalInfo: result.info,
+            }));
+        }
     });
 
-    io.on('connection', socket => {
-        socket.emit('hello', {
-            projectName: model.project.owner + ' / ' + model.project.name,
-            thresholds: model.modelParameters.thresholds,
-        });
-
-        socket.on('threshold-override', async (ev: {
+    const onThresholdOverride = async (ev: {
             id: number,
             key: string,
             value: number,
@@ -359,9 +483,24 @@ export function startWebServer(model: ModelInformation, camera: ICamera, imgClas
             try {
                 process.stdout.write(`Updating threshold for block ID ${ev.id}, key ${ev.key} to: ${ev.value}... `);
 
+                if (typeof ev.id !== 'number') {
+                    throw new Error(`Invalid value for "id", should be a number (type: ${typeof ev.id})`);
+                }
+                if (typeof ev.key !== 'string' || ev.key === '') {
+                    throw new Error(`Invalid value for "key", should be a string (type: ${typeof ev.key})`);
+                }
+                if (typeof ev.value !== 'number') {
+                    throw new Error(`Invalid value for "value", should be a number (type: ${typeof ev.value})`);
+                }
+
                 let thresholdObj = (model.modelParameters.thresholds || []).find(x => x.id === ev.id);
                 if (!thresholdObj) {
                     throw new Error(`Cannot find threshold with ID ` + ev.id);
+                }
+
+                const thresholdKeys = Object.keys(thresholdObj).filter(x => x !== 'id' && x !== 'type');
+                if (thresholdKeys.indexOf(ev.key) === -1) {
+                    throw new Error(`Threshold key "${ev.key}" not found (valid keys: [ ${thresholdKeys.map(x => `"${x}"`).join(', ')} ])`);
                 }
 
                 let obj: { [k: string]: string | number } = {
@@ -376,15 +515,132 @@ export function startWebServer(model: ModelInformation, camera: ICamera, imgClas
 
                 console.log(`OK`);
             }
-            catch (ex) {
+            catch (ex2) {
+                const ex = <Error>ex2;
                 console.log('Failed to set threshold:', ex);
+                throw new Error(`Failed to set threshold "${ev.key}" (block ID: ${ev.id}): ` + (ex.message || ex.toString()));
+            }
+        };
+
+    io.on('connection', socket => {
+        socket.emit('hello', {
+            projectName: model.project.owner + ' / ' + model.project.name,
+            thresholds: model.modelParameters.thresholds,
+        });
+
+        socket.on('threshold-override', (ev: {
+            id: number,
+            key: string,
+            value: number,
+        }) => {
+            try {
+                onThresholdOverride(ev);
+            }
+            catch (ex) {
+                // noop
             }
         });
     });
 
-    return new Promise<number>((resolve) => {
-        server.listen(Number(process.env.PORT) || 4912, process.env.HOST || '0.0.0.0', async () => {
-            resolve((Number(process.env.PORT) || 4912));
+    wss.on('connection', (websocket) => {
+        websocket.send(JSON.stringify({
+            type: 'hello',
+            ...model,
+        }));
+
+        websocket.on('message', async (msg) => {
+            type WsMessage = { messageId?: number } & ({
+                type: 'threshold-override',
+                id: number,
+                key: string,
+                value: number,
+            } | {
+                type: 'toggle-camera-preview',
+                enabled: boolean,
+            } | {
+                type: 'set-camera-preview',
+                enabled: boolean,
+            });
+
+            let body: WsMessage;
+            let messageId: number | undefined;
+
+            try {
+                if (typeof msg !== 'string') {
+                    throw new Error(`Can only handle messages of type "string"`);
+                }
+
+                body = <WsMessage>JSON.parse(msg.toString());
+                messageId = body.messageId;
+
+                if (body.type === 'threshold-override') {
+                    await onThresholdOverride({
+                        id: body.id,
+                        key: body.key,
+                        value: body.value,
+                    });
+                }
+                else if (body.type === 'toggle-camera-preview' ||
+                         body.type === 'set-camera-preview'
+                ) {
+                    if (typeof body.enabled !== 'boolean') {
+                        throw new Error(`Invalid value for "enabled", should be a boolean (type: ${typeof body.enabled})`);
+                    }
+                    if (body.enabled) {
+                        websocketsToSendPreviews.add(websocket);
+                    }
+                    else {
+                        websocketsToSendPreviews.delete(websocket);
+                    }
+                }
+                else {
+                    throw new Error(`Invalid "type" (${(<{ type: string }>body).type})`);
+                }
+
+                websocket.send(JSON.stringify({
+                    messageId: messageId,
+                    type: 'handling-message-success',
+                    message: msg,
+                }));
+            }
+            catch (ex2) {
+                const ex = <Error>ex2;
+                websocket.send(JSON.stringify({
+                    messageId: messageId,
+                    type: 'handling-message-error',
+                    message: msg,
+                    error: ex.message || ex.toString(),
+                }));
+                return;
+            }
+        });
+
+        websocket.on('close', () => {
+            websocketsToSendPreviews.delete(websocket);
+        });
+    });
+
+    server.on('upgrade', (request, socket, head) => {
+        const { pathname } = Url.parse(request.url || '');
+
+        if (pathname === '/') {
+            // Only handle /ws upgrades with ws
+            wss.handleUpgrade(request, <any>socket, head, (newWs) => {
+                wss.emit('connection', newWs, request);
+            });
+        }
+        else {
+            // socket.io will handle this
+        }
+    });
+
+    return new Promise<number>((resolve, reject) => {
+        server.listen(opts.port, opts.host, async () => {
+            resolve(opts.port);
+        });
+
+        server.on('error', err => {
+            reject(err);
         });
     });
 }

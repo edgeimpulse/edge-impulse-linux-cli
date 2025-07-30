@@ -48,7 +48,9 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, Imagesnap, RunnerHelloHasAn
             camera = new Imagesnap();
         }
         else if (process.platform === 'linux') {
-            camera = new Ffmpeg(false /* verbose */);
+            camera = new Ffmpeg(false /* verbose */, {
+                scaleAndCropInPipeline: true,
+            });
         }
         else {
             throw new Error('Unsupported platform "' + process.platform + '"');
@@ -71,7 +73,12 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, Imagesnap, RunnerHelloHasAn
         await camera.start({
             device: device,
             intervalMs: 1000 / fps,
-            dimensions: dimensions
+            dimensions: dimensions,
+            inferenceDimensions: {
+                width: model.modelParameters.image_input_width,
+                height: model.modelParameters.image_input_height,
+                resizeMode: model.modelParameters.image_resize_mode || 'none',
+            },
         });
 
         camera.on('error', error => {

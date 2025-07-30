@@ -137,7 +137,7 @@ GST_ARGUS: Done Success
 
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, 'nvarguscamerasrc');
-            assert.equal(devices[0].name, 'CSI camera');
+            assert.equal(devices[0].name, 'CSI camera (nvarguscamerasrc)');
             assert.equal(devices[0].videoSource, 'nvarguscamerasrc');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     framerate: 21,
@@ -416,7 +416,7 @@ Freeing pipeline ...
 
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
-            assert.equal(devices[0].name, 'C922 Pro Stream Webcam');
+            assert.equal(devices[0].name, 'C922 Pro Stream Webcam (/dev/video0)');
             assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([
                 {
@@ -694,7 +694,7 @@ Device found:
             assert.equal(devices.length, 3);
 
             assert.equal(devices[0].id, '/dev/video0');
-            assert.equal(devices[0].name, 'USB');
+            assert.equal(devices[0].name, 'USB (/dev/video0)');
             assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                 type: "image/jpeg",
@@ -1117,7 +1117,7 @@ Device found:
             assert.equal(devices.length, 6);
 
             assert.equal(devices[0].id, '/dev/video2');
-            assert.equal(devices[0].name, 'HD Pro Webcam C920');
+            assert.equal(devices[0].name, 'HD Pro Webcam C920 (/dev/video2)');
             assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: 'video/x-raw',
@@ -1277,7 +1277,7 @@ Device found:
             }]));
 
             assert.equal(devices[5].id, '/dev/video0');
-            assert.equal(devices[5].name, 'unicam');
+            assert.equal(devices[5].name, 'unicam (/dev/video0)');
             assert.equal(devices[5].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[5].caps), JSON.stringify([{
                 type: "video/x-raw",
@@ -1328,7 +1328,7 @@ Device found:
 
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
-            assert.equal(devices[0].name, 'i.MX6S_CSI');
+            assert.equal(devices[0].name, 'i.MX6S_CSI (/dev/video0)');
             assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: "video/x-raw",
@@ -2163,7 +2163,7 @@ Device found:
 
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
-            assert.equal(devices[0].name, 'HD Pro Webcam C920');
+            assert.equal(devices[0].name, 'HD Pro Webcam C920 (/dev/video0)');
             assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([
                 {
@@ -2399,7 +2399,7 @@ Device found:
 
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video1');
-            assert.equal(devices[0].name, 'HD Pro Webcam C920');
+            assert.equal(devices[0].name, 'HD Pro Webcam C920 (/dev/video1)');
             assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: "video/x-raw",
@@ -2605,7 +2605,7 @@ Device found:
 
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video0');
-            assert.equal(devices[0].name, 'RZG2L_CRU');
+            assert.equal(devices[0].name, 'RZG2L_CRU (/dev/video0)');
             assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                 type: "video/x-raw",
@@ -3185,7 +3185,7 @@ Device found:
 
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, '/dev/video2');
-            assert.equal(devices[0].name, 'HD Pro Webcam C920');
+            assert.equal(devices[0].name, 'HD Pro Webcam C920 (/dev/video2)');
             assert.equal(devices[0].videoSource, 'v4l2src');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     type: "video/x-raw",
@@ -5012,7 +5012,7 @@ Freeing pipeline ...
 
             assert.equal(devices.length, 1);
             assert.equal(devices[0].id, 'pylonsrc');
-            assert.equal(devices[0].name, 'Basler camera');
+            assert.equal(devices[0].name, 'Basler camera (pylonsrc)');
             assert.equal(devices[0].videoSource, 'pylonsrc');
             assert.equal(JSON.stringify(devices[0].caps), JSON.stringify([{
                     framerate: 60,
@@ -5044,7 +5044,7 @@ Freeing pipeline ...
             });
             assert.equal(devices.length, 4);
             assert.equal(devices[2].id, 'qtiqmmfsrc-0');
-            assert.equal(devices[2].name, 'Camera 0 (High-resolution, fisheye, IMX577)');
+            assert.equal(devices[2].name, 'Camera 0 (High-resolution, fisheye, IMX577) (qtiqmmfsrc-0)');
             assert.equal(devices[2].videoSource, 'qtiqmmfsrc name=camsrc camera=0');
             assert.equal(JSON.stringify(devices[2].caps), JSON.stringify([
                 {
@@ -5234,6 +5234,7 @@ Freeing pipeline ...
 
             const gstreamer = new GStreamer(false, {
                 spawnHelperOverride: spawnHelper,
+                scaleAndCropInPipeline: true,
             });
             await gstreamer.init();
             const launchResp = await gstreamer.getGstreamerLaunchCommand({
@@ -5246,7 +5247,195 @@ Freeing pipeline ...
                     type: "pylonsrc",
                 }],
                 videoSource: 'pylonsrc',
-            }, { width: 1440, height: 1080 });
+            }, { width: 1440, height: 1080 }, undefined);
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.invokeProcess, 'spawn');
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.args.join(' '),
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=test%05d.jpg');
+        });
+
+        it("w/ inference dims #1", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                scaleAndCropInPipeline: true,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: 'pylonsrc',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1440,
+                    type: "pylonsrc",
+                }],
+                videoSource: 'pylonsrc',
+            }, { width: 1440, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'fit-shortest',
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.invokeProcess, 'spawn');
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.args.join(' '),
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! videocrop left=180 right=180 ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=test%05d.jpg');
+        });
+
+        it("w/ inference dims #2", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                scaleAndCropInPipeline: true,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: 'pylonsrc',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1440,
+                    type: "pylonsrc",
+                }],
+                videoSource: 'pylonsrc',
+            }, { width: 1440, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'squash',
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.invokeProcess, 'spawn');
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.args.join(' '),
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=test%05d.jpg');
+        });
+
+        it("w/ inference dims #3", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                scaleAndCropInPipeline: true,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: 'pylonsrc',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1440,
+                    type: "pylonsrc",
+                }],
+                videoSource: 'pylonsrc',
+            }, { width: 1440, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'fit-longest',
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.invokeProcess, 'spawn');
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.args.join(' '),
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=test%05d.jpg');
+        });
+
+        it("w/ inference dims #4", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                scaleAndCropInPipeline: undefined,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: 'pylonsrc',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1440,
+                    type: "pylonsrc",
+                }],
+                videoSource: 'pylonsrc',
+            }, { width: 1440, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'squash',
+            });
 
             // console.log('launchResp', launchResp);
 
@@ -5302,6 +5491,7 @@ async function testGetDevices(output: {
     const gstreamer = new GStreamer(false, {
         spawnHelperOverride: spawnHelper,
         modeOverride: output?.modeOverride,
+        scaleAndCropInPipeline: true,
     });
     await gstreamer.init();
     const devices = await gstreamer.getAllDevices();

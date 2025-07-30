@@ -30,6 +30,10 @@ program
     .option('--silent', `Run in silent mode, don't prompt for credentials`)
     .option('--dev', 'List development servers, alternatively you can use the EI_HOST environmental variable ' +
         'to specify the Edge Impulse instance.')
+    .option('--camera <camera>', 'Which camera to use (either the name, or the device address - e.g. /dev/video0). ' +
+        'If this argument is omitted, and multiple cameras are found, a CLI selector is shown.')
+    .option('--microphone <microphone>', 'Which microphone to use (either the name, or the device address). ' +
+        'If this argument is omitted, and multiple microphones are found, a CLI selector is shown.')
     .option('--verbose', 'Enable debug logs')
     .option('--greengrass', 'Enable AWS IoT greengrass integration mode')
     .allowUnknownOption(true)
@@ -51,6 +55,8 @@ const dimensions = program.width && program.height ? {
     width: Number(program.width),
     height: Number(program.height)
 } : undefined;
+const cameraArgv = <string | undefined>program.camera;
+const microphoneArgv = <string | undefined>program.microphone;
 
 if ((program.width && !program.height) || (!program.width && program.height)) {
     console.error('--width and --height need to either be both specified or both omitted');
@@ -96,7 +102,8 @@ let isExiting = false;
 
         await configFactory.setLinuxProjectId(projectId);
 
-        const linuxDevice = new LinuxDevice(config, devKeys, noMicrophone, enableVideo, verboseArgv);
+        const linuxDevice = new LinuxDevice(config, projectId, devKeys, noMicrophone, enableVideo, verboseArgv,
+            configFactory);
         const remoteMgmt = new RemoteMgmt(projectId,
             devKeys,
             Object.assign({
@@ -146,14 +153,17 @@ let isExiting = false;
         process.on('SIGINT', onSignal);
 
         if (!noMicrophone) {
-            let audioDeviceName = await configFactory.getAudio();
+            let audioDeviceName = '';
             try {
-                audioDeviceName = await initMicrophone(audioDeviceName);
+                audioDeviceName = await initMicrophone({
+                    audioDeviceNameInConfig: await configFactory.getAudio(),
+                    audioNameArgv: microphoneArgv,
+                });
             }
-            catch (ex) {
-                console.warn(SERIAL_PREFIX, 'Could not find any microphones, ' +
-                    'run this command with --disable-microphone to skip selection');
-                audioDeviceName = '';
+            catch (ex2) {
+                const ex = <Error>ex2;
+                console.warn(SERIAL_PREFIX, (ex.message || ex.toString()));
+                process.exit(1);
             }
             await configFactory.storeAudio(audioDeviceName);
             linuxDevice.setAudioDeviceName(audioDeviceName);
@@ -162,8 +172,15 @@ let isExiting = false;
         }
 
         if (!noCamera) {
-            const storedCamera = await configFactory.getCamera();
-            camera = await initCamera(cameraType, storedCamera, dimensions, gstLaunchArgsArgv, verboseArgv);
+            camera = await initCamera({
+                cameraType: cameraType,
+                cameraDeviceNameInConfig: await configFactory.getCamera(),
+                cameraNameArgv: cameraArgv,
+                dimensions: dimensions,
+                gstLaunchArgs: gstLaunchArgsArgv,
+                verboseOutput: verboseArgv,
+                inferenceDimensions: undefined,
+            });
 
             camera.on('error', error => {
                 if (isExiting) return;

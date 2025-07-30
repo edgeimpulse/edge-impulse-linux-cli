@@ -11,7 +11,8 @@ import fs from 'fs';
 import { Prophesee } from "../../library/sensors/prophesee";
 import express = require('express');
 import http from 'http';
-import socketIO from 'socket.io';
+import { Server as SocketIoServer } from 'socket.io';
+import { DEFAULT_SOCKET_IO_V2_PARAMS, startEio3Interceptor } from '../../cli-common/socket-utils';
 
 const packageVersion = (<{ version: string }>JSON.parse(fs.readFileSync(
     Path.join(__dirname, '..', '..', '..', 'package.json'), 'utf-8'))).version;
@@ -148,7 +149,9 @@ function startWebServer(camera: ICamera, cameraName: string) {
     app.use(express.static(Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public')));
 
     const server = new http.Server(app);
-    const io = socketIO(server);
+    const io = new SocketIoServer(server, DEFAULT_SOCKET_IO_V2_PARAMS);
+
+    startEio3Interceptor(io);
 
     camera.on('snapshot', async (data, fileName) => {
         io.emit('image', {

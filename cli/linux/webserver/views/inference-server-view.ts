@@ -1,6 +1,8 @@
 import html from './escape-html-template-tag';
 
 export type InferenceServerModelViewModel = {
+    modelType: 'classification' | 'object_detection' | 'constrained_object_detection',
+} & ({
     mode: 'features',
     featuresCount: number,
 } | {
@@ -9,7 +11,7 @@ export type InferenceServerModelViewModel = {
     height: number,
     depth: 'Grayscale' | 'RGB',
     showImagePreview: boolean,
-};
+});
 
 export type InferenceServerViewModel = {
     studioLink: string,
@@ -25,6 +27,10 @@ export const renderInferenceServerView = (vm: InferenceServerViewModel) => {
     if (vm.model.mode === 'image' && vm.model.showImagePreview) {
         resultsColClass = `col-12 col-lg-6`;
     }
+
+    const opts = encodeURIComponent(JSON.stringify({
+        modelType: vm.model.modelType,
+    }));
 
     return html`<!DOCTYPE html>
     <html>
@@ -171,7 +177,7 @@ export const renderInferenceServerView = (vm: InferenceServerViewModel) => {
 
         <script type="text/javascript" src="/inference-server.js"></script>
         <script>
-            window.InferenceServer();
+            window.InferenceServer('${opts}');
         </script>
     </body>
     </html>

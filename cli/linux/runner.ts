@@ -2,7 +2,7 @@
 
 import fs from 'node:fs';
 import Path from 'node:path';
-import { LinuxImpulseRunner, ModelInformation } from '../../library/classifier/linux-impulse-runner';
+import { LinuxImpulseRunner, ModelInformation, RunnerHelloResponseModelParameters } from '../../library/classifier/linux-impulse-runner';
 import { AudioClassifier } from '../../library/classifier/audio-classifier';
 import { ImageClassifier } from '../../library/classifier/image-classifier';
 import inquirer from 'inquirer';
@@ -14,7 +14,7 @@ import { RemoteMgmt } from '../../cli-common/remote-mgmt-service';
 import WebSocket from 'ws';
 import { Config, EdgeImpulseConfig } from "../../cli-common/config";
 import { LinuxDevice } from './linux-device';
-import { ModelMonitor } from '../../cli-common/model-monitor';
+import { ModelMonitor, DEFAULT_MONITOR_SUMMARY_INTERVAL_MS } from '../../cli-common/model-monitor';
 import {
     listTargets,
     audioClassifierHelloMsg,
@@ -28,11 +28,13 @@ import { AWSSecretsManagerUtils } from "../../cli-common/aws-sm-utils";
 import { AWSIoTCoreConnector, Payload, AwsResult, AwsResultKey } from "../../cli-common/aws-iotcore-connector";
 import { v4 as uuidv4 } from 'uuid';
 import * as models from '../../sdk/studio/sdk/model/models';
+import { ICameraInferenceDimensions } from '../../library/sensors/icamera';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
 let audioClassifier: AudioClassifier | undefined;
 let imageClassifier: ImageClassifier | undefined;
+let modelMonitor: ModelMonitor | undefined;
 let configFactory: Config | undefined;
 
 type ImagePayload = {
@@ -57,9 +59,16 @@ program
     .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand (e.g. "runner-linux-aarch64")')
     .option('--force-engine <engine>', 'Do not autodetect the inference engine, but set it by hand (e.g. "tflite")')
     .option('--force-variant <variant>', 'Do not autodetect the model variant, but set it by hand (e.g. "int8")')
+    .option('--force-resize-mode <mode>', 'Do not use the resize method from the impulse, but set it by hand (valid: "squash", "fit-shortest" or "fit-longest")')
     .option('--impulse-id <impulseId>', 'Select the impulse ID (if you have multiple impulses)')
     .option('--run-http-server <port>', 'Do not run using a sensor, but instead expose an API server at the specified port')
+    .option('--preview-port <port>', 'Port to use to render the preview HTTP interface (default: 4912) (ignored when running with --run-http-server). ' +
+        'Alternatively you can use the PORT environmental variable. If both are set then `--preview-port` takes precedence.')
+    .option('--preview-host <host>', 'Host to listen on for the preview HTTP interface (default: 0.0.0.0) (ignored when running with --run-http-server). ' +
+        'Alternatively you can use the HOST environmental variable. If both are set then `--preview-host` takes precedence.')
     .option('--monitor', 'Enable model monitoring', false)
+    .option('--monitor-max-storage-size <size>', 'The maximum storage size to be used for model monitoring, in MB. Defaults to 250.')
+    .option('--monitor-summary-interval-ms <ms>', `The time interval (in milliseconds) for model monitoring summaries. Defaults to ${DEFAULT_MONITOR_SUMMARY_INTERVAL_MS}.`)
     .option('--clean', 'Clear credentials')
     .option('--silent', `Run in silent mode, don't prompt for credentials`)
     .option('--quantized', 'Download int8 quantized neural networks, rather than the float32 neural networks. ' +
@@ -74,6 +83,12 @@ program
     .option('--dont-print-predictions', 'If set, suppresses the printing of predictions')
     .option('--thresholds <values>', 'Override model thresholds. E.g. --thresholds 4.min_anomaly_score=35 overrides the min. anomaly score for block ID 4 to 35.' +
         'The current thresholds are printed on startup.')
+    .option('--mode <mode>', 'Either: "streaming" (runs on a camera/audio stream and outputs a live inference server) or "http-server" (opens an HTTP server for inference on-demand). ' +
+        'When passing --run-http-server XXX in, the mode will always default to "http-server", in all other cases the mode defaults to "streaming".')
+    .option('--camera <camera>', 'Which camera to use (either the name, or the device address - e.g. /dev/video0). ' +
+        'If this argument is omitted, and multiple cameras are found, a CLI selector is shown.')
+    .option('--microphone <microphone>', 'Which microphone to use (either the name, or the device address). ' +
+        'If this argument is omitted, and multiple microphones are found, a CLI selector is shown.')
     .option('--verbose', 'Enable debug logs')
     .allowUnknownOption(true)
     .parse(process.argv);
@@ -91,15 +106,45 @@ const downloadArgv = <string | undefined>program.download;
 const forceTargetArgv = <string | undefined>program.forceTarget;
 const forceEngineArgv = <string | undefined>program.forceEngine;
 const forceVariantArgv = <models.KerasModelVariantEnum | undefined>program.forceVariant;
+const forceResizeModeArgv = <RunnerHelloResponseModelParameters['image_resize_mode'] | undefined>program.forceResizeMode;
 const impulseIdArgvStr = <string | undefined>program.impulseId;
 const impulseIdArgv = impulseIdArgvStr && !isNaN(Number(impulseIdArgvStr)) ? Number(impulseIdArgvStr) : undefined;
 const monitorArgv: boolean = !!program.monitor;
+const monitorMaxStorageSizeStr = <string | undefined>program.monitorMaxStorageSize;
+const monitorMaxStorageSizeArgv = monitorMaxStorageSizeStr && !isNaN(Number(monitorMaxStorageSizeStr))
+    ? Number(monitorMaxStorageSizeStr)
+    : undefined;
+const monitorSummaryIntervalStr = <string | undefined>program.monitorSummaryIntervalMs;
+const monitorSummaryIntervalArgv = monitorSummaryIntervalStr && !isNaN(Number(monitorSummaryIntervalStr))
+    ? Number(monitorSummaryIntervalStr)
+    : undefined;
 const listTargetsArgv: boolean = !!program.listTargets;
 const gstLaunchArgsArgv = <string | undefined>program.gstLaunchArgs;
-const runHttpServerPort = program.runHttpServer ? Number(program.runHttpServer) : undefined;
+let runHttpServerPort = program.runHttpServer ? Number(program.runHttpServer) : undefined;
+let previewPortArgv = 4912;
+if (program.previewPort && !isNaN(Number(program.previewPort))) {
+    previewPortArgv = Number(program.previewPort);
+}
+else if (process.env.PORT && !isNaN(Number(process.env.PORT))) {
+    previewPortArgv = Number(process.env.PORT);
+}
+let previewHostArgv = '0.0.0.0';
+if (program.previewHost) {
+    previewHostArgv = program.previewHost;
+}
+else if (process.env.HOST) {
+    previewHostArgv = process.env.HOST;
+}
 const enableVideo = (process.env.PROPHESEE_CAM === '1') || (process.env.ENABLE_VIDEO === '1');
 const dontPrintPredictionsArgv: boolean = !!program.dontPrintPredictions;
 const thresholdsArgv = <string | undefined>program.thresholds;
+const cameraArgv = <string | undefined>program.camera;
+const microphoneArgv = <string | undefined>program.microphone;
+let modeArgv = <'streaming' | 'http-server' | undefined>program.mode;
+
+if (modeArgv === 'http-server' && typeof runHttpServerPort === 'undefined') {
+    runHttpServerPort = 1337;
+}
 
 process.on('warning', e => console.warn(e.stack));
 
@@ -137,6 +182,10 @@ const onSignal = async () => {
             'Press CTRL+C again to force quit.');
         firstExit = false;
         try {
+            // Flush metrics before stopping
+            if (modelMonitor) {
+                await modelMonitor.flushMetrics();
+            }
             if (audioClassifier) {
                 await audioClassifier.stop();
             }
@@ -156,12 +205,19 @@ const onSignal = async () => {
 process.on('SIGHUP', onSignal);
 process.on('SIGINT', onSignal);
 
-async function startCamera(cameraType: CameraType) {
+async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraInferenceDimensions | undefined) {
     if (!configFactory) {
         throw new Error('No config factory');
     }
-    let cameraDevicedName = await configFactory.getCamera();
-    let camera = await initCamera(cameraType, cameraDevicedName, undefined, gstLaunchArgsArgv, verboseArgv);
+    let camera = await initCamera({
+        cameraType: cameraType,
+        cameraDeviceNameInConfig: await configFactory.getCamera(),
+        cameraNameArgv: cameraArgv,
+        dimensions: undefined,
+        gstLaunchArgs: gstLaunchArgsArgv,
+        verboseOutput: verboseArgv,
+        inferenceDimensions: inferenceDimensions,
+    });
     camera.on('error', error => {
         if (isExiting) return;
         console.log(RUNNER_PREFIX, 'camera error', error);
@@ -205,7 +261,6 @@ async function startCamera(cameraType: CameraType) {
         // the user selected during the login
         let projectId: number | undefined;
         let devKeys: { apiKey: string, hmacKey: string };
-        let modelMonitor: ModelMonitor | undefined;
         let runner: LinuxImpulseRunner;
         let model: ModelInformation;
         const cameraType =
@@ -236,6 +291,42 @@ async function startCamera(cameraType: CameraType) {
             throw new Error(`Invalid value for --force-variant ` +
                 `(was: "${forceVariantArgv}", ` +
                 `valid: ${JSON.stringify(models.KerasModelVariantEnumValues)})`);
+        }
+
+        if (monitorMaxStorageSizeArgv && !monitorArgv) {
+            throw new Error('Cannot use --monitor-max-storage-size without --monitor');
+        }
+
+        if (monitorMaxStorageSizeArgv && (isNaN(monitorMaxStorageSizeArgv) || monitorMaxStorageSizeArgv <= 0)) {
+            throw new Error('Invalid value for --monitor-max-storage-size (was: "' + monitorMaxStorageSizeArgv + '")');
+        }
+
+        if (monitorSummaryIntervalArgv && !monitorArgv) {
+            throw new Error('Cannot use --monitor-summary-interval-ms without --monitor');
+        }
+
+        if (monitorSummaryIntervalArgv &&
+            (isNaN(monitorSummaryIntervalArgv) || monitorSummaryIntervalArgv < DEFAULT_MONITOR_SUMMARY_INTERVAL_MS)
+        ) {
+            throw new Error(
+                `Invalid value for --monitor-summary-interval-ms (was: "${monitorSummaryIntervalArgv}"). ` +
+                `Minimum value is ${DEFAULT_MONITOR_SUMMARY_INTERVAL_MS} (1 minute).`
+            );
+        }
+
+        if (forceResizeModeArgv) {
+            if (forceResizeModeArgv !== 'squash' && forceResizeModeArgv !== 'fit-longest' && forceResizeModeArgv !== 'fit-shortest') {
+                throw new Error(`Invalid value for --force-resize-mode (${forceResizeModeArgv}), valid: ` +
+                    `"squash", "fit-shortest", "fit-longest"`);
+            }
+        }
+
+        if (gstLaunchArgsArgv && forceResizeModeArgv) {
+            console.log(RUNNER_PREFIX, `WARN: --force-resize-mode is ignored when --gst-launch-args is passed in`);
+        }
+
+        if (modeArgv === 'streaming' && typeof runHttpServerPort === 'number') {
+            throw new Error('Cannot combine "--mode streaming" with --run-http-server');
         }
 
         // any of this arguments implies online mode, so we need to login to the studio or get the API key
@@ -285,24 +376,18 @@ async function startCamera(cameraType: CameraType) {
                 // make sure we dont already have a connection
                 if (awsIOT === undefined) {
                     awsIOT = new AWSIoTCoreConnector(opts);
-                    if (awsIOT !== undefined) {
-                        if (!silentArgv) {
-                            console.log(opts.appName + ": Connecting to IoTCore...");
-                        }
-                        const connected = await awsIOT.connect();
-                        if (!silentArgv) {
-                            if (connected) {
-                                // success
-                                console.log(opts.appName + ": Connected to IoTCore Successfully!");
+                    if (!silentArgv) {
+                        console.log(opts.appName + ": Connecting to IoTCore...");
+                    }
+                    const connected = await awsIOT.connect();
+                    if (!silentArgv) {
+                        if (connected) {
+                            console.log(opts.appName + ": Connected to IoTCore Successfully!");
 
-                                console.log(opts.appName + ": launching async tasks...");
-                                // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                                awsIOT.launchAsyncTasks();
-                            }
-                            else {
-                                // failure
-                                console.log(opts.appName + ": FAILED to connect to IoTCore");
-                            }
+                            awsIOT.initializeAsyncCollectors();
+                        }
+                        else {
+                            console.log(opts.appName + ": FAILED to connect to IoTCore");
                         }
                     }
                 }
@@ -380,11 +465,12 @@ async function startCamera(cameraType: CameraType) {
                     }
                     else {
                         let inqRes = await inquirer.prompt([{
-                            type: 'list',
+                            type: 'search-list',
+                            suffix: ' (🔍 type to search)',
                             choices: impulses.map(p => ({ name: p.name, value: p.id })),
                             name: 'impulseId',
                             message: 'Which impulse do you want to run?',
-                            pageSize: 20
+                            pageSize: 20,
                         }]);
                         impulseId = Number(inqRes.impulseId);
                         await configFactory.setRunnerImpulseIdForProjectId(projectId, impulseId);
@@ -552,6 +638,8 @@ async function startCamera(cameraType: CameraType) {
             }
         }
 
+        await configFactory.setDeploymentVersion(model.project.deploy_version);
+
         let param = model.modelParameters;
         if (monitorArgv) {
             // make sure the config is set
@@ -559,7 +647,22 @@ async function startCamera(cameraType: CameraType) {
                 // this should never happen, as we are in online mode
                 throw new Error('No config found');
             }
-            let device = new LinuxDevice(config, devKeys, param.sensorType === 'microphone', enableVideo, verboseArgv);
+            if (!projectId) {
+                projectId = await configFactory.getLinuxProjectId();
+                if (!projectId) {
+                    throw new Error(`--monitor passed in, but could not find project ID`);
+                }
+            }
+
+            if (monitorMaxStorageSizeArgv) {
+                await configFactory.setStorageMaxSizeMb(monitorMaxStorageSizeArgv);
+            }
+            if (monitorSummaryIntervalArgv) {
+                await configFactory.setMonitorSummaryIntervalMs(monitorSummaryIntervalArgv);
+            }
+
+            let device = new LinuxDevice(config, projectId, devKeys, param.sensorType === 'microphone',
+                enableVideo, verboseArgv, configFactory);
             modelMonitor = await ModelMonitor.getModelMonitor(configFactory, model);
             let storageStatus = await modelMonitor?.getStorageStatus();
 
@@ -706,7 +809,28 @@ async function startCamera(cameraType: CameraType) {
                 projectStudioUrl = 'https://studio.edgeimpulse.com/studio/' + model.project.id;
             }
 
-            await startApiServer(model, runner, projectStudioUrl, runHttpServerPort);
+            try {
+                await startApiServer({
+                    model,
+                    runner,
+                    projectStudioUrl,
+                    port: runHttpServerPort,
+                    printIncomingInferenceReqs: dontPrintPredictionsArgv ? false : true,
+                });
+            }
+            catch (ex2) {
+                const ex = <Error>ex2;
+                if ((ex.message || ex.toString()).indexOf('EADDRINUSE') > -1) {
+                    console.log('');
+                    console.log(`EADDRINUSE: Could not listen on ${previewHostArgv}:${runHttpServerPort}`);
+                    console.log(`Most likely another application (for example, another instance of edge-impulse-linux-runner) is already listening on this port. You can select another port via --run-http-server <port>, for example:`);
+                    console.log(``);
+                    console.log(`    edge-impulse-linux-runner --run-http-server ${runHttpServerPort + 1}`);
+                    console.log(``);
+                    process.exit(1);
+                }
+                throw ex;
+            }
 
             console.log(RUNNER_PREFIX, '');
             console.log(RUNNER_PREFIX, `HTTP Server now running at http://${(ips.length > 0 ? ips[0].address : 'localhost')}:${runHttpServerPort}`);
@@ -719,16 +843,20 @@ async function startCamera(cameraType: CameraType) {
             audioClassifierHelloMsg(model);
 
             if (enableCameraArgv) {
-                await startCamera(cameraType);
+                await startCamera(cameraType, undefined);
             }
 
-            let audioDeviceName = await configFactory.getAudio();
+            let audioDeviceName = '';
             try {
-                audioDeviceName = await initMicrophone(audioDeviceName);
+                audioDeviceName = await initMicrophone({
+                    audioDeviceNameInConfig: await configFactory.getAudio(),
+                    audioNameArgv: microphoneArgv,
+                });
             }
-            catch (ex) {
-                console.warn(RUNNER_PREFIX, 'Could not find any microphones');
-                audioDeviceName = '';
+            catch (ex2) {
+                const ex = <Error>ex2;
+                console.warn(RUNNER_PREFIX, (ex.message || ex.toString()));
+                process.exit(1);
             }
             await configFactory.storeAudio(audioDeviceName);
 
@@ -802,16 +930,47 @@ async function startCamera(cameraType: CameraType) {
         }
         else if (param.sensorType === 'camera') {
             imageClassifierHelloMsg(model);
-            let camera = await startCamera(cameraType);
+            let camera = await startCamera(cameraType, {
+                width: param.image_input_width,
+                height: param.image_input_height,
+                resizeMode: forceResizeModeArgv || param.image_resize_mode || 'none',
+            });
 
-            imageClassifier = new ImageClassifier(runner, camera);
+            imageClassifier = new ImageClassifier(runner, camera, {
+                verbose: verboseArgv,
+            });
 
             await imageClassifier.start();
 
-            let webserverPort = await startWebServer(model, camera, imageClassifier);
+            try {
+                await startWebServer({
+                    model: model,
+                    camera: camera,
+                    imgClassifier: imageClassifier,
+                    verbose: verboseArgv,
+                    host: previewHostArgv,
+                    port: previewPortArgv,
+                });
+            }
+            catch (ex2) {
+                const ex = <Error>ex2;
+                if ((ex.message || ex.toString()).indexOf('EADDRINUSE') > -1) {
+                    console.log('');
+                    console.log(`EADDRINUSE: Could not listen on ${previewHostArgv}:${previewPortArgv}`);
+                    console.log(`Most likely another application (for example, another instance of edge-impulse-linux-runner) is already listening on this port. You can select another port via --preview-port <port>, for example:`);
+                    console.log(``);
+                    console.log(`    edge-impulse-linux-runner --preview-port ${previewPortArgv + 1}`);
+                    console.log(``);
+                    process.exit(1);
+                }
+                throw ex;
+            }
             console.log('');
             console.log('Want to see a feed of the camera and live classification in your browser? ' +
-                'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + webserverPort);
+                'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
+            console.log('');
+            console.log('Want to use predictions in your application? ' +
+                'Open a websocket to ws://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
             console.log('');
 
             imageClassifier.on('result', async (ev, timeMs, imgAsJpg) => {
@@ -822,11 +981,8 @@ async function startCamera(cameraType: CameraType) {
 
                 if (ev.result.classification) {
                     // print the raw predicted values for this frame
-                    // (turn into string here so the content does not jump around)
-                    let c = <{ [k: string]: string | number }>(<any>ev.result.classification);
-                    for (let k of Object.keys(c)) {
-                        c[k] = (<number>c[k]).toFixed(4);
-                    }
+                    const c = (ev.result.classification);
+
                     if (!dontPrintPredictionsArgv) {
                         console.log('classifyRes', timeMs + 'ms.', c);
                     }

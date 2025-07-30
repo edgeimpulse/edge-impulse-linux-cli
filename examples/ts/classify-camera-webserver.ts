@@ -1,8 +1,8 @@
-import { ImageClassifier, LinuxImpulseRunner, Ffmpeg, ICamera, Imagesnap, ModelInformation } from "../../library";
+import { ImageClassifier, LinuxImpulseRunner, ICamera, Imagesnap, ModelInformation, GStreamer } from "../../library";
 import { ips } from "../../cli-common/get-ips";
 import sharp from 'sharp';
 import express = require('express');
-import socketIO from 'socket.io';
+import { Server as SocketIoServer } from 'socket.io';
 import http from 'http';
 import Path from 'path';
 import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-runner";
@@ -58,7 +58,7 @@ import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-ru
             camera = new Imagesnap();
         }
         else if (process.platform === 'linux') {
-            camera = new Ffmpeg(false /* verbose */);
+            camera = new GStreamer(false /* verbose */);
         }
         else {
             throw new Error('Unsupported platform "' + process.platform + '"');
@@ -81,7 +81,12 @@ import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-ru
         await camera.start({
             device: device,
             intervalMs: 1000 / fps,
-            dimensions: dimensions
+            dimensions: dimensions,
+            inferenceDimensions: {
+                width: model.modelParameters.image_input_width,
+                height: model.modelParameters.image_input_height,
+                resizeMode: model.modelParameters.image_resize_mode || 'none',
+            },
         });
 
         camera.on('error', error => {
@@ -130,7 +135,7 @@ function startWebServer(model: ModelInformation, camera: ICamera, imgClassifier:
     app.use(express.static(Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public')));
 
     const server = new http.Server(app);
-    const io = socketIO(server);
+    const io = new SocketIoServer(server);
 
     // you can also get the actual image being classified from 'imageClassifier.on("result")',
     // but then you're limited by the inference speed.
