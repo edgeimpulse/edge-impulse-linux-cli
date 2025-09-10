@@ -180,6 +180,7 @@ let isExiting = false;
                 gstLaunchArgs: gstLaunchArgsArgv,
                 verboseOutput: verboseArgv,
                 inferenceDimensions: undefined,
+                profiling: false,
             });
 
             camera.on('error', error => {

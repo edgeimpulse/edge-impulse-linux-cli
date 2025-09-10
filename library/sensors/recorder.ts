@@ -186,6 +186,22 @@ export class AudioRecorder {
 
             return devices;
         }
+        else if (await spawnHelper('which', [ 'arecord' ], { ignoreErrors: true })) {
+            let data = await spawnHelper('arecord', [ '-l' ]);
+            let lines = data.split('\n').filter(line => line.trim() !== '');
+            let devices: { name: string, id: string }[] = [];
+            for (let line of lines) {
+                let match = line.match(/card (\d+): (.+?) \[(.+?)\], device (\d+): (.+?) \[(.+?)\]/);
+                if (match) {
+                    devices.push({
+                        name: match[2],
+                        id: 'hw:' + match[1] + ',0'
+                    });
+                }
+            }
+
+            return devices;
+        }
         else if (process.platform === 'darwin') {
             try {
                 await spawnHelper('which', [ 'sox' ]);

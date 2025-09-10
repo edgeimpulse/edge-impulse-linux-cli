@@ -29,6 +29,7 @@ import { AWSIoTCoreConnector, Payload, AwsResult, AwsResultKey } from "../../cli
 import { v4 as uuidv4 } from 'uuid';
 import * as models from '../../sdk/studio/sdk/model/models';
 import { ICameraInferenceDimensions } from '../../library/sensors/icamera';
+import { RunnerProfiling } from './runner-profiling';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
@@ -66,6 +67,7 @@ program
         'Alternatively you can use the PORT environmental variable. If both are set then `--preview-port` takes precedence.')
     .option('--preview-host <host>', 'Host to listen on for the preview HTTP interface (default: 0.0.0.0) (ignored when running with --run-http-server). ' +
         'Alternatively you can use the HOST environmental variable. If both are set then `--preview-host` takes precedence.')
+    .option('--preview-original-resolution', 'If set, does not resize the preview image to the impulse resolution')
     .option('--monitor', 'Enable model monitoring', false)
     .option('--monitor-max-storage-size <size>', 'The maximum storage size to be used for model monitoring, in MB. Defaults to 250.')
     .option('--monitor-summary-interval-ms <ms>', `The time interval (in milliseconds) for model monitoring summaries. Defaults to ${DEFAULT_MONITOR_SUMMARY_INTERVAL_MS}.`)
@@ -89,6 +91,10 @@ program
         'If this argument is omitted, and multiple cameras are found, a CLI selector is shown.')
     .option('--microphone <microphone>', 'Which microphone to use (either the name, or the device address). ' +
         'If this argument is omitted, and multiple microphones are found, a CLI selector is shown.')
+    .option('--shm-behavior <mode>', `Whether to use shared memory to communicate between .eim file and Linux runner (experimental feature), valid: "auto", "always", "never". ` +
+        `If not set, defaults to 'auto' - which will use shm if available, and fall back to JSON over TCP otherwise. ` +
+        `If set to 'always' will only use shm to communicate (errors out if not available), if set to 'never' will always use JSON over TCP socket.`)
+    .option('--profiling', `If set, prints profiling info`)
     .option('--verbose', 'Enable debug logs')
     .allowUnknownOption(true)
     .parse(process.argv);
@@ -135,9 +141,12 @@ if (program.previewHost) {
 else if (process.env.HOST) {
     previewHostArgv = process.env.HOST;
 }
+const previewOriginalResolutionArgv: boolean = !!program.previewOriginalResolution;
 const enableVideo = (process.env.PROPHESEE_CAM === '1') || (process.env.ENABLE_VIDEO === '1');
 const dontPrintPredictionsArgv: boolean = !!program.dontPrintPredictions;
 const thresholdsArgv = <string | undefined>program.thresholds;
+const shmBehaviorArgv: 'auto' | 'always' | 'never' = <'auto' | 'always' | 'never'>((<string | undefined>program.shmBehavior) || 'auto');
+const profilingArgv: boolean = !!program.profiling;
 const cameraArgv = <string | undefined>program.camera;
 const microphoneArgv = <string | undefined>program.microphone;
 let modeArgv = <'streaming' | 'http-server' | undefined>program.mode;
@@ -217,6 +226,7 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
         gstLaunchArgs: gstLaunchArgsArgv,
         verboseOutput: verboseArgv,
         inferenceDimensions: inferenceDimensions,
+        profiling: profilingArgv,
     });
     camera.on('error', error => {
         if (isExiting) return;
@@ -619,7 +629,10 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
         }
 
         // create the runner and init (get info from model file)
-        runner = new LinuxImpulseRunner(modelFile);
+        runner = new LinuxImpulseRunner(modelFile, {
+            verbose: verboseArgv,
+            shmBehavior: shmBehaviorArgv,
+        });
         model = await runner.init();
         await setThresholdsFromArgv(runner, model);
 
@@ -878,6 +891,42 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
 
             await audioClassifier.start(audioDeviceName);
 
+            try {
+                await startWebServer({
+                    type: 'audio',
+                    model: model,
+                    audioClassifier: audioClassifier,
+                    verbose: verboseArgv,
+                    host: previewHostArgv,
+                    port: previewPortArgv,
+                });
+            }
+            catch (ex2) {
+                const ex = <Error>ex2;
+                if ((ex.message || ex.toString()).indexOf('EADDRINUSE') > -1) {
+                    console.log('');
+                    console.log(`EADDRINUSE: Could not listen on ${previewHostArgv}:${previewPortArgv}`);
+                    console.log(`Most likely another application (for example, another instance of edge-impulse-linux-runner) is already listening on this port. You can select another port via --preview-port <port>, for example:`);
+                    console.log(``);
+                    console.log(`    edge-impulse-linux-runner --preview-port ${previewPortArgv + 1}`);
+                    console.log(``);
+                    process.exit(1);
+                }
+                throw ex;
+            }
+            console.log('');
+            console.log('Want to see live classification in your browser? ' +
+                'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
+            console.log('');
+            console.log('Want to use predictions in your application? ' +
+                'Open a websocket to ws://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
+            console.log('');
+
+            if (model.modelParameters.has_performance_calibration) {
+                 console.log(`Performance calibration is configured for your project. If no event is detected, all values are 0.`);
+                 console.log(``);
+            }
+
             audioClassifier.on('result', async (ev, timeMs, audioAsPcm) => {
                 let count = 0;
 
@@ -892,11 +941,7 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
 
                 // print the raw predicted values for this frame
                 // (turn into string here so the content does not jump around)
-                let c = <{ [k: string]: string | number }>(<any>ev.result.classification);
-                for (let k of Object.keys(c)) {
-                    c[k] = (<number>c[k]).toFixed(4);
-                }
-
+                let c = <{ [k: string]: number }>structuredClone(ev.result.classification);
                 if (Array.isArray(c)) {
                     count = c.length;
                 }
@@ -905,7 +950,20 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
                 totalInferenceCount += count;
 
                 if (!dontPrintPredictionsArgv) {
-                    console.log('classifyRes', timeMs + 'ms.', c);
+                    // More than 10? Just print top 5...
+                    if (Object.keys(c).length >= 10) {
+                        const top = Object.entries(ev.result.classification)
+                            .sort((a, b) => Number(b[1]) - Number(a[1]))
+                            .slice(0, 5)
+                            .reduce((curr: { [ k: string ]: number}, val) => {
+                                curr[val[0]] = val[1];
+                                return curr;
+                            }, { });
+                        console.log('classifyRes', timeMs + 'ms.', 'Top 5:', roundValuesTo4Digits(top));
+                    }
+                    else {
+                        console.log('classifyRes', timeMs + 'ms.', roundValuesTo4Digits(c));
+                    }
                 }
 
                 // AWS Integration - send to IoTCore if running in Greengrass
@@ -940,16 +998,24 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
                 verbose: verboseArgv,
             });
 
+            if (profilingArgv) {
+                const profiling = new RunnerProfiling(camera, imageClassifier);
+            }
+
             await imageClassifier.start();
 
             try {
                 await startWebServer({
+                    type: 'camera',
                     model: model,
                     camera: camera,
                     imgClassifier: imageClassifier,
                     verbose: verboseArgv,
                     host: previewHostArgv,
                     port: previewPortArgv,
+                    streamResolution: previewOriginalResolutionArgv ?
+                        'original' :
+                        'scaled-using-impulse',
                 });
             }
             catch (ex2) {
@@ -981,10 +1047,23 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
 
                 if (ev.result.classification) {
                     // print the raw predicted values for this frame
-                    const c = (ev.result.classification);
+                    const c = structuredClone(ev.result.classification);
 
                     if (!dontPrintPredictionsArgv) {
-                        console.log('classifyRes', timeMs + 'ms.', c);
+                        // More than 10? Just print top 5...
+                        if (Object.keys(c).length >= 10) {
+                            const top = Object.entries(ev.result.classification)
+                                .sort((a, b) => Number(b[1]) - Number(a[1]))
+                                .slice(0, 5)
+                                .reduce((curr: { [ k: string ]: number}, val) => {
+                                    curr[val[0]] = val[1];
+                                    return curr;
+                                }, { });
+                            console.log('classifyRes', timeMs + 'ms.', 'Top 5:', roundValuesTo4Digits(top));
+                        }
+                        else {
+                            console.log('classifyRes', timeMs + 'ms.', roundValuesTo4Digits(c));
+                        }
                     }
 
                     // AWS Integration
@@ -1168,4 +1247,12 @@ async function setThresholdsFromArgv(runner: LinuxImpulseRunner, model: ModelInf
                 `(found ${JSON.stringify((model.modelParameters.thresholds || []).map(x => x.id))})`);
         }
     }
+}
+
+function roundValuesTo4Digits(obj: { [ key: string]: number }) {
+    let newObj: { [ key: string ]: number } = { };
+    for (const key of Object.keys(obj)) {
+        newObj[key] = Number(obj[key].toFixed(4));
+    }
+    return newObj;
 }

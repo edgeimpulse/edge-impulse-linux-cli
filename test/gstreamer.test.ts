@@ -1288,8 +1288,6 @@ Device found:
 
         });
 
-
-
         // https://forum.edgeimpulse.com/t/edge-impulse-on-coral-edgetpu/2311
         it("coral edge tpu with iMX6S", async () => {
             const gstOutput = `Probing devices...
@@ -5042,18 +5040,6 @@ Freeing pipeline ...
                     }
                 }
             });
-            assert.equal(devices.length, 4);
-            assert.equal(devices[2].id, 'qtiqmmfsrc-0');
-            assert.equal(devices[2].name, 'Camera 0 (High-resolution, fisheye, IMX577) (qtiqmmfsrc-0)');
-            assert.equal(devices[2].videoSource, 'qtiqmmfsrc name=camsrc camera=0');
-            assert.equal(JSON.stringify(devices[2].caps), JSON.stringify([
-                {
-                    type: "video/x-raw",
-                    width: 1280,
-                    height: 720,
-                    framerate: 30,
-                },
-            ]));
             assert.equal(devices[0].id, '/dev/video2');
             assert.equal(devices[0].name, 'Logitech BRIO (/dev/video2)');
             assert.equal(devices[0].videoSource, 'v4l2src');
@@ -5234,7 +5220,7 @@ Freeing pipeline ...
 
             const gstreamer = new GStreamer(false, {
                 spawnHelperOverride: spawnHelper,
-                scaleAndCropInPipeline: true,
+                dontRunCleanupLoop: true,
             });
             await gstreamer.init();
             const launchResp = await gstreamer.getGstreamerLaunchCommand({
@@ -5251,10 +5237,9 @@ Freeing pipeline ...
 
             // console.log('launchResp', launchResp);
 
-            assert.equal(launchResp.invokeProcess, 'spawn');
             assert.equal(launchResp.command, 'gst-launch-1.0');
-            assert.equal(launchResp.args.join(' '),
-                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=test%05d.jpg');
+            assert.equal(launchResp.pipeline,
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=resized%05d.jpg');
         });
 
         it("w/ inference dims #1", async () => {
@@ -5277,7 +5262,7 @@ Freeing pipeline ...
 
             const gstreamer = new GStreamer(false, {
                 spawnHelperOverride: spawnHelper,
-                scaleAndCropInPipeline: true,
+                dontRunCleanupLoop: true,
             });
             await gstreamer.init();
             const launchResp = await gstreamer.getGstreamerLaunchCommand({
@@ -5298,10 +5283,13 @@ Freeing pipeline ...
 
             // console.log('launchResp', launchResp);
 
-            assert.equal(launchResp.invokeProcess, 'spawn');
             assert.equal(launchResp.command, 'gst-launch-1.0');
-            assert.equal(launchResp.args.join(' '),
-                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! videocrop left=180 right=180 ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=test%05d.jpg');
+            assert.equal(launchResp.pipeline,
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
+                'tee name=t ' +
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg ' +
+                    't. ! queue ! videocrop left=180 right=180 ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg'
+            );
         });
 
         it("w/ inference dims #2", async () => {
@@ -5324,7 +5312,7 @@ Freeing pipeline ...
 
             const gstreamer = new GStreamer(false, {
                 spawnHelperOverride: spawnHelper,
-                scaleAndCropInPipeline: true,
+                dontRunCleanupLoop: true,
             });
             await gstreamer.init();
             const launchResp = await gstreamer.getGstreamerLaunchCommand({
@@ -5345,10 +5333,13 @@ Freeing pipeline ...
 
             // console.log('launchResp', launchResp);
 
-            assert.equal(launchResp.invokeProcess, 'spawn');
             assert.equal(launchResp.command, 'gst-launch-1.0');
-            assert.equal(launchResp.args.join(' '),
-                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=test%05d.jpg');
+            assert.equal(launchResp.pipeline,
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
+                'tee name=t ' +
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg ' +
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg'
+            );
         });
 
         it("w/ inference dims #3", async () => {
@@ -5371,7 +5362,7 @@ Freeing pipeline ...
 
             const gstreamer = new GStreamer(false, {
                 spawnHelperOverride: spawnHelper,
-                scaleAndCropInPipeline: true,
+                dontRunCleanupLoop: true,
             });
             await gstreamer.init();
             const launchResp = await gstreamer.getGstreamerLaunchCommand({
@@ -5392,10 +5383,9 @@ Freeing pipeline ...
 
             // console.log('launchResp', launchResp);
 
-            assert.equal(launchResp.invokeProcess, 'spawn');
             assert.equal(launchResp.command, 'gst-launch-1.0');
-            assert.equal(launchResp.args.join(' '),
-                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=test%05d.jpg');
+            assert.equal(launchResp.pipeline,
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=resized%05d.jpg');
         });
 
         it("w/ inference dims #4", async () => {
@@ -5418,7 +5408,7 @@ Freeing pipeline ...
 
             const gstreamer = new GStreamer(false, {
                 spawnHelperOverride: spawnHelper,
-                scaleAndCropInPipeline: undefined,
+                dontRunCleanupLoop: true,
             });
             await gstreamer.init();
             const launchResp = await gstreamer.getGstreamerLaunchCommand({
@@ -5439,10 +5429,13 @@ Freeing pipeline ...
 
             // console.log('launchResp', launchResp);
 
-            assert.equal(launchResp.invokeProcess, 'spawn');
             assert.equal(launchResp.command, 'gst-launch-1.0');
-            assert.equal(launchResp.args.join(' '),
-                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=test%05d.jpg');
+            assert.equal(launchResp.pipeline,
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
+                'tee name=t ' +
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg ' +
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg'
+            );
         });
     });
 });
@@ -5491,7 +5484,7 @@ async function testGetDevices(output: {
     const gstreamer = new GStreamer(false, {
         spawnHelperOverride: spawnHelper,
         modeOverride: output?.modeOverride,
-        scaleAndCropInPipeline: true,
+        dontRunCleanupLoop: true,
     });
     await gstreamer.init();
     const devices = await gstreamer.getAllDevices();

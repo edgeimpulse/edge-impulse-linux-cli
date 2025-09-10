@@ -3,18 +3,20 @@ import Path from 'node:path';
 import { promisify } from 'node:util';
 import express from 'express';
 import multer from 'multer';
-import sharp from 'sharp';
+import sharp, { FitEnum } from 'sharp';
 import { Server as SocketIoServer } from 'socket.io';
 import type { EdgeImpulseApi } from '../../sdk/studio/api';
 import { type LinuxImpulseRunner, type ModelInformation, RunnerHelloHasAnomaly } from '../../library/classifier/linux-impulse-runner';
 import { type InferenceServerModelViewModel, renderInferenceServerView } from './webserver/views/inference-server-view';
 import { asyncMiddleware } from './webserver/middleware/asyncMiddleware';
-import { ImageClassifier } from '../../library/classifier/image-classifier';
+import { ImageClassifier, FitMethodMap, FitMethodStudioMap } from '../../library/classifier/image-classifier';
 import type { ICamera } from '../../library/sensors/icamera';
 import { DEFAULT_SOCKET_IO_V2_PARAMS, startEio3Interceptor } from '../../cli-common/socket-utils';
 import ws from 'ws';
 import Url from 'url';
 import { renderIndexView } from './webserver/views';
+import { mapPredictionToOriginalImage, mapResizedPixelResultsBoundingBox } from '../../shared/views/project/bounding-box-scaling';
+import { AudioClassifier } from '../../library';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
@@ -257,83 +259,18 @@ export function startApiServer(opts: {
 
         let response = await runner.classify(resized.features);
 
-        const origFactor = resized.originalWidth / resized.originalHeight;
-        const newFactor = resized.newWidth / resized.newHeight;
-
         // Helper function to transform bounding box and anomaly grid coordinates
         const transformCoordinates = (bb: { x: number, y: number, width: number, height: number }) => {
-            const resizeMode = model.modelParameters.image_resize_mode;
+            const mapped = mapResizedPixelResultsBoundingBox({
+                box: bb,
+                resized: resized,
+                mode: FitMethodStudioMap[model.modelParameters.image_resize_mode || 'none'],
+            });
 
-            // For 'squash' mode (fill), we simply scale x and y independently
-            if (resizeMode === 'squash') {
-                const scaleX = resized.newWidth / resized.originalWidth;
-                const scaleY = resized.newHeight / resized.originalHeight;
-
-                bb.x = Math.round(bb.x / scaleX);
-                bb.y = Math.round(bb.y / scaleY);
-                bb.width = Math.round(bb.width / scaleX);
-                bb.height = Math.round(bb.height / scaleY);
-
-                return;
-            }
-
-            const isContainMode = resizeMode === 'fit-longest';
-
-            // Original image is wider than model input
-            if (origFactor > newFactor) {
-                if (isContainMode) {
-                    // Contain mode - scaled by width, padded on height
-                    const scale = resized.newWidth / resized.originalWidth;
-                    const offsetY = (resized.newHeight - (resized.originalHeight * scale)) / 2;
-
-                    bb.x = Math.round(bb.x / scale);
-                    bb.y = Math.round((bb.y - offsetY) / scale);
-                    bb.width = Math.round(bb.width / scale);
-                    bb.height = Math.round(bb.height / scale);
-                }
-                else {
-                    // Cover mode - scaled by height, cropped on width
-                    const scale = resized.newHeight / resized.originalHeight;
-                    const cropX = (resized.originalWidth * scale - resized.newWidth) / 2;
-
-                    bb.x = Math.round((bb.x + cropX) / scale);
-                    bb.y = Math.round(bb.y / scale);
-                    bb.width = Math.round(bb.width / scale);
-                    bb.height = Math.round(bb.height / scale);
-                }
-            }
-            // Original image is taller than model input
-            else if (origFactor < newFactor) {
-                if (isContainMode) {
-                    // Contain mode - scaled by height, padded on width
-                    const scale = resized.newHeight / resized.originalHeight;
-                    const offsetX = (resized.newWidth - (resized.originalWidth * scale)) / 2;
-
-                    bb.x = Math.round((bb.x - offsetX) / scale);
-                    bb.y = Math.round(bb.y / scale);
-                    bb.width = Math.round(bb.width / scale);
-                    bb.height = Math.round(bb.height / scale);
-                }
-                else {
-                    // Cover mode - scaled by width, cropped on height
-                    const scale = resized.newWidth / resized.originalWidth;
-                    const cropY = (resized.originalHeight * scale - resized.newHeight) / 2;
-
-                    bb.x = Math.round(bb.x / scale);
-                    bb.y = Math.round((bb.y + cropY) / scale);
-                    bb.width = Math.round(bb.width / scale);
-                    bb.height = Math.round(bb.height / scale);
-                }
-            }
-            // Same aspect ratio - simple scaling
-            else {
-                const scale = resized.newWidth / resized.originalWidth;
-
-                bb.x = Math.round(bb.x / scale);
-                bb.y = Math.round(bb.y / scale);
-                bb.width = Math.round(bb.width / scale);
-                bb.height = Math.round(bb.height / scale);
-            }
+            bb.x = mapped.x;
+            bb.y = mapped.y;
+            bb.width = mapped.width;
+            bb.height = mapped.height;
         };
 
         // Transform all bounding boxes and anomaly grid coordinates
@@ -357,15 +294,21 @@ export function startApiServer(opts: {
     });
 }
 
-export function startWebServer(opts: {
-    model: ModelInformation,
+export function startWebServer(opts: ({
+    type: 'camera',
     camera: ICamera,
     imgClassifier: ImageClassifier,
+    streamResolution: 'original' | 'scaled-using-impulse',
+} | {
+    type: 'audio',
+    audioClassifier: AudioClassifier,
+}) & {
+    model: ModelInformation,
     verbose: boolean,
     host: string,
     port: number,
 }) {
-    const { model, camera, imgClassifier, verbose } = opts;
+    const { model, verbose } = opts;
 
     const publicFolder = Path.join(__dirname, '..', '..', '..', 'cli', 'linux', 'webserver', 'public');
 
@@ -374,6 +317,8 @@ export function startWebServer(opts: {
     app.get('/', asyncMiddleware(async (req, res) => {
         const view = renderIndexView({
             isEmbedView: false,
+            hasPerformanceCalibration: model.modelParameters.has_performance_calibration || false,
+            sensorType: opts.type,
         });
 
         res.status(200);
@@ -384,6 +329,8 @@ export function startWebServer(opts: {
     app.get('/embed', asyncMiddleware(async (req, res) => {
         const view = renderIndexView({
             isEmbedView: true,
+            hasPerformanceCalibration: model.modelParameters.has_performance_calibration || false,
+            sensorType: opts.type,
         });
 
         res.status(200);
@@ -409,71 +356,142 @@ export function startWebServer(opts: {
 
     let nextFrame = Date.now();
     let processingFrame = false;
-    camera.on('snapshot', async (data, filename) => {
-        if (nextFrame > Date.now() || processingFrame) return;
+    let cameraResolution: {
+        width: number,
+        height: number,
+    } | undefined;
 
-        processingFrame = true;
+    if (opts.type === 'camera') {
+        const { camera, imgClassifier, streamResolution } = opts;
 
-        try {
-            let img;
-            if (model.modelParameters.image_channel_count === 3) {
-                img = sharp(data).resize({
-                    height: model.modelParameters.image_input_height,
-                    width: model.modelParameters.image_input_width,
-                    fastShrinkOnLoad: false
+        camera.on('snapshot', async (data, filename) => {
+            if (nextFrame > Date.now() || processingFrame) return;
+
+            processingFrame = true;
+
+            try {
+                if (!cameraResolution) {
+                    let img = sharp(data);
+                    const metadata = await img.metadata();
+                    cameraResolution = {
+                        width: metadata.width || 0,
+                        height: metadata.height || 0,
+                    };
+                }
+
+                let imgBase64: string;
+
+                if (streamResolution === 'scaled-using-impulse') {
+                    const fitMethod: keyof FitEnum = FitMethodMap[model.modelParameters.image_resize_mode || 'none'];
+                    let img: sharp.Sharp;
+
+                    if (model.modelParameters.image_channel_count === 3) {
+                        img = sharp(data).resize({
+                            height: model.modelParameters.image_input_height,
+                            width: model.modelParameters.image_input_width,
+                            fit: fitMethod,
+                            fastShrinkOnLoad: false
+                        });
+                    }
+                    else {
+                        img = sharp(data).resize({
+                            height: model.modelParameters.image_input_height,
+                            width: model.modelParameters.image_input_width,
+                            fit: fitMethod,
+                            fastShrinkOnLoad: false
+                        }).toColourspace('b-w');
+                    }
+
+                    imgBase64 = 'data:image/jpeg;base64,' + (await img.jpeg().toBuffer()).toString('base64');
+                }
+                else {
+                    imgBase64 = 'data:image/jpeg;base64,' + data.toString('base64');
+                }
+
+                io.emit('image', {
+                    img: imgBase64,
                 });
+                for (const wsClient of websocketsToSendPreviews) {
+                    wsClient.send(JSON.stringify({
+                        type: 'camera-preview',
+                        image: imgBase64,
+                    }));
+                }
             }
-            else {
-                img = sharp(data).resize({
-                    height: model.modelParameters.image_input_height,
-                    width: model.modelParameters.image_input_width,
-                    fastShrinkOnLoad: false
-                }).toColourspace('b-w');
+            catch (ex2) {
+                // put this behind a verbose flag, as the ImageClassifier also prints out this error already
+                const ex = <Error>ex2;
+                if (verbose) {
+                    console.log(RUNNER_PREFIX, `Failed to handle snapshot "${filename}":`, ex.message || ex.toString());
+                }
             }
-
-            const imgBase64 = 'data:image/jpeg;base64,' + (await img.jpeg().toBuffer()).toString('base64');
-
-            io.emit('image', {
-                img: imgBase64,
-            });
-            for (const wsClient of websocketsToSendPreviews) {
-                wsClient.send(JSON.stringify({
-                    type: 'camera-preview',
-                    image: imgBase64,
-                }));
+            finally {
+                processingFrame = false;
             }
-
-            nextFrame = Date.now() + 50;
-        }
-        catch (ex2) {
-            // put this behind a verbose flag, as the ImageClassifier also prints out this error already
-            const ex = <Error>ex2;
-            if (verbose) {
-                console.log(RUNNER_PREFIX, `Failed to handle snapshot "${filename}":`, ex.message || ex.toString());
-            }
-        }
-        finally {
-            processingFrame = false;
-        }
-    });
-
-    imgClassifier.on('result', (result, timeMs, imgAsJpg) => {
-        io.emit('classification', {
-            modelType: model.modelParameters.model_type,
-            result: result.result,
-            timeMs: timeMs,
-            additionalInfo: result.info,
         });
 
-        for (const client of wss.clients) {
-            client.send(JSON.stringify({
-                type: 'classification',
-                result: result.result,
+        imgClassifier.on('result', (result, timeMs, imgAsJpg) => {
+            let resultsMapped = structuredClone(result.result);
+
+            // result is scaled to the impulse; rescale to original cam resolution if required
+            if (opts.streamResolution === 'original' && cameraResolution) {
+                if (resultsMapped.bounding_boxes) {
+                    resultsMapped.bounding_boxes = scaleAndMapBbs(
+                        resultsMapped.bounding_boxes, model, cameraResolution);
+                }
+                if (resultsMapped.object_tracking) {
+                    resultsMapped.object_tracking = scaleAndMapBbs<
+                        BaseBox & { object_id: number }, { object_id: number }
+                    >(
+                        resultsMapped.object_tracking, model, cameraResolution,
+                        (bb) => ({ object_id: bb.object_id }));
+                }
+                if (resultsMapped.visual_anomaly_grid) {
+                    resultsMapped.visual_anomaly_grid = scaleAndMapBbs(
+                        resultsMapped.visual_anomaly_grid, model, cameraResolution);
+                }
+            }
+
+            io.emit('classification', {
+                modelType: model.modelParameters.model_type,
+                result: resultsMapped,
                 timeMs: timeMs,
                 additionalInfo: result.info,
-            }));
-        }
-    });
+            });
+
+            for (const client of wss.clients) {
+                client.send(JSON.stringify({
+                    type: 'classification',
+                    result: result.result,
+                    timeMs: timeMs,
+                    additionalInfo: result.info,
+                }));
+            }
+        });
+    }
+    else if (opts.type === 'audio') {
+        const { audioClassifier } = opts;
+
+        audioClassifier.on('result', (result, timeMs) => {
+            let resultsMapped = structuredClone(result.result);
+
+            io.emit('classification', {
+                modelType: model.modelParameters.model_type,
+                result: resultsMapped,
+                timeMs: timeMs,
+                additionalInfo: result.info,
+            });
+
+            for (const client of wss.clients) {
+                client.send(JSON.stringify({
+                    type: 'classification',
+                    result: result.result,
+                    timeMs: timeMs,
+                    additionalInfo: result.info,
+                }));
+            }
+        });
+    }
 
     const onThresholdOverride = async (ev: {
             id: number,
@@ -509,7 +527,12 @@ export function startWebServer(opts: {
                 obj.type = thresholdObj.type;
                 obj[ev.key] = ev.value;
 
-                await imgClassifier.getRunner().setLearnBlockThreshold(<any>obj);
+                if (opts.type === 'camera') {
+                    await opts.imgClassifier.getRunner().setLearnBlockThreshold(<any>obj);
+                }
+                else if (opts.type === 'audio') {
+                    await opts.audioClassifier.getRunner().setLearnBlockThreshold(<any>obj);
+                }
 
                 (<any>thresholdObj)[ev.key] = ev.value;
 
@@ -526,6 +549,7 @@ export function startWebServer(opts: {
         socket.emit('hello', {
             projectName: model.project.owner + ' / ' + model.project.name,
             thresholds: model.modelParameters.thresholds,
+            sensorType: opts.type,
         });
 
         socket.on('threshold-override', (ev: {
@@ -643,4 +667,46 @@ export function startWebServer(opts: {
             reject(err);
         });
     });
+}
+
+type BaseBox = {
+    x: number; y: number; width: number; height: number;
+    label: string; value: number;
+};
+
+function scaleAndMapBbs<T extends BaseBox, TExtra extends object = {}>(
+    bbs: T[],
+    model: ModelInformation,
+    cameraResolution: { width: number, height: number },
+    extraFields?: (bb: T) => TExtra
+): Array<BaseBox & TExtra & ReturnType<typeof mapPredictionToOriginalImage>> {
+    const mapped: Array<BaseBox & TExtra & ReturnType<typeof mapPredictionToOriginalImage> & Record<string, any>> = [];
+    for (const originalBb of bbs || []) {
+        const bb = structuredClone(originalBb);
+
+        // Scale back to 0..1
+        bb.width /= model.modelParameters.image_input_width;
+        bb.x /= model.modelParameters.image_input_width;
+        bb.height /= model.modelParameters.image_input_height;
+        bb.y /= model.modelParameters.image_input_height;
+
+        let newBb = {
+            label: bb.label,
+            value: bb.value,
+            ...(extraFields ? extraFields(bb) : {} as TExtra),
+            ...mapPredictionToOriginalImage(FitMethodStudioMap[model.modelParameters.image_resize_mode || 'squash'], bb, {
+                clientWidth: cameraResolution.width,
+                clientHeight: cameraResolution.height,
+                naturalHeight: cameraResolution.height,
+                naturalWidth: cameraResolution.width,
+            }),
+        };
+        newBb.x = Math.round(newBb.x);
+        newBb.y = Math.round(newBb.y);
+        newBb.width = Math.round(newBb.width);
+        newBb.height = Math.round(newBb.height);
+        mapped.push(newBb);
+    }
+
+    return mapped;
 }

@@ -1,20 +1,45 @@
 import { EventEmitter } from "tsee";
-import { LinuxImpulseRunner, ModelInformation, RunnerClassifyResponseSuccess } from "./linux-impulse-runner";
+import {
+    LinuxImpulseRunner,
+    ModelInformation,
+    RunnerClassifyResponseSuccess,
+    RunnerHelloResponseModelParameters,
+} from "./linux-impulse-runner";
 import sharp, { FitEnum } from 'sharp';
 import { ICamera } from "../sensors/icamera";
+import * as models from "../../sdk/studio/sdk/model/models";
 
 const PREFIX = '\x1b[35m[IMG]\x1b[0m';
 
 // Map studio
-const FitMethodMap: { [key: string]: keyof FitEnum } = {
+export const FitMethodMap: { [key: string]: keyof FitEnum } = {
     'none': 'contain',
     'fit-shortest': 'cover',
     'fit-longest': 'contain',
     'squash': 'fill'
 };
 
+// Map Studio
+export const FitMethodStudioMap: Record<
+    Exclude<RunnerHelloResponseModelParameters["image_resize_mode"], undefined>,
+    models.ImageInputResizeMode
+> = {
+  'none': 'crop',
+  'fit-shortest': 'fit-short',
+  'fit-longest': 'fit-long',
+  'squash': 'squash',
+};
+
 export class ImageClassifier extends EventEmitter<{
-    result: (result: RunnerClassifyResponseSuccess, timeMs: number, imgAsJpeg: Buffer) => void
+    result: (result: RunnerClassifyResponseSuccess, timeMs: number, imgAsJpeg: Buffer) => void,
+    profileSnapshotHandlerBegin: (filename: string) => void,
+    profileSnapshotHandlerEnd: (filename: string) => void,
+    profileFeaturesBegin: (filename: string) => void,
+    profileFeaturesEnd: (filename: string) => void,
+    profileClassifyBegin: (filename: string) => void,
+    profileClassifyEnd: (filename: string, timingCpp: RunnerClassifyResponseSuccess['timing']) => void,
+    profileEmitResultBegin: (filename: string) => void,
+    profileEmitResultEnd: (filename: string) => void,
 }> {
     private _runner: LinuxImpulseRunner;
     private _camera: ICamera;
@@ -52,7 +77,7 @@ export class ImageClassifier extends EventEmitter<{
 
         let frameQueue: { features: number[], img: sharp.Sharp }[] = [];
 
-        this._camera.on('snapshot', async (data, filename) => {
+        this._camera.on('snapshotForInference', async (data, filename) => {
             try {
                 let model = this._model;
                 if (this._stopped) {
@@ -61,8 +86,10 @@ export class ImageClassifier extends EventEmitter<{
 
                 // are we looking at video? Then we always add to the frameQueue
                 if (model.modelParameters.image_input_frames > 1) {
+                    this.emit('profileFeaturesBegin', filename);
                     let resized = await ImageClassifier.resizeImage(model, data);
                     frameQueue.push(resized);
+                    this.emit('profileFeaturesEnd', filename);
                 }
 
                 // still running inferencing?
@@ -76,16 +103,23 @@ export class ImageClassifier extends EventEmitter<{
                     return;
                 }
 
+                this.emit('profileSnapshotHandlerBegin', filename);
+
                 this._runningInference = true;
 
                 try {
+                    let imgSharpMetadata: sharp.Metadata | undefined;
+
                     // if we have single frame then resize now
                     if (model.modelParameters.image_input_frames > 1) {
                         frameQueue = frameQueue.slice(frameQueue.length - model.modelParameters.image_input_frames);
                     }
                     else {
-                        let resized = await ImageClassifier.resizeImage(model, data);
+                        this.emit('profileFeaturesBegin', filename);
+                        imgSharpMetadata = await sharp(data).metadata();
+                        let resized = await ImageClassifier.resizeImage(model, data, imgSharpMetadata);
                         frameQueue = [ resized ];
+                        this.emit('profileFeaturesEnd', filename);
                     }
 
                     let img = frameQueue[frameQueue.length - 1].img;
@@ -103,6 +137,8 @@ export class ImageClassifier extends EventEmitter<{
                         return;
                     }
 
+                    this.emit('profileClassifyBegin', filename);
+
                     let classifyRes = await this._runner.classify(values);
 
                     let timingMs = classifyRes.timing.dsp + classifyRes.timing.classification +
@@ -111,9 +147,26 @@ export class ImageClassifier extends EventEmitter<{
                         timingMs = 1;
                     }
 
-                    this.emit('result', classifyRes,
-                        timingMs,
-                        await img.jpeg({ quality: 90 }).toBuffer());
+                    this.emit('profileClassifyEnd', filename, classifyRes.timing);
+
+                    this.emit('profileEmitResultBegin', filename);
+                    if (model.modelParameters.image_input_frames === 1 &&
+                        imgSharpMetadata &&
+                        imgSharpMetadata.width === model.modelParameters.image_input_width &&
+                        imgSharpMetadata.height === model.modelParameters.image_input_height &&
+                        model.modelParameters.image_channel_count === 3 &&
+                        filename.toLowerCase().endsWith('.jpg')
+                    ) {
+                        // data is already a JPG file in the right encoding, no need to re-encode
+                        this.emit('result', classifyRes, timingMs, data);
+                    }
+                    else {
+                        // data might have changed (e.g. w/h/channel), re-encode the new buffer
+                        this.emit('result', classifyRes,
+                            timingMs,
+                            await img.jpeg({ quality: 90 }).toBuffer());
+                    }
+                    this.emit('profileEmitResultEnd', filename);
                 }
                 finally {
                     this._runningInference = false;
@@ -157,8 +210,8 @@ export class ImageClassifier extends EventEmitter<{
         return this._runner;
     }
 
-    static async resizeImage(model: ModelInformation, data: Buffer) {
-        const metadata = await sharp(data).metadata();
+    static async resizeImage(model: ModelInformation, data: Buffer, metadata?: sharp.Metadata) {
+        metadata = metadata || await sharp(data).metadata();
         if (!metadata.width) {
             throw new Error('ImageClassifier.resize: cannot determine width of image');
         }

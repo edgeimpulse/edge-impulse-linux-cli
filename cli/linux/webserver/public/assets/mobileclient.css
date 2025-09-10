@@ -463,16 +463,23 @@ video {
     background-color: #bcf1fb;
 }
 
+#inferencing-in-progress th:first-child, #inferencing-in-progress td:first-child {
+    overflow: visible;
+    width: 80px;
+}
+
 .badge-camera {
     text-transform: none;
 }
 
 .capture-camera-inner {
-    height: 100%;
     display: inline-block;
     position: relative;
-    height: 100%;
-    object-fit: contain;
+}
+
+.capture-camera-inner img {
+    display: block;
+    width: 100%;
 }
 
 .bounding-box-label {
@@ -4176,6 +4183,11 @@ video {
 
 #preview-image-container {
     position: relative;
+    max-width: 100%;
+}
+
+#preview-image-container img {
+    max-width: 100%;
 }
 
 #thresholds-body {
@@ -4210,4 +4222,24 @@ video {
 }
 .embed-view .header-logo-col {
     display: none;
+}
+
+.embed-view #header-row {
+    border: 0 !important;
+}
+.embed-view #header-row {
+    visibility: hidden;
+}
+.embed-view #capture-camera {
+    margin-top: -68px !important;
+}
+
+.classification-top-overlay {
+    position: absolute;
+    left: 0.5rem;
+    top: 0.5rem;
+    color: white;
+    text-align: left;;
+    font-family: monospace;
+    font-size: 0.75rem;
 }

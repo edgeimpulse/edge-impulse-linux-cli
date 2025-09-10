@@ -1,7 +1,11 @@
-window.WebServer = async () => {
+window.WebServer = async (vmStr) => {
+
+    const vm = JSON.parse(decodeURIComponent(vmStr));
+    console.log('vm', vm);
 
     const els = {
         title: document.querySelector('#header-row h1'),
+        cameraOuterContainer: document.querySelector('#capture-camera .capture-camera-outer'),
         cameraContainer: document.querySelector('#capture-camera .capture-camera-inner'),
         cameraImg: document.querySelector('#capture-camera img'),
         timePerInference: document.querySelector('#time-per-inference'),
@@ -29,6 +33,9 @@ window.WebServer = async () => {
     ];
     let colorIx = 0;
     const labelToColor = { };
+    let isFirstClassification = true;
+    let inferenceIx = 0;
+    let lastClassification;
 
     function switchView(el) {
         for (let k of Object.keys(els.views)) {
@@ -150,6 +157,7 @@ window.WebServer = async () => {
                 inputEl.oninput = () => {
                     if (typeof threshold[k] === 'number') {
                         if (!inputEl.value || isNaN(Number(inputEl.value))) return;
+                        if (k === 'min_score' && Number(inputEl.value) === 0) return;
 
                         threshold[k] = Number(inputEl.value);
                     }
@@ -194,20 +202,75 @@ window.WebServer = async () => {
         bindThresholdSettings(opts.thresholds);
     });
 
+    const onWindowResize = () => {
+        if (els.cameraContainer.naturalWidth === 0) {
+            return;
+        }
+
+        let oldStyleWidth = els.cameraImg.style.width;
+        const containerWidth = els.cameraOuterContainer.getBoundingClientRect().width;
+
+        // height >480
+        if (els.cameraImg.naturalHeight > 480) {
+            // and fits within the container? just display as is
+            if (els.cameraImg.naturalWidth < containerWidth) {
+                els.cameraImg.style.width = els.cameraImg.naturalWidth + 'px';
+            }
+            else {
+                // does not fit within container? just use 100%
+                els.cameraImg.style.width = containerWidth + 'px';
+            }
+        }
+        else {
+            // what if we resize to 480 high?
+            const factor = els.cameraImg.naturalWidth / els.cameraImg.naturalHeight;
+            let newHeight = 480;
+            let newWidth = newHeight * factor;
+
+            // fits within the container? just display as is
+            if (newWidth < containerWidth) {
+                els.cameraImg.style.width = newWidth + 'px';
+            }
+            else {
+                // does not fit within container? just use 100%
+                els.cameraImg.style.width = containerWidth + 'px';
+            }
+        }
+
+        if (oldStyleWidth !== els.cameraImg.style.width && lastClassification) {
+            onClassification({
+                dontUpdateTable: true,
+                ...lastClassification,
+            });
+        }
+    };
+
+    let isFirstImage = true;
     socket.on('image', (opts) => {
+        if (isFirstImage) {
+            els.cameraImg.onload = () => {
+                onWindowResize();
+                els.cameraImg.onload = null;
+            };
+            isFirstImage = false;
+        }
         els.cameraImg.src = opts.img;
     });
+    window.addEventListener('resize', onWindowResize);
 
-    let isFirstClassification = true;
-    let inferenceIx = 0;
+    let lastFivePerfCalPredictions = [];
 
-    socket.on('classification', (opts) => {
+    function onClassification(opts) {
+        lastClassification = opts;
+
         let result = opts.result;
         let modelType = opts.modelType;
 
         els.timePerInference.textContent = opts.timeMs;
         els.additionalInfo.textContent = opts.additionalInfo;
-        els.timePerInferenceContainer.style.display = '';
+        if (!vm.isEmbedView) {
+            els.timePerInferenceContainer.style.display = '';
+        }
         els.additionalInfoContainer.style.display = '';
 
         console.log('classification', opts.result, opts.timeMs);
@@ -218,16 +281,39 @@ window.WebServer = async () => {
 
         els.imageClassify.row.style.display = 'none';
 
-        if (result.classification) {
-            if (isFirstClassification) {
-                for (let ix = 0; ix < Object.keys(result.classification).length; ix++) {
-                    const key = Object.keys(result.classification)[ix];
+        if (result.classification && !opts.dontUpdateTable) {
+            const showOnlyTopResults = Object.keys(result.classification).length > 10 && !result.visual_anomaly_grid;
 
-                    let th = document.createElement('th');
-                    th.scope = 'col';
-                    th.classList.add('px-0', 'text-center');
-                    th.textContent = th.title = key;
-                    els.resultsThead.appendChild(th);
+            if (isFirstClassification) {
+                if (showOnlyTopResults) {
+                    // only 1 results th
+                    {
+                        let th = document.createElement('th');
+                        th.scope = 'col';
+                        th.textContent = th.title = 'Top 5 results';
+                        th.classList.add('px-0', 'text-center');
+                        els.resultsThead.appendChild(th);
+                    }
+
+                    // unless also have anomaly...
+                    if (Object.keys(result.classification).indexOf('anomaly') > -1) {
+                        let th = document.createElement('th');
+                        th.scope = 'col';
+                        th.textContent = th.title = 'anomaly';
+                        th.classList.add('px-0', 'text-center');
+                        els.resultsThead.appendChild(th);
+                    }
+                }
+                else {
+                    for (let ix = 0; ix < Object.keys(result.classification).length; ix++) {
+                        const key = Object.keys(result.classification)[ix];
+
+                        let th = document.createElement('th');
+                        th.scope = 'col';
+                        th.classList.add('px-0', 'text-center');
+                        th.textContent = th.title = key;
+                        els.resultsThead.appendChild(th);
+                    }
                 }
 
                 if (result.visual_anomaly_grid) {
@@ -244,12 +330,31 @@ window.WebServer = async () => {
 
             els.imageClassify.row.style.display = '';
 
-            let conclusion = 'uncertain';
+            let conclusion = vm.hasPerformanceCalibration ? '...' : 'uncertain';
             let highest = Math.max(...Object.values(result.classification));
 
             for (let k of Object.keys(result.classification)) {
                 if (result.classification[k] >= 0.55) {
-                    conclusion = k + ' (' + result.classification[k].toFixed(2) + ')';
+                    if (vm.hasPerformanceCalibration) {
+                        conclusion = k;
+                    }
+                    else {
+                        conclusion = k + ' (' + result.classification[k].toFixed(2) + ')';
+                    }
+                }
+            }
+
+            // for perfcal models, if one of the last 5 predictions was the keyword => select that
+            if (vm.hasPerformanceCalibration) {
+                lastFivePerfCalPredictions.push(conclusion);
+                if (lastFivePerfCalPredictions.length > 5) {
+                    lastFivePerfCalPredictions = lastFivePerfCalPredictions.slice(
+                        lastFivePerfCalPredictions.length - 5);
+                }
+
+                const dedup = Array.from(new Set(lastFivePerfCalPredictions));
+                if (dedup.length === 2 && dedup.find(x => x === '...')) {
+                    conclusion = dedup.find(x => x !== '...');
                 }
             }
 
@@ -264,15 +369,53 @@ window.WebServer = async () => {
             let td1 = document.createElement('td');
             td1.textContent = (++inferenceIx).toString();
             tr.appendChild(td1);
-            for (let k of Object.keys(result.classification)) {
+            if (showOnlyTopResults) {
+                // only print top 5
                 let td = document.createElement('td');
-                td.classList.add('text-center');
-                td.textContent = result.classification[k].toFixed(2);
-                if (result.classification[k] === highest && !isVisualAnomaly) {
-                    td.style.fontWeight = 600;
+
+                let results = [];
+                for (const key of Object.keys(result.classification)) {
+                    if (key === 'anomaly') continue;
+
+                    results.push({
+                        label: key,
+                        value: result.classification[key],
+                    });
+                }
+
+                const top = results.sort((a, b) => b.value - a.value).slice(0, 5);
+                for (let ix = 0; ix < top.length; ix++) {
+                    let span = ix === 0 ? document.createElement('strong') : document.createElement('span');
+                    span.textContent = `${top[ix].label}: ${top[ix].value.toFixed(2)}`;
+                    td.appendChild(span);
+
+                    if (ix !== top.length - 1) {
+                        let commaSpan = document.createElement('span');
+                        commaSpan.textContent = ', ';
+                        td.appendChild(commaSpan);
+                    }
                 }
                 tr.appendChild(td);
+
+                if (Object.keys(result.classification).indexOf('anomaly') > -1) {
+                    let anomalyTd = document.createElement('td');
+                    anomalyTd.classList.add('text-center');
+                    anomalyTd.textContent = result.classification.anomaly.toFixed(2);
+                    tr.appendChild(anomalyTd);
+                }
             }
+            else {
+                for (let k of Object.keys(result.classification)) {
+                    let td = document.createElement('td');
+                    td.classList.add('text-center');
+                    td.textContent = result.classification[k].toFixed(2);
+                    if (result.classification[k] === highest && !isVisualAnomaly) {
+                        td.style.fontWeight = 600;
+                    }
+                    tr.appendChild(td);
+                }
+            }
+
             if (result.visual_anomaly_grid) {
                 let td = document.createElement('td');
                 td.classList.add('text-center');
@@ -300,18 +443,61 @@ window.WebServer = async () => {
             }
 
             els.imageClassify.text.textContent = conclusion;
+
+            // for image classification models, draw overlay on top of the image with top 3 conclusions in embed mode
+            if (vm.sensorType === 'camera' && vm.isEmbedView) {
+                let results = [];
+                for (const key of Object.keys(result.classification)) {
+                    if (key === 'anomaly') continue;
+
+                    results.push({
+                        label: key,
+                        value: result.classification[key],
+                    });
+                }
+
+                // don't change order if we only have 3
+                const top = results.length > 3 ?
+                    results.sort((a, b) => b.value - a.value).slice(0, 3) :
+                    results;
+                if (result.visual_anomaly_grid) {
+                    // also visual AD? add to top results
+                    top.push({
+                        label: 'anomaly',
+                        value: result.visual_anomaly_max,
+                    });
+                }
+
+                let classificationOverlayEl = els.cameraContainer.querySelector('.classification-top-overlay');
+                if (!classificationOverlayEl) {
+                    classificationOverlayEl = document.createElement('div');
+                    classificationOverlayEl.classList.add('classification-top-overlay');
+                    els.cameraContainer.appendChild(classificationOverlayEl);
+                }
+                classificationOverlayEl.textContent = '';
+
+                for (const topRes of top) {
+                    const topDiv = document.createElement('div');
+                    topDiv.textContent = `${topRes.label} (${topRes.value.toFixed(2)})`;
+                    classificationOverlayEl.appendChild(topDiv);
+                }
+
+                els.imageClassify.row.style.display = 'none';
+            }
         }
         if (result.bounding_boxes) {
             let factor = els.cameraImg.naturalHeight / els.cameraImg.clientHeight;
 
-            for (let b of result.bounding_boxes) {
+            for (let b of result.object_tracking || result.bounding_boxes) {
                 let bb = {
                     x: b.x / factor,
                     y: b.y / factor,
                     width: b.width / factor,
                     height: b.height / factor,
-                    label: b.label,
-                    value: b.value
+                    label: 'object_id' in b ?
+                        `${b.label} (ID ${b.object_id})` :
+                        b.label,
+                    value: 'value' in b ? b.value : undefined,
                 };
 
                 if (!labelToColor[bb.label]) {
@@ -345,7 +531,10 @@ window.WebServer = async () => {
                 let label = document.createElement('div');
                 label.classList.add('bounding-box-label');
                 label.style.background = color;
-                label.textContent = bb.label + ' (' + bb.value.toFixed(2) + ')';
+                label.textContent = bb.label;
+                if (typeof bb.value === 'number') {
+                    label.textContent += ' (' + bb.value.toFixed(2) + ')';
+                }
                 if (modelType === 'constrained_object_detection') {
                     el.style.whiteSpace = 'nowrap';
                 }
@@ -406,9 +595,75 @@ window.WebServer = async () => {
                 els.cameraContainer.appendChild(el);
             }
         }
-    });
+    }
+
+    socket.on('classification', onClassification);
 
     if (els.websocketAddress) {
         els.websocketAddress.textContent = `ws://${location.host}`;
     }
+
+    // Here's a helper function that'll loop every second, checks if "classification-top-overlay" is present
+    // and then switches between white/black text automatically. If this element is not created, it just sits idle
+    (async () => {
+        function getAvgBrightness(img, x, y, w, h) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // Scale from CSS coords (relative to image on page) to natural pixel coords
+            const scaleX = img.naturalWidth / img.clientWidth;
+            const scaleY = img.naturalHeight / img.clientHeight;
+
+            const sx = (x - img.getBoundingClientRect().x) * scaleX;
+            const sy = (y - img.getBoundingClientRect().y) * scaleY;
+            const sw = w * scaleX;
+            const sh = h * scaleY;
+
+            const data = ctx.getImageData(sx, sy, sw, sh).data;
+
+            let total = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                total += (r * 299 + g * 587 + b * 114) / 1000;
+            }
+
+            // debug info
+            // const cropCanvas = document.createElement('canvas');
+            // cropCanvas.width  = sw;
+            // cropCanvas.height = sh;
+            // const cctx = cropCanvas.getContext('2d');
+            // cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+            // const cropEl = document.querySelector('#crop') || document.createElement('img');
+            // cropEl.id = 'crop';
+            // cropEl.src = cropCanvas.toDataURL('image/png');
+            // document.body.appendChild(cropEl);
+
+            return total / (data.length / 4);
+        }
+
+        if (!vm.isEmbedView || vm.sensorType !== 'camera') return;
+
+        while (1) {
+            const labelEl = document.querySelector('.classification-top-overlay');
+            if (!labelEl) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue;
+            }
+
+            const rect = labelEl.getBoundingClientRect();
+            const brightness = getAvgBrightness(els.cameraImg, rect.x, rect.y, rect.width, rect.height);
+            if (brightness > 180) {
+                labelEl.style.color = 'black';
+            }
+            else {
+                labelEl.style.color = 'white';
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    })();
 };

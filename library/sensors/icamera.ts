@@ -1,5 +1,5 @@
 import { EventEmitter } from 'tsee';
-import { RunnerHelloResponseModelParameters } from '../classifier/linux-impulse-runner';
+import { RunnerHelloResponseModelParameters } from '../classifier/linux-impulse-runner-types';
 
 export type ICameraInferenceDimensions = {
     width: number,
@@ -16,7 +16,9 @@ export type ICameraStartOptions = {
 
 export interface ICamera extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
-    error: (message: string) => void
+    snapshotForInference: (buffer: Buffer, filename: string) => void,
+    error: (message: string) => void,
+    profilingInfo: (ts: Date, name: string) => void,
 }> {
     init(): Promise<void>;
     listDevices(): Promise<string[]>;

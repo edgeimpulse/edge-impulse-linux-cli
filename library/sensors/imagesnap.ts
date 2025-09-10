@@ -10,7 +10,9 @@ const PREFIX = '\x1b[35m[SNP]\x1b[0m';
 
 export class Imagesnap extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
-    error: (message: string) => void
+    snapshotForInference: (buffer: Buffer, filename: string) => void,
+    error: (message: string) => void,
+    profilingInfo: (ts: Date, name: string) => void,
 }> implements ICamera {
     private _captureProcess?: ChildProcess;
     private _tempDir?: string;
@@ -113,9 +115,12 @@ export class Imagesnap extends EventEmitter<{
                     clearTimeout(this._keepAliveTimeout);
                 }
 
+                this.emit('profilingInfo', new Date(), 'frame_ready');
+
                 try {
                     let data = await fs.promises.readFile(Path.join(this._tempDir, fileName));
                     this.emit('snapshot', data, Path.basename(fileName));
+                    this.emit('snapshotForInference', data, Path.basename(fileName));
 
                     // 2 seconds no new data? trigger timeout
                     if (this._keepAliveTimeout) {

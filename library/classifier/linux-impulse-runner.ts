@@ -5,171 +5,14 @@ import util from 'util';
 import os from 'os';
 import Path from 'path';
 import net from 'net';
+import { LibcWrapper, O_RDWR } from './libcwrapper';
+import koffi from 'koffi';
+import { ModelInformation, RunnerClassifyContinuousRequest, RunnerClassifyRequest, RunnerClassifyResponse, RunnerClassifyResponseSuccess, RunnerHelloInferencingEngine, RunnerHelloRequest, RunnerHelloResponse, RunnerHelloResponseModelParameters, RunnerSetThresholdRequest, RunnerSetThresholdResponse } from './linux-impulse-runner-types';
+import { VALGRIND_SUPPRESSION_FILE } from './valgrind-suppression';
 
-type RunnerErrorResponse = {
-    success: false;
-    error: string;
-};
+const PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
-type RunnerHelloRequest = {
-    hello: 1;
-};
-
-export enum RunnerHelloHasAnomaly {
-    None = 0,
-    KMeans = 1,
-    GMM = 2,
-    VisualGMM = 3,
-}
-
-export enum RunnerHelloInferencingEngine {
-    None = 255,
-    Utensor = 1,
-    Tflite = 2,
-    Cubeai = 3,
-    TfliteFull = 4,
-    TensaiFlow = 5,
-    TensorRT = 6,
-    Drpai = 7,
-    TfliteTidl = 8,
-    Akida = 9,
-    Syntiant = 10,
-    OnnxTidl = 11,
-    Memryx = 12,
-}
-
-export type RunnerHelloResponseModelParameters = {
-    axis_count: number;
-    frequency: number;
-    has_anomaly: RunnerHelloHasAnomaly;
-    /**
-     * NOTE: This field is _experimental_. It might change when object tracking
-     * is released publicly.
-     */
-    has_object_tracking?: boolean;
-    input_features_count: number;
-    image_input_height: number;
-    image_input_width: number;
-    image_input_frames: number;
-    image_channel_count: number;
-    image_resize_mode?: 'none' | 'fit-shortest' | 'fit-longest' | 'squash';
-    interval_ms: number;
-    label_count: number;
-    sensor: number;
-    labels: string[];
-    model_type: 'classification' | 'object_detection' | 'constrained_object_detection';
-    slice_size: undefined | number;
-    use_continuous_mode: undefined | boolean;
-    inferencing_engine?: undefined | RunnerHelloInferencingEngine;
-    thresholds: ({
-        id: number,
-        type: 'anomaly_gmm',
-        min_anomaly_score: number,
-    } | {
-        id: number,
-        type: 'object_detection',
-        min_score: number,
-    } | {
-        id: number,
-        type: 'object_tracking',
-        keep_grace: number,
-        max_observations: number,
-        threshold: number,
-    })[] | undefined,
-};
-
-export type RunnerHelloResponseProject = {
-    deploy_version: number;
-    id: number;
-    name: string;
-    owner: string;
-};
-
-type RunnerHelloResponse = {
-    model_parameters: RunnerHelloResponseModelParameters;
-    project: RunnerHelloResponseProject;
-    success: true;
-} | RunnerErrorResponse;
-
-type RunnerClassifyRequest = {
-    classify: number[];
-};
-
-type RunnerClassifyContinuousRequest = {
-    classify_continuous: number[];
-};
-
-export type RunnerClassifyResponseSuccess = {
-    result: {
-        classification?: { [k: string]: number };
-        bounding_boxes?: {
-            label: string,
-            value: number,
-            x: number,
-            y: number,
-            width: number,
-            height: number,
-        }[],
-        /**
-         * NOTE: This field is _experimental_. It might change when object tracking
-         * is released publicly.
-         */
-        object_tracking?: {
-            object_id: number,
-            label: string,
-            value: number,
-            x: number,
-            y: number,
-            width: number,
-            height: number,
-        }[],
-        visual_anomaly_grid?: {
-            label: string,
-            value: number,
-            x: number,
-            y: number,
-            width: number,
-            height: number,
-        }[],
-        visual_anomaly_max?: number;
-        visual_anomaly_mean?: number;
-        anomaly?: number;
-    },
-    timing: {
-        dsp: number;
-        classification: number;
-        anomaly: number;
-    },
-    info?: string;
-};
-
-type RunnerClassifyResponse = ({
-    success: true;
-} & RunnerClassifyResponseSuccess) | RunnerErrorResponse;
-
-type RunnerSetThresholdRequest = {
-    set_threshold: {
-        id: number,
-        min_anomaly_score: number,
-    } | {
-        id: number,
-        min_score: number,
-    } | {
-        id: number,
-        keep_grace: number,
-        max_observations: number,
-        threshold: number,
-    };
-};
-
-type RunnerSetThresholdResponse = { success: true } | RunnerErrorResponse;
-
-export type ModelInformation = {
-    project: RunnerHelloResponseProject,
-    modelParameters: RunnerHelloResponseModelParameters & {
-        sensorType: 'unknown' | 'accelerometer' | 'microphone' | 'camera' | 'positional'
-    }
-};
+export * from './linux-impulse-runner-types';
 
 export class LinuxImpulseRunner {
     private _path: string;
@@ -182,13 +25,37 @@ export class LinuxImpulseRunner {
     private _id = 0;
     private _stopped = false;
     private _socket: net.Socket | undefined;
+    private _shm: {
+        libc: LibcWrapper,
+        fd: number,
+        buf: ArrayBuffer,
+    } | undefined;
+    private _verbose: boolean;
+    private _shmBehavior: 'auto' | 'always' | 'never';
+    private _valgrind: boolean;
+    private _stdout: Buffer[] = [];
 
     /**
      * Start a new impulse runner
      * @param path Path to the runner's executable
      */
-    constructor(path: string) {
+    constructor(path: string, opts?: {
+        // If enabled, runs the .eim file under valgrind
+        valgrind?: boolean,
+        // Verbose logging
+        verbose?: boolean,
+        // Shared memory behavior for communicating between EIM and Linux Runner. If not set, defaults to 'auto' -
+        // which will use shm if available, and fall back to JSON over TCP otherwise.
+        // If set to 'always' will only use shm to communicate (errors out if not available), if set to 'never'
+        // will always use JSON over TCP socket.
+        shmBehavior?: 'auto' | 'always' | 'never',
+        // If enabled, throws error when shm setup fails (otherwise will fall back to JSON over TCP socket)
+        throwOnShmInitFailed?: boolean,
+    }) {
         this._path = Path.resolve(path);
+        this._valgrind = opts?.valgrind || false;
+        this._verbose = opts?.verbose || false;
+        this._shmBehavior = opts?.shmBehavior || 'auto';
     }
 
     /**
@@ -203,6 +70,8 @@ export class LinuxImpulseRunner {
         if (!await this.exists(this._path)) {
             throw new Error('Runner does not exist: ' + this._path);
         }
+
+        this._stdout = [];
 
         let isSocket = (await fs.promises.stat(this._path)).isSocket();
 
@@ -226,10 +95,42 @@ export class LinuxImpulseRunner {
                 this._runner.kill('SIGINT');
                 // TODO: check if the runner still exists
             }
-            this._runner = spawn(this._path, [ socketPath ]);
+            if (this._valgrind) {
+                const valgrindSuppressionFile = Path.join(tempDir, 'valgrind.supp');
+                await fs.promises.writeFile(valgrindSuppressionFile, VALGRIND_SUPPRESSION_FILE, 'utf-8');
+
+                this._runner = spawn('valgrind', [
+                    '--suppressions=' + valgrindSuppressionFile,
+                    `--leak-check=no`,
+                    `--errors-for-leak-kinds=none`,
+                    `--show-leak-kinds=none`,
+                    `--track-origins=yes`,
+                    `--error-exitcode=1`,
+                    this._path,
+                    socketPath,
+                ]);
+            }
+            else {
+                this._runner = spawn(this._path, [ socketPath ]);
+            }
 
             if (!this._runner.stdout) {
                 throw new Error('stdout is null');
+            }
+
+            if (this._runner.stdout) {
+                this._runner.stdout.on('data', data => {
+                    if (Buffer.isBuffer(data)) {
+                        this._stdout.push(data);
+                    }
+                });
+            }
+            if (this._runner.stderr) {
+                this._runner.stderr.on('data', data => {
+                    if (Buffer.isBuffer(data)) {
+                        this._stdout.push(data);
+                    }
+                });
             }
 
             const onStdout = (data: Buffer) => {
@@ -332,11 +233,30 @@ export class LinuxImpulseRunner {
 
         let helloResp = await this.sendHello();
 
-        if (helloResp.modelParameters.inferencing_engine === RunnerHelloInferencingEngine.TensorRT) {
+        if (this.shouldWarmGpu(helloResp)) {
             await this.runTensorRTWarmup(helloResp.modelParameters);
         }
 
         return helloResp;
+    }
+
+    /**
+     * Whether we should warm up the GPU for this model
+     * @param modelInfo Model information returned from EIM (hello message response)
+     */
+    shouldWarmGpu(modelInfo: ModelInformation): boolean {
+        let props = modelInfo.inferencingEngine?.properties;
+        if (props && props.indexOf('gpu_delegates') > -1) {
+            // if the model uses GPU delegates, we need to warm it up
+            return true;
+        }
+
+        if (modelInfo.modelParameters.inferencing_engine === RunnerHelloInferencingEngine.TensorRT) {
+            // if the model uses TensorRT, we need to warm it up
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -346,10 +266,10 @@ export class LinuxImpulseRunner {
         this._stopped = true;
 
         if (!this._runner) {
-            return Promise.resolve();
+            return Buffer.concat(this._stdout).toString('utf-8');
         }
 
-        return new Promise < void > ((resolve) => {
+        await new Promise<void>((resolve) => {
             if (this._runner) {
                 this._runner.on('close', code => {
                     resolve();
@@ -365,6 +285,8 @@ export class LinuxImpulseRunner {
                 resolve();
             }
         });
+
+        return Buffer.concat(this._stdout).toString('utf-8');
     }
 
     /**
@@ -386,7 +308,22 @@ export class LinuxImpulseRunner {
      *             https://docs.edgeimpulse.com/docs/running-your-impulse-locally-1
      */
     async classify(data: number[], timeout?: number): Promise<RunnerClassifyResponseSuccess> {
-        let resp = await this.send<RunnerClassifyRequest, RunnerClassifyResponse>({ classify: data }, timeout);
+
+        let resp: RunnerClassifyResponse;
+
+        if (this._shm) {
+            const features = new Float32Array(this._shm.buf, 0, data.length);
+            features.set(data);
+
+            resp = await this.send<RunnerClassifyRequest, RunnerClassifyResponse>({
+                classify_shm: {
+                    elements: data.length,
+                },
+            }, timeout);
+        }
+        else {
+            resp = await this.send<RunnerClassifyRequest, RunnerClassifyResponse>({ classify: data }, timeout);
+        }
         if (!resp.success) {
             throw new Error(resp.error);
         }
@@ -402,10 +339,25 @@ export class LinuxImpulseRunner {
      * @param data An array of numbers, already formatted according to the rules in
      *             https://docs.edgeimpulse.com/docs/running-your-impulse-locally-1
      */
-    async classifyContinuous(data: number[]): Promise<RunnerClassifyResponseSuccess> {
-        let resp = await this.send<RunnerClassifyContinuousRequest, RunnerClassifyResponse>({
-            classify_continuous: data,
-        });
+    async classifyContinuous(data: number[], timeout?: number): Promise<RunnerClassifyResponseSuccess> {
+        let resp: RunnerClassifyResponse;
+
+        if (this._shm) {
+            const features = new Float32Array(this._shm.buf, 0, data.length);
+            features.set(data);
+
+            resp = await this.send<RunnerClassifyContinuousRequest, RunnerClassifyResponse>({
+                classify_continuous_shm: {
+                    elements: data.length,
+                },
+            }, timeout);
+        }
+        else {
+            resp = await this.send<RunnerClassifyContinuousRequest, RunnerClassifyResponse>({
+                classify_continuous: data
+            }, timeout);
+        }
+
         if (!resp.success) {
             throw new Error(resp.error);
         }
@@ -484,9 +436,65 @@ export class LinuxImpulseRunner {
                 sensor = 'positional'; break;
         }
 
+        this._shm = undefined;
+
+        if (!resp.features_shm) {
+            if (this._shmBehavior === 'always') {
+                const errorStr = resp.features_shm_error ? ` (error: "${resp.features_shm_error}")` : ``;
+                throw new Error(`shmBehavior is "always", but ${Path.basename(this._path)} does not support shm (features_shm is NULL). ` +
+                    `Set to "auto" to fall back to JSON over TCP socket.${errorStr}`);
+            }
+
+            if (resp.features_shm_error && this._verbose) {
+                console.log(PREFIX, `Failed to initialize shared memory (EIM side): ` + resp.features_shm_error);
+            }
+        }
+
+        if (resp.features_shm && (this._shmBehavior === 'always' || this._shmBehavior === 'auto')) {
+            let libc: koffi.IKoffiLib | undefined;
+
+            try {
+                if (process.platform === 'linux') {
+                    libc = koffi.load('librt.so.1');
+                }
+                else if (process.platform === 'darwin') {
+                    libc = koffi.load('libc.dylib');
+                }
+
+                if (libc) {
+                    const libcWrapper = new LibcWrapper(libc);
+
+                    const fd = libcWrapper.shmOpen(resp.features_shm.name, O_RDWR, 0o666);
+                    const buf = libcWrapper.mmapToArrayBuffer(fd, resp.features_shm.size_bytes);
+
+                    this._shm = {
+                        libc: libcWrapper,
+                        fd: fd,
+                        buf: buf,
+                    };
+
+                    if (this._verbose) {
+                        console.log(PREFIX, `Initialized shared memory (${resp.features_shm.name})`);
+                    }
+                }
+            }
+            catch (ex2) {
+                const ex = <Error>ex2;
+                if (this._shmBehavior === 'always') {
+                    throw new Error(`Failed to initialize shared memory (${resp.features_shm.name}): ` +
+                        ex.message || ex.toString());
+                }
+                if (this._verbose) {
+                    console.log(PREFIX, `Failed to initialize shared memory (${resp.features_shm.name}): ` +
+                        ex.message || ex.toString());
+                }
+            }
+        }
+
         let data: ModelInformation = {
             project: resp.project,
-            modelParameters: { ...resp.model_parameters, sensorType: sensor }
+            modelParameters: { ...resp.model_parameters, sensorType: sensor },
+            inferencingEngine: { ...resp.inferencing_engine || undefined}
         };
 
         if (!data.modelParameters.model_type) {
@@ -504,7 +512,11 @@ export class LinuxImpulseRunner {
     private send<T extends object, U>(msg: T, timeoutArg?: number) {
 
         return new Promise<U>((resolve, reject) => {
-            let timeout = typeof timeoutArg === 'number' ? timeoutArg : 5000;
+            const defaultTimeout = this._valgrind ?
+                120_000 : // valgrind takes its time (esp on x86)
+                10_000;
+
+            let timeout = typeof timeoutArg === 'number' ? timeoutArg : defaultTimeout;
 
             if (!this._socket) {
                 console.trace('Runner is not initialized (runner.send)');
@@ -525,12 +537,15 @@ export class LinuxImpulseRunner {
 
             this._runnerEe.on('message', onData);
 
-            this._socket.write(JSON.stringify(Object.assign(msg, {
+            const body = JSON.stringify(Object.assign(msg, {
                 id: msgId
-            })) + '\n');
+            }));
+
+            this._socket.write(body + '\n');
 
             setTimeout(() => {
-                reject(`'No response within ${timeout / 1000} seconds'`);
+                reject(`No response within ${timeout / 1000} seconds:\n\n` +
+                    Buffer.concat(this._stdout).toString('utf-8'));
             }, timeout);
 
             const onExit = (code: number) => {
@@ -562,14 +577,14 @@ export class LinuxImpulseRunner {
     }
 
     private async runTensorRTWarmup(params: RunnerHelloResponseModelParameters) {
-        const PREFIX = '\x1b[33m[TRT]\x1b[0m';
+        const TRT_PREFIX = '\x1b[33m[TRT]\x1b[0m';
 
         const spinner = [ "|", "/", "-", "\\" ];
         let progressIv: NodeJS.Timeout | undefined;
         try {
             let i = 0;
             progressIv = setInterval(() => {
-                console.log(PREFIX, 'Loading model into GPU, this can take several minutes on the first run... ' +
+                console.log(TRT_PREFIX, 'Loading model into GPU, this can take several minutes on the first run... ' +
                     spinner[i] + '\x1b[1A');
                 i = (i < spinner.length - 1) ? i + 1 : 0;
             }, 1000);
@@ -585,17 +600,17 @@ export class LinuxImpulseRunner {
                 clearInterval(progressIv);
             }
 
-            console.log(PREFIX, 'Loading model into GPU, this can take several minutes on the first run... ' +
+            console.log(TRT_PREFIX, 'Loading model into GPU, this can take several minutes on the first run... ' +
                 'OK (' + totalTime + 'ms.)');
 
             if (totalTime > 5000) {
                 // https://stackoverflow.com/questions/20010199/how-to-determine-if-a-process-runs-inside-lxc-docker
                 if (await this.exists('/.dockerenv')) {
-                    console.log(PREFIX, '');
-                    console.log(PREFIX, 'If you run this model in Docker you can cache the GPU-optimized model for faster startup times');
-                    console.log(PREFIX, 'by mounting the', + Path.dirname(this._path), 'directory into the container.');
-                    console.log(PREFIX, 'See https://docs.edgeimpulse.com/docs/run-inference/docker#running-offline');
-                    console.log(PREFIX, '');
+                    console.log(TRT_PREFIX, '');
+                    console.log(TRT_PREFIX, 'If you run this model in Docker you can cache the GPU-optimized model for faster startup times');
+                    console.log(TRT_PREFIX, 'by mounting the', + Path.dirname(this._path), 'directory into the container.');
+                    console.log(TRT_PREFIX, 'See https://docs.edgeimpulse.com/docs/run-inference/docker#running-offline');
+                    console.log(TRT_PREFIX, '');
                 }
             }
         }

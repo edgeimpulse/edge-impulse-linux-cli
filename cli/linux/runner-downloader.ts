@@ -19,11 +19,16 @@ export class RunnerDownloader extends EventEmitter<{
 
         let downloadType: string;
         if (process.platform === 'darwin') {
-            if (process.arch !== 'x64' && process.arch !== 'arm64') {
+            if (process.arch === 'x64') {
+                downloadType = 'runner-mac-x86_64';
+            }
+            else if (process.arch === 'arm64') {
+                downloadType = 'runner-mac-arm64';
+            }
+            else {
                 throw new Error('Unsupported architecture "' + process.arch + '", only ' +
                     'x64 or arm64 supported for now');
             }
-            downloadType = 'runner-mac-x86_64';
         }
         else if (process.platform === 'linux') {
             if (process.arch === 'arm') {
@@ -80,6 +85,9 @@ export class RunnerDownloader extends EventEmitter<{
                 }
                 else if (await checkFileExists('/usr/lib/libQnnTFLiteDelegate.so')) {
                     downloadType = 'runner-linux-aarch64-qnn';
+                }
+                else if (await this.isGpuDelegateAvailable()) {
+                    downloadType = 'runner-linux-aarch64-gpu';
                 }
                 else {
                     downloadType = 'runner-linux-aarch64';
@@ -203,6 +211,15 @@ export class RunnerDownloader extends EventEmitter<{
             console.log(BUILD_PREFIX, d.trim());
         });
     }
+
+    private static async isGpuDelegateAvailable() {
+        const gpuDelegatePath = await spawnHelper('find', [ '/usr/lib', '-type', 'f', '-name', 'libtensorflowlite_gpu_delegate.so' ]);
+        if (gpuDelegatePath.trim() !== '') {
+            return true;
+        }
+        return false;
+    }
+
 }
 
 export class RunnerModelPath {

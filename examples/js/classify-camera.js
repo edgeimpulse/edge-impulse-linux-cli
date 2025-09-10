@@ -48,9 +48,7 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, Imagesnap, RunnerHelloHasAn
             camera = new Imagesnap();
         }
         else if (process.platform === 'linux') {
-            camera = new Ffmpeg(false /* verbose */, {
-                scaleAndCropInPipeline: true,
-            });
+            camera = new Ffmpeg(false /* verbose */);
         }
         else {
             throw new Error('Unsupported platform "' + process.platform + '"');

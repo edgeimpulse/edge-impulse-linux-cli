@@ -49,9 +49,7 @@ import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-ru
             camera = new Imagesnap();
         }
         else if (process.platform === 'linux') {
-            camera = new GStreamer(false /* verbose */, {
-                scaleAndCropInPipeline: true,
-            });
+            camera = new GStreamer(false /* verbose */);
         }
         else {
             throw new Error('Unsupported platform "' + process.platform + '"');

@@ -2,6 +2,8 @@ import html from './escape-html-template-tag';
 
 export type IndexViewModel = {
     isEmbedView: boolean;
+    hasPerformanceCalibration: boolean;
+    sensorType: 'camera' | 'audio';
 };
 
 export const renderIndexView = (vm: IndexViewModel) => {
@@ -42,7 +44,7 @@ export const renderIndexView = (vm: IndexViewModel) => {
             <div class="col-auto mt-3 mb-3 pr-0 header-logo-col">
                 <img src="assets/mark.svg">
             </div>
-            <div class="col align-middle">
+            <div class="col align-middle header-title-col">
                 <h1 class="text-dark mb-0">...</h1>
             </div>
             <div class="pl-0 col-auto text-right my--1 pr-1">
@@ -89,27 +91,53 @@ export const renderIndexView = (vm: IndexViewModel) => {
         </div>
         <div class="row ${vm.isEmbedView ? `mt-0` : `mt-4`}" id="capture-camera" style="display: none; position: relative;">
             <div class="col">
-                <div class="card ${vm.isEmbedView ? `border-top-0` : `shadow`}" style="position: relative;">
+                <div class="card ${vm.isEmbedView ? `border-top-0 border-bottom-0` : `shadow`}" style="position: relative;">
                     <div class="card-body text-center">
-                        <div class="row mb-4">
+                        <div class="row mb-4" ${vm.sensorType !== 'camera' ? html`style="display: none"` : ``}>
                             <div class="col">
-                                <div class="capture-camera-inner">
-                                    <img style="min-height: 480px">
+                                <div class="capture-camera-outer">
+                                    <div class="capture-camera-inner">
+                                        <img>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                        ${vm.sensorType === 'audio' ? html`
+                        <div class="row mb-4">
+                            <div class="col text-center">
+                                <div class="sampling-circle"></div>
+                                <div class="sampling-seconds-left text-gray" id="inferencing-time-left">Listening...</div>
+                            </div>
+                        </div>
+                        ` : ``}
                         <div class="row mt-2" id="image-classification-conclusion">
                             <h2 class="col"></h2>
                         </div>
                         <div class="row mt-2" id="time-per-inference-container" style="display: none">
                             <div class="col text-xs">Time per inference: <span id="time-per-inference"></span> ms.</div>
                         </div>
+                        ${vm.hasPerformanceCalibration ? html`
+                        <div class="row mt-3 mb--3">
+                            <div class="col text-center text-xs text-gray">
+                                <em>
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    ${vm.isEmbedView ? html`
+                                    Performance calibration is configured for your project.
+                                    If no event is detected, '...' is displayed.
+                                    ` : html`
+                                    Performance calibration is configured for your project.
+                                    If no event is detected, all values are 0.
+                                    `}
+                                </em>
+                            </div>
+                        </div>
+                        ` : ``}
                         <div class="row mt-2" id="additional-info-container" style="white-space: pre-wrap; display: none">
                             <div class="col text-xs"><span id="additional-info"></span></div>
                         </div>
                     </div>
 
-                    <section id="inferencing-in-progress">
+                    <section id="inferencing-in-progress" ${vm.isEmbedView ? html`style="display: none"` : ``}>
                         <table class="table align-items-center table-flush table-hover" id="results-table" style="display: none;">
                             <thead class="thead-light">
                                 <tr>
@@ -141,7 +169,7 @@ export const renderIndexView = (vm: IndexViewModel) => {
     <script type="text/javascript" src="/socket.io/socket.io.js"></script>
     <script type="text/javascript" src="/webserver.js"></script>
     <script>
-        window.WebServer();
+        window.WebServer("${encodeURIComponent(JSON.stringify(vm))}");
     </script>
 </body>
 </html>

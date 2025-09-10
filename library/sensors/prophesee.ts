@@ -12,7 +12,9 @@ const PREFIX = '\x1b[34m[PRO]\x1b[0m';
 
 export class Prophesee extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
+    snapshotForInference: (buffer: Buffer, filename: string) => void,
     error: (message: string) => void,
+    profilingInfo: (ts: Date, name: string) => void,
 }> implements ICamera {
     private _captureProcess?: ChildProcess;
     private _tempDir?: string;
@@ -119,6 +121,8 @@ export class Prophesee extends EventEmitter<{
                     let hash = crypto.createHash('sha256').update(data).digest('hex');
                     if (hash !== this._lastHash) {
                         this.emit('snapshot', data, Path.basename(fileName));
+                        this.emit('snapshotForInference', data, Path.basename(fileName));
+
                         lastPhoto = Date.now();
                     }
                     else if (this._verbose) {
