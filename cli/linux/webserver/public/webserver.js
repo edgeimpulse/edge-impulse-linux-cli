@@ -450,6 +450,8 @@ window.WebServer = async (vmStr) => {
                 for (const key of Object.keys(result.classification)) {
                     if (key === 'anomaly') continue;
 
+                    if (result.classification[key] === 0) continue;
+
                     results.push({
                         label: key,
                         value: result.classification[key],
@@ -457,7 +459,7 @@ window.WebServer = async (vmStr) => {
                 }
 
                 // don't change order if we only have 3
-                const top = results.length > 3 ?
+                const top = results.length > 1 ?
                     results.sort((a, b) => b.value - a.value).slice(0, 3) :
                     results;
                 if (result.visual_anomaly_grid) {
@@ -485,6 +487,49 @@ window.WebServer = async (vmStr) => {
                 els.imageClassify.row.style.display = 'none';
             }
         }
+        else if (result.freeform) {
+            if (isFirstClassification) {
+                for (let ix = 0; ix < result.freeform.length; ix++) {
+                    let th = document.createElement('th');
+                    th.scope = 'col';
+                    th.classList.add('px-0', 'text-center');
+                    th.textContent = th.title = `Tensor ${ix}`;
+                    els.resultsThead.appendChild(th);
+                }
+
+                els.resultsTable.style.display = '';
+                isFirstClassification = false;
+            }
+
+            let tr = document.createElement('tr');
+            let td1 = document.createElement('td');
+            td1.textContent = (++inferenceIx).toString();
+            tr.appendChild(td1);
+
+            for (let tensor of result.freeform) {
+                let td = document.createElement('td');
+                td.classList.add('text-center', 'text-monospace');
+                td.textContent = tensor.map(x => x.toFixed(4)).join(', ');
+                tr.appendChild(td);
+            }
+
+            tr.classList.add('active');
+            setTimeout(() => {
+                tr.classList.remove('active');
+            }, 200);
+            if (els.resultsTbody.firstChild) {
+                els.resultsTbody.insertBefore(tr, els.resultsTbody.firstChild);
+            }
+            else {
+                els.resultsTbody.appendChild(tr);
+            }
+
+            // keep max n rows
+            if (els.resultsTbody.childElementCount >= 100) {
+                els.resultsTbody.removeChild(els.resultsTbody.lastChild);
+            }
+        }
+
         if (result.bounding_boxes) {
             let factor = els.cameraImg.naturalHeight / els.cameraImg.clientHeight;
 

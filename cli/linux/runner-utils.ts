@@ -6,7 +6,7 @@ import multer from 'multer';
 import sharp, { FitEnum } from 'sharp';
 import { Server as SocketIoServer } from 'socket.io';
 import type { EdgeImpulseApi } from '../../sdk/studio/api';
-import { type LinuxImpulseRunner, type ModelInformation, RunnerHelloHasAnomaly } from '../../library/classifier/linux-impulse-runner';
+import { type LinuxImpulseRunner, type ModelInformation, RunnerBlockThreshold, RunnerHelloHasAnomaly } from '../../library/classifier/linux-impulse-runner';
 import { type InferenceServerModelViewModel, renderInferenceServerView } from './webserver/views/inference-server-view';
 import { asyncMiddleware } from './webserver/middleware/asyncMiddleware';
 import { ImageClassifier, FitMethodMap, FitMethodStudioMap } from '../../library/classifier/image-classifier';
@@ -15,7 +15,7 @@ import { DEFAULT_SOCKET_IO_V2_PARAMS, startEio3Interceptor } from '../../cli-com
 import ws from 'ws';
 import Url from 'url';
 import { renderIndexView } from './webserver/views';
-import { mapPredictionToOriginalImage, mapResizedPixelResultsBoundingBox } from '../../shared/views/project/bounding-box-scaling';
+import { mapPredictionToOriginalImage, } from '../../shared/views/project/bounding-box-scaling';
 import { AudioClassifier } from '../../library';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
@@ -212,6 +212,10 @@ export function startApiServer(opts: {
 
         let response = await runner.classify(body.features);
 
+        filterClassificationResultsOnMinScore(
+            response.result.classification || {},
+            getClassificationMinScore(model.modelParameters.thresholds || []));
+
         res.header('Content-Type', 'application/json');
         return res.end(JSON.stringify(response, null, 4) + '\n');
     }));
@@ -261,11 +265,22 @@ export function startApiServer(opts: {
 
         // Helper function to transform bounding box and anomaly grid coordinates
         const transformCoordinates = (bb: { x: number, y: number, width: number, height: number }) => {
-            const mapped = mapResizedPixelResultsBoundingBox({
-                box: bb,
-                resized: resized,
-                mode: FitMethodStudioMap[model.modelParameters.image_resize_mode || 'none'],
-            });
+            const mapped = mapPredictionToOriginalImage(
+                FitMethodStudioMap[model.modelParameters.image_resize_mode || 'none'],
+                {
+                    label: 'test',
+                    x: bb.x / resized.newWidth,
+                    y: bb.y / resized.newHeight,
+                    width: bb.width / resized.newWidth,
+                    height: bb.height / resized.newHeight,
+                },
+                {
+                    clientWidth: resized.originalWidth,
+                    clientHeight: resized.originalHeight,
+                    referenceWidth: resized.newWidth,
+                    referenceHeight: resized.newHeight,
+                },
+            );
 
             bb.x = mapped.x;
             bb.y = mapped.y;
@@ -273,9 +288,22 @@ export function startApiServer(opts: {
             bb.height = mapped.height;
         };
 
+        filterClassificationResultsOnMinScore(
+            response.result.classification || {},
+            getClassificationMinScore(model.modelParameters.thresholds || []));
+
         // Transform all bounding boxes and anomaly grid coordinates
         (response.result.bounding_boxes || []).forEach(transformCoordinates);
         (response.result.visual_anomaly_grid || []).forEach(transformCoordinates);
+
+        // This info is needed to show client side crop masking for 'fit-short' mode
+        response.result.resizeMode = model.modelParameters.image_resize_mode || 'none';
+        response.result.resized = {
+            originalWidth: resized.originalWidth,
+            originalHeight: resized.originalHeight,
+            newWidth: resized.newWidth,
+            newHeight: resized.newHeight,
+        };
 
         res.header('Content-Type', 'application/json');
         return res.end(JSON.stringify(response, null, 4) + '\n');
@@ -431,6 +459,11 @@ export function startWebServer(opts: ({
         });
 
         imgClassifier.on('result', (result, timeMs, imgAsJpg) => {
+
+            filterClassificationResultsOnMinScore(
+                result.result.classification || {},
+                getClassificationMinScore(model.modelParameters.thresholds || []));
+
             let resultsMapped = structuredClone(result.result);
 
             // result is scaled to the impulse; rescale to original cam resolution if required
@@ -457,6 +490,8 @@ export function startWebServer(opts: ({
                 result: resultsMapped,
                 timeMs: timeMs,
                 additionalInfo: result.info,
+                min_score: getClassificationMinScore(
+                    model.modelParameters.thresholds || []),
             });
 
             for (const client of wss.clients) {
@@ -697,8 +732,8 @@ function scaleAndMapBbs<T extends BaseBox, TExtra extends object = {}>(
             ...mapPredictionToOriginalImage(FitMethodStudioMap[model.modelParameters.image_resize_mode || 'squash'], bb, {
                 clientWidth: cameraResolution.width,
                 clientHeight: cameraResolution.height,
-                naturalHeight: cameraResolution.height,
-                naturalWidth: cameraResolution.width,
+                referenceWidth: model.modelParameters.image_input_width,
+                referenceHeight: model.modelParameters.image_input_height,
             }),
         };
         newBb.x = Math.round(newBb.x);
@@ -709,4 +744,35 @@ function scaleAndMapBbs<T extends BaseBox, TExtra extends object = {}>(
     }
 
     return mapped;
+}
+
+function getClassificationMinScore(
+    thresholds: RunnerBlockThreshold[]) : number  {
+
+    let minScore : number = 0.001;
+
+    // find the 'classification' entry
+    const thresholdObj = (thresholds || []).find(
+        x => x.type === 'classification');
+
+    // grab the 'min_score' value
+    if (thresholdObj
+        && (Object.keys(thresholdObj).indexOf('min_score') > -1)) {
+        minScore = (<any>thresholdObj).min_score;
+    }
+
+    return minScore;
+}
+
+function filterClassificationResultsOnMinScore(
+    classifications: { [k: string]: number },
+    minScore: number) {
+
+    let filteredClassificationResults: { [k: string]: number } = {};
+    for (const [ key, value ] of Object.entries(classifications)) {
+       if (value < minScore) {
+        // similar to Studio
+        classifications[key] = 0;
+       }
+    }
 }

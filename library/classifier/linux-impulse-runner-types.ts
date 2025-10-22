@@ -31,6 +31,26 @@ export enum RunnerHelloInferencingEngine {
     Memryx = 12,
 }
 
+export type RunnerBlockThreshold = {
+        id: number,
+        type: 'anomaly_gmm',
+        min_anomaly_score: number,
+    } | {
+        id: number,
+        type: 'object_detection',
+        min_score: number,
+    } | {
+        id: number,
+        type: 'object_tracking',
+        keep_grace: number,
+        max_observations: number,
+        threshold: number,
+    } | {
+        id: number,
+        type: 'classification',
+        min_score: number,
+};
+
 export type RunnerHelloResponseModelParameters = {
     axis_count: number;
     frequency: number;
@@ -50,26 +70,12 @@ export type RunnerHelloResponseModelParameters = {
     label_count: number;
     sensor: number;
     labels: string[];
-    model_type: 'classification' | 'object_detection' | 'constrained_object_detection';
+    model_type: 'classification' | 'object_detection' | 'constrained_object_detection' | 'freeform';
     slice_size: undefined | number;
     use_continuous_mode: undefined | boolean;
     has_performance_calibration: boolean | undefined;
     inferencing_engine?: undefined | RunnerHelloInferencingEngine;
-    thresholds: ({
-        id: number,
-        type: 'anomaly_gmm',
-        min_anomaly_score: number,
-    } | {
-        id: number,
-        type: 'object_detection',
-        min_score: number,
-    } | {
-        id: number,
-        type: 'object_tracking',
-        keep_grace: number,
-        max_observations: number,
-        threshold: number,
-    })[] | undefined,
+    thresholds: RunnerBlockThreshold[] | undefined,
 };
 
 export type RunnerHelloResponseProject = {
@@ -149,6 +155,14 @@ export type RunnerClassifyResponseSuccess = {
         visual_anomaly_max?: number;
         visual_anomaly_mean?: number;
         anomaly?: number;
+        resizeMode?: 'none' | 'fit-shortest' | 'fit-longest' | 'squash';
+        resized?: {
+            originalWidth: number,
+            originalHeight: number,
+            newWidth: number,
+            newHeight: number,
+        };
+        freeform?: number[][];
     },
     timing: {
         dsp: number;

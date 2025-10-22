@@ -7,7 +7,7 @@ import Path from 'path';
 import net from 'net';
 import { LibcWrapper, O_RDWR } from './libcwrapper';
 import koffi from 'koffi';
-import { ModelInformation, RunnerClassifyContinuousRequest, RunnerClassifyRequest, RunnerClassifyResponse, RunnerClassifyResponseSuccess, RunnerHelloInferencingEngine, RunnerHelloRequest, RunnerHelloResponse, RunnerHelloResponseModelParameters, RunnerSetThresholdRequest, RunnerSetThresholdResponse } from './linux-impulse-runner-types';
+import { ModelInformation, RunnerBlockThreshold, RunnerClassifyContinuousRequest, RunnerClassifyRequest, RunnerClassifyResponse, RunnerClassifyResponseSuccess, RunnerHelloInferencingEngine, RunnerHelloRequest, RunnerHelloResponse, RunnerHelloResponseModelParameters, RunnerSetThresholdRequest, RunnerSetThresholdResponse } from './linux-impulse-runner-types';
 import { VALGRIND_SUPPRESSION_FILE } from './valgrind-suppression';
 
 const PREFIX = '\x1b[33m[RUN]\x1b[0m';
@@ -368,21 +368,7 @@ export class LinuxImpulseRunner {
         };
     }
 
-    async setLearnBlockThreshold(obj: {
-        id: number,
-        type: 'anomaly_gmm',
-        min_anomaly_score: number,
-    } | {
-        id: number,
-        type: 'object_detection',
-        min_score: number,
-    } | {
-        id: number,
-        type: 'object_tracking',
-        keep_grace: number,
-        max_observations: number,
-        threshold: number,
-    }) {
+    async setLearnBlockThreshold(obj: RunnerBlockThreshold) {
         let resp: RunnerSetThresholdResponse;
         if (obj.type === 'anomaly_gmm') {
             resp = await this.send<RunnerSetThresholdRequest, RunnerSetThresholdResponse>({
@@ -407,6 +393,14 @@ export class LinuxImpulseRunner {
                     keep_grace: obj.keep_grace,
                     max_observations: obj.max_observations,
                     threshold: obj.threshold,
+                }
+            });
+        }
+        else if (obj.type === 'classification') {
+            resp = await this.send<RunnerSetThresholdRequest, RunnerSetThresholdResponse>({
+                set_threshold: {
+                    id: obj.id,
+                    min_score: obj.min_score,
                 }
             });
         }

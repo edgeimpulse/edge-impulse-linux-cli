@@ -1297,7 +1297,7 @@ export class GStreamer extends EventEmitter<{
         return d;
     }
 
-        private async listQtiqmmsrcOnYupikDevices(): Promise<GStreamerDevice[]> {
+    private async listQtiqmmsrcOnYupikDevices(): Promise<GStreamerDevice[]> {
 
         const hasPlugin: boolean = await this.hasGstPlugin('qtiqmmfsrc');
         if (!hasPlugin) {
@@ -1317,7 +1317,7 @@ export class GStreamer extends EventEmitter<{
             {
                 caps: caps,
                 deviceClass: '',
-                id: 'qtiqmmfsrc-0',
+                id: '0',
                 inCapMode: false,
                 name: 'Camera 0',
                 rawCaps: [],
@@ -1326,7 +1326,7 @@ export class GStreamer extends EventEmitter<{
             {
                 caps: caps,
                 deviceClass: '',
-                id: 'qtiqmmfsrc-1',
+                id: '1',
                 inCapMode: false,
                 name: 'Camera 1',
                 rawCaps: [],
@@ -1335,11 +1335,11 @@ export class GStreamer extends EventEmitter<{
             {
                 caps: caps,
                 deviceClass: '',
-                id: 'qtiqmmfsrc-2',
+                id: '2',
                 inCapMode: false,
                 name: 'Camera 2',
                 rawCaps: [],
-                videoSource: 'qtiqmmfsrc2',
+                videoSource: 'qtiqmmfsrc',
             }
         ];
 

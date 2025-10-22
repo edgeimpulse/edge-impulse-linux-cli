@@ -4184,6 +4184,7 @@ video {
 #preview-image-container {
     position: relative;
     max-width: 100%;
+    display: inline-block;
 }
 
 #preview-image-container img {
@@ -4242,4 +4243,44 @@ video {
     text-align: left;;
     font-family: monospace;
     font-size: 0.75rem;
+}
+
+.label-mask-left {
+    position: absolute;
+    border: 0;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+.label-mask-right {
+    position: absolute;
+    border: 0;
+    height: 100%;
+    right: 0;
+    top: 0;
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+.label-mask-top {
+    position: absolute;
+    border: 0;
+    width: 100%;
+    left: 0;
+    top: 0;
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+.label-mask-bottom {
+    position: absolute;
+    border: 0;
+    width: 100%;
+    left: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
 }

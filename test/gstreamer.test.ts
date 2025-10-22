@@ -5040,6 +5040,7 @@ Freeing pipeline ...
                     }
                 }
             });
+            assert.equal(devices.length, 2);
             assert.equal(devices[0].id, '/dev/video2');
             assert.equal(devices[0].name, 'Logitech BRIO (/dev/video2)');
             assert.equal(devices[0].videoSource, 'v4l2src');
@@ -5195,8 +5196,36 @@ Freeing pipeline ...
                     "framerate": 30
                   }
             ]));
+
+            assert.equal(devices[1].id, '/dev/video4');
+            assert.equal(devices[1].name, 'Logitech BRIO (/dev/video4)');
+            assert.equal(devices[1].videoSource, 'v4l2src');
+        });
+
+        it("Triple Vision AI Industrial Camera", async () => {
+            const gstMonitorOutput = await fs.readFile('./test/triple-vision-camera-monitor.txt', { encoding: 'utf-8' });
+            const gstInspectOutput = await fs.readFile('./test/qualcomm-rb3-inspect.txt', { encoding: 'utf-8' });
+
+            const devices = await testGetDevices({
+                gstDeviceMonitor: () => gstMonitorOutput,
+                gstInspect: () => gstInspectOutput,
+                modeOverride: 'qualcomm-yupik'
+            });
+            assert.equal(devices.length, 3);
+            assert.equal(devices[0].id, '0');
+            assert.equal(devices[0].name, 'Camera 0 (0)');
+            assert.equal(devices[0].videoSource, 'qtiqmmfsrc');
+
+            assert.equal(devices[1].id, '1');
+            assert.equal(devices[1].name, 'Camera 1 (1)');
+            assert.equal(devices[1].videoSource, 'qtiqmmfsrc');
+
+            assert.equal(devices[2].id, '2');
+            assert.equal(devices[2].name, 'Camera 2 (2)');
+            assert.equal(devices[2].videoSource, 'qtiqmmfsrc');
         });
     });
+
 
     describe("gstreamer command", () => {
         // https://github.com/edgeimpulse/edgeimpulse/issues/9506

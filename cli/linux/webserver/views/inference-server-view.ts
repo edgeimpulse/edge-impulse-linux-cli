@@ -1,7 +1,7 @@
 import html from './escape-html-template-tag';
 
 export type InferenceServerModelViewModel = {
-    modelType: 'classification' | 'object_detection' | 'constrained_object_detection',
+    modelType: 'classification' | 'object_detection' | 'constrained_object_detection' | 'freeform',
 } & ({
     mode: 'features',
     featuresCount: number,
@@ -155,7 +155,13 @@ export const renderInferenceServerView = (vm: InferenceServerViewModel) => {
                                             <h4>Preview</h4>
                                         </div>
                                     </div>
-                                    <div id="preview-image-container" class="mt-3"><img id="preview-image"></img></div>
+                                    <div id="preview-image-container" class="mt-3">
+                                        <img id="preview-image"></img>
+                                        <div class="label-mask label-mask-left"></div>
+                                        <div class="label-mask label-mask-right"></div>
+                                        <div class="label-mask label-mask-top"></div>
+                                        <div class="label-mask label-mask-bottom"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

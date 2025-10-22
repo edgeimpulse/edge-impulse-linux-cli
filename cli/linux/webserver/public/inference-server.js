@@ -10,6 +10,10 @@ window.InferenceServer = async (opts) => {
         previewSectionImgContainer: document.querySelector('#preview-image-container'),
         previewSectionImg:  document.querySelector('#preview-section img'),
         features: document.querySelector('#features'),
+        maskLeft: document.querySelector('.label-mask-left'),
+        maskRight: document.querySelector('.label-mask-right'),
+        maskTop: document.querySelector('.label-mask-top'),
+        maskBottom: document.querySelector('.label-mask-bottom')
     };
 
     const colors = [
@@ -217,6 +221,21 @@ window.InferenceServer = async (opts) => {
 
                         els.previewSectionImgContainer.appendChild(el);
                     }
+
+                    // Only the fit-shortest resizing mode crops the image
+                    if (result.resized && result.resizeMode === 'fit-shortest') {
+                        const { originalWidth, originalHeight, newWidth, newHeight } = result.resized;
+                        const img = {
+                            clientWidth: originalWidth,
+                            clientHeight: originalHeight,
+                            referenceWidth: newWidth,
+                            referenceHeight: newHeight,
+                        };
+                        maskCropped(img);
+                    }
+                    else {
+                        hideCropMasks();
+                    }
                 };
 
                 els.previewSectionImg.src = dataUrl;
@@ -244,5 +263,54 @@ window.InferenceServer = async (opts) => {
         if (els.previewSectionImg.onload) {
             els.previewSectionImg.onload();
         }
+    };
+
+    // Shared from bounding-box-scaling.ts. If we introduce a TypeScript build step we can
+    // share this code directly.
+    const getMaskPercent = (side, img) => {
+        // Use reference aspect ratio to determine mask size as a percentage
+        const referenceAspect = img.referenceWidth / img.referenceHeight;
+        const clientAspect = img.clientWidth / img.clientHeight;
+        let percent = 0;
+        if (side === 'horizontal' && clientAspect > referenceAspect) {
+            // Image is wider than reference: mask left/right
+            const displayWidth = img.clientHeight * referenceAspect;
+            percent = ((img.clientWidth - displayWidth) / 2) / img.clientWidth * 100;
+        }
+        else if (side === 'vertical' && clientAspect < referenceAspect) {
+            // Image is taller than reference: mask top/bottom
+            const displayHeight = img.clientWidth / referenceAspect;
+            percent = ((img.clientHeight - displayHeight) / 2) / img.clientHeight * 100;
+        }
+        return percent;
+    };
+
+    // Shared from bounding-box-scaling.ts
+    const maskCropped = (img) => {
+        const referenceAspect = img.referenceWidth / img.referenceHeight;
+        const clientAspect = img.clientWidth / img.clientHeight;
+
+        if (clientAspect > referenceAspect) {
+            // Image is wider than reference: mask left/right
+            const maskPercent = getMaskPercent('horizontal', img);
+            els.maskLeft.style.width = els.maskRight.style.width = maskPercent + '%';
+            els.maskTop.style.height = els.maskBottom.style.height = '0%';
+            els.maskLeft.style.height = els.maskRight.style.height = '100%';
+        }
+        else if (clientAspect < referenceAspect) {
+            // Image is taller than reference: mask top/bottom
+            const maskPercent = getMaskPercent('vertical', img);
+            els.maskLeft.style.width = els.maskRight.style.width = '0%';
+            els.maskTop.style.height = els.maskBottom.style.height = maskPercent + '%';
+            els.maskTop.style.width = els.maskBottom.style.width = '100%';
+        }
+        else {
+            hideCropMasks();
+        }
+    };
+
+    const hideCropMasks = () => {
+        els.maskLeft.style.width = els.maskRight.style.width = '0%';
+        els.maskTop.style.height = els.maskBottom.style.height = '0%';
     };
 };

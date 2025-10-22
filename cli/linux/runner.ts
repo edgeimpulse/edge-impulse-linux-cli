@@ -32,6 +32,8 @@ import { ICameraInferenceDimensions } from '../../library/sensors/icamera';
 import { RunnerProfiling } from './runner-profiling';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
+const CLASSIFIER_THRESHOLD: { id: number, type: 'classification', min_score: number } =
+                            { id: 42, type: 'classification', min_score: 0.001 };
 
 let audioClassifier: AudioClassifier | undefined;
 let imageClassifier: ImageClassifier | undefined;
@@ -634,6 +636,12 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
             shmBehavior: shmBehaviorArgv,
         });
         model = await runner.init();
+
+        if (model.modelParameters.model_type === 'classification' &&
+            model.modelParameters.sensorType === 'camera') {
+            model.modelParameters.thresholds?.push(CLASSIFIER_THRESHOLD);
+        }
+
         await setThresholdsFromArgv(runner, model);
 
         if (greengrassArgv && awsIOT?.isConnected() === true) {
@@ -778,6 +786,12 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
 
                 // load the new model
                 model = await runner.init(modelFile);
+
+                if (model.modelParameters.model_type === 'classification' &&
+                    model.modelParameters.sensorType === 'camera') {
+                    model.modelParameters.thresholds?.push(CLASSIFIER_THRESHOLD);
+                }
+
                 await setThresholdsFromArgv(runner, model);
 
                 console.log(RUNNER_PREFIX, 'Model updated successfully');
@@ -939,46 +953,64 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
                     });
                 }
 
-                // print the raw predicted values for this frame
-                // (turn into string here so the content does not jump around)
-                let c = <{ [k: string]: number }>structuredClone(ev.result.classification);
-                if (Array.isArray(c)) {
-                    count = c.length;
-                }
-
-                // total inferences update...
-                totalInferenceCount += count;
-
-                if (!dontPrintPredictionsArgv) {
-                    // More than 10? Just print top 5...
-                    if (Object.keys(c).length >= 10) {
-                        const top = Object.entries(ev.result.classification)
-                            .sort((a, b) => Number(b[1]) - Number(a[1]))
-                            .slice(0, 5)
-                            .reduce((curr: { [ k: string ]: number}, val) => {
-                                curr[val[0]] = val[1];
-                                return curr;
-                            }, { });
-                        console.log('classifyRes', timeMs + 'ms.', 'Top 5:', roundValuesTo4Digits(top));
+                if (ev.result.classification) {
+                    // print the raw predicted values for this frame
+                    let c = <{ [k: string]: number }>structuredClone(ev.result.classification);
+                    if (Array.isArray(c)) {
+                        count = c.length;
                     }
-                    else {
-                        console.log('classifyRes', timeMs + 'ms.', roundValuesTo4Digits(c));
+
+                    // total inferences update...
+                    totalInferenceCount += count;
+
+                    if (!dontPrintPredictionsArgv) {
+                        // More than 10? Just print top 5...
+                        if (Object.keys(c).length >= 10) {
+                            const top = Object.entries(ev.result.classification)
+                                .sort((a, b) => Number(b[1]) - Number(a[1]))
+                                .slice(0, 5)
+                                .reduce((curr: { [ k: string ]: number}, val) => {
+                                    curr[val[0]] = val[1];
+                                    return curr;
+                                }, { });
+                            console.log('classifyRes', timeMs + 'ms.', 'Top 5:', roundValuesTo4Digits(top));
+                        }
+                        else {
+                            console.log('classifyRes', timeMs + 'ms.', roundValuesTo4Digits(c));
+                        }
+                    }
+
+                    // AWS Integration - send to IoTCore if running in Greengrass
+                    if (awsIOT?.isConnected()) {
+                        // create our confidences array
+                        // eslint-disable-next-line @typescript-eslint/dot-notation
+                        const confidences = [ <number>c["value"] ];
+
+                        // update the confidence metrics
+                        awsIOT.updateInferenceMetrics(confidences);
+
+                        // create the payload
+                        const payload = { time_ms: timeMs, c: c, info:ev.info, inference_count: count,
+                            total_inferences: totalInferenceCount, id: uuidv4(), ts: Date.now()};
+                        awsIOT.sendInference(confidences[0], payload, "c");
                     }
                 }
+                else if (ev.result.freeform) {
+                    // print the raw predicted values for this frame
+                    const c = structuredClone(ev.result.freeform).map((x: number[], ix: number) => {
+                        let ret = '';
+                        if (ev.result.freeform!.length > 1) {
+                            ret += `Tensor ${ix}: `;
+                        }
+                        ret += `[ ${x.map(v => v.toFixed(4)).join(', ')} ]`;
+                        return ret;
+                    }).join(';');
 
-                // AWS Integration - send to IoTCore if running in Greengrass
-                if (awsIOT?.isConnected()) {
-                    // create our confidences array
-                    // eslint-disable-next-line @typescript-eslint/dot-notation
-                    const confidences = [ <number>c["value"] ];
+                    if (!dontPrintPredictionsArgv) {
+                        console.log('freeformRes', timeMs + 'ms.', c);
+                    }
 
-                    // update the confidence metrics
-                    awsIOT.updateInferenceMetrics(confidences);
-
-                    // create the payload
-                    const payload = { time_ms: timeMs, c: c, info:ev.info, inference_count: count,
-                        total_inferences: totalInferenceCount, id: uuidv4(), ts: Date.now()};
-                    awsIOT.sendInference(confidences[0], payload, "c");
+                    totalInferenceCount++;
                 }
 
                 if (ev.info) {
@@ -1102,6 +1134,27 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
                     // AWS Integration
                     awsResult = ev.result.visual_anomaly_grid;
                     awsResultKey = "grid";
+                    ++count;
+                }
+
+                if (ev.result.freeform) {
+                    // print the raw predicted values for this frame
+                    const c = structuredClone(ev.result.freeform).map((x: number[], ix: number) => {
+                        let ret = '';
+                        if (ev.result.freeform!.length > 1) {
+                            ret += `Tensor ${ix}: `;
+                        }
+                        ret += `[ ${x.map(v => v.toFixed(4)).join(', ')} ]`;
+                        return ret;
+                    }).join(';');
+
+                    if (!dontPrintPredictionsArgv) {
+                        console.log('freeformRes', timeMs + 'ms.', c);
+                    }
+
+                    // AWS Integration
+                    awsResult = structuredClone(ev.result.freeform);
+                    awsResultKey = "freeform";
                     ++count;
                 }
 
