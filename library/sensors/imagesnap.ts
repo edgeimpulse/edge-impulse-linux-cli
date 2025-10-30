@@ -233,6 +233,8 @@ export class Imagesnap extends EventEmitter<{
             .then(() => { this._isStarted = false; })
             .catch(() => { this._isStarted = false; });
 
+        await this.cleanupTempDirAsync();
+
         return stopRes;
     }
 
@@ -271,6 +273,20 @@ export class Imagesnap extends EventEmitter<{
         }
         finally {
             this._isRestarting = false;
+        }
+    }
+
+
+    private async cleanupTempDirAsync() {
+        // unmap shared memory for the socket
+        if (this._tempDir) {
+            try {
+                await fs.promises.rm(this._tempDir, { recursive: true });
+                this._tempDir = undefined;
+            }
+            catch (ex) {
+                // noop
+            }
         }
     }
 }

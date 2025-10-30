@@ -168,6 +168,8 @@ export class GStreamer extends EventEmitter<{
             osTmpDir = '/dev/shm';
         }
 
+        await this.cleanupTempDirAsync();
+
         this._tempDir = await fs.promises.mkdtemp(Path.join(osTmpDir, 'edge-impulse-cli'));
         if (this._verbose) {
             console.log(PREFIX, 'Temp directory is', this._tempDir);
@@ -657,24 +659,7 @@ export class GStreamer extends EventEmitter<{
                 this._captureProcess.on('close', code => {
                     if (this._watcher) {
                         this._watcher.on('close', async () => {
-                            if (this._tempDir) {
-                                const files = await fs.promises.readdir(this._tempDir);
-                                const imageFiles = files.filter(file => {
-                                    const fileExt = Path.extname(file).toLowerCase();
-                                    return (fileExt === 'jpg' || fileExt === 'jpeg');
-                                });
-
-                                for (const file of imageFiles) {
-                                    await fs.promises.unlink(Path.join(this._tempDir, file));
-                                }
-
-                                try {
-                                    await fs.promises.rmdir(this._tempDir);
-                                }
-                                catch (ex2) {
-                                    /* noop */
-                                }
-                            }
+                            await this.cleanupTempDirAsync();
                         });
                         this._watcher.close();
                     }
@@ -696,6 +681,8 @@ export class GStreamer extends EventEmitter<{
         stopRes
             .then(() => { this._isStarted = false; })
             .catch(() => { this._isStarted = false; });
+
+        await this.cleanupTempDirAsync();
 
         return stopRes;
     }
@@ -1481,6 +1468,19 @@ export class GStreamer extends EventEmitter<{
         }
         catch (ex) {
             /* noop */
+        }
+    }
+
+    private async cleanupTempDirAsync() {
+        // unmap shared memory for the socket
+        if (this._tempDir) {
+            try {
+                await fs.promises.rm(this._tempDir, { recursive: true });
+                this._tempDir = undefined;
+            }
+            catch (ex) {
+                // noop
+            }
         }
     }
 }

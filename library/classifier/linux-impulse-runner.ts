@@ -7,12 +7,19 @@ import Path from 'path';
 import net from 'net';
 import { LibcWrapper, O_RDWR } from './libcwrapper';
 import koffi from 'koffi';
-import { ModelInformation, RunnerBlockThreshold, RunnerClassifyContinuousRequest, RunnerClassifyRequest, RunnerClassifyResponse, RunnerClassifyResponseSuccess, RunnerHelloInferencingEngine, RunnerHelloRequest, RunnerHelloResponse, RunnerHelloResponseModelParameters, RunnerSetThresholdRequest, RunnerSetThresholdResponse } from './linux-impulse-runner-types';
+import { EimRunnerClassifyResponseSuccess, ModelInformation, RunnerBlockThreshold, RunnerClassifyContinuousRequest,
+    RunnerClassifyRequest, RunnerClassifyResponseSuccess, RunnerErrorResponse, RunnerHelloInferencingEngine,
+    RunnerHelloRequest, RunnerHelloResponse, RunnerHelloResponseModelParameters, RunnerSetThresholdRequest,
+    RunnerSetThresholdResponse } from './linux-impulse-runner-types';
 import { VALGRIND_SUPPRESSION_FILE } from './valgrind-suppression';
 
 const PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
 export * from './linux-impulse-runner-types';
+
+type EimRunnerClassifyResponse = ({
+    success: true;
+} & EimRunnerClassifyResponseSuccess) | RunnerErrorResponse;
 
 export class LinuxImpulseRunner {
     private _path: string;
@@ -25,15 +32,23 @@ export class LinuxImpulseRunner {
     private _id = 0;
     private _stopped = false;
     private _socket: net.Socket | undefined;
-    private _shm: {
+    private _inputShm: {
         libc: LibcWrapper,
         fd: number,
         buf: ArrayBuffer,
     } | undefined;
+    private _freeformOutputShm: {
+        index: number,
+        libc: LibcWrapper,
+        fd: number,
+        buf: ArrayBuffer,
+        features: Float32Array,
+    }[] | undefined;
     private _verbose: boolean;
     private _shmBehavior: 'auto' | 'always' | 'never';
     private _valgrind: boolean;
     private _stdout: Buffer[] = [];
+    private _tempDir: string | undefined;
 
     /**
      * Start a new impulse runner
@@ -56,6 +71,28 @@ export class LinuxImpulseRunner {
         this._valgrind = opts?.valgrind || false;
         this._verbose = opts?.verbose || false;
         this._shmBehavior = opts?.shmBehavior || 'auto';
+
+        // Make sure to send a SIGINT to the eim file to clear out shared memory
+        process.on('exit', () => {
+            if (this._runner && this._runner.pid) {
+                try {
+                    this._runner.kill('SIGINT');
+                }
+                catch (ex) {
+                    // noop
+                }
+            }
+            // and the shared memory we mapped in here (sync)
+            if (this._tempDir) {
+                try {
+                    fs.rmSync(this._tempDir, { recursive: true });
+                    this._tempDir = undefined;
+                }
+                catch (ex) {
+                    // noop
+                }
+            }
+        });
     }
 
     /**
@@ -86,8 +123,10 @@ export class LinuxImpulseRunner {
             socketPath = this._path;
         }
         else {
-            let tempDir = await fs.promises.mkdtemp(Path.join(osTmpDir, 'edge-impulse-cli'));
-            socketPath = Path.join(tempDir, 'runner.sock');
+            await this.cleanupTempDirAsync();
+
+            this._tempDir = await fs.promises.mkdtemp(Path.join(osTmpDir, 'edge-impulse-cli'));
+            socketPath = Path.join(this._tempDir, 'runner.sock');
 
             // start the .eim file
             if (this._runner && this._runner.pid) {
@@ -96,7 +135,7 @@ export class LinuxImpulseRunner {
                 // TODO: check if the runner still exists
             }
             if (this._valgrind) {
-                const valgrindSuppressionFile = Path.join(tempDir, 'valgrind.supp');
+                const valgrindSuppressionFile = Path.join(this._tempDir, 'valgrind.supp');
                 await fs.promises.writeFile(valgrindSuppressionFile, VALGRIND_SUPPRESSION_FILE, 'utf-8');
 
                 this._runner = spawn('valgrind', [
@@ -266,12 +305,13 @@ export class LinuxImpulseRunner {
         this._stopped = true;
 
         if (!this._runner) {
+            await this.cleanupTempDirAsync();
             return Buffer.concat(this._stdout).toString('utf-8');
         }
 
         await new Promise<void>((resolve) => {
             if (this._runner) {
-                this._runner.on('close', code => {
+                this._runner.on('close', (code) => {
                     resolve();
                 });
                 this._runner.kill('SIGINT');
@@ -285,6 +325,8 @@ export class LinuxImpulseRunner {
                 resolve();
             }
         });
+
+        await this.cleanupTempDirAsync();
 
         return Buffer.concat(this._stdout).toString('utf-8');
     }
@@ -309,29 +351,25 @@ export class LinuxImpulseRunner {
      */
     async classify(data: number[], timeout?: number): Promise<RunnerClassifyResponseSuccess> {
 
-        let resp: RunnerClassifyResponse;
+        let resp: EimRunnerClassifyResponse;
 
-        if (this._shm) {
-            const features = new Float32Array(this._shm.buf, 0, data.length);
+        if (this._inputShm) {
+            const features = new Float32Array(this._inputShm.buf, 0, data.length);
             features.set(data);
 
-            resp = await this.send<RunnerClassifyRequest, RunnerClassifyResponse>({
+            resp = await this.send<RunnerClassifyRequest, EimRunnerClassifyResponse>({
                 classify_shm: {
                     elements: data.length,
                 },
             }, timeout);
         }
         else {
-            resp = await this.send<RunnerClassifyRequest, RunnerClassifyResponse>({ classify: data }, timeout);
+            resp = await this.send<RunnerClassifyRequest, EimRunnerClassifyResponse>({ classify: data }, timeout);
         }
         if (!resp.success) {
             throw new Error(resp.error);
         }
-        return {
-            result: resp.result,
-            timing: resp.timing,
-            info: resp.info
-        };
+        return this.mapClassifyResponseSuccess(resp);
     }
 
     /**
@@ -340,20 +378,20 @@ export class LinuxImpulseRunner {
      *             https://docs.edgeimpulse.com/docs/running-your-impulse-locally-1
      */
     async classifyContinuous(data: number[], timeout?: number): Promise<RunnerClassifyResponseSuccess> {
-        let resp: RunnerClassifyResponse;
+        let resp: EimRunnerClassifyResponse;
 
-        if (this._shm) {
-            const features = new Float32Array(this._shm.buf, 0, data.length);
+        if (this._inputShm) {
+            const features = new Float32Array(this._inputShm.buf, 0, data.length);
             features.set(data);
 
-            resp = await this.send<RunnerClassifyContinuousRequest, RunnerClassifyResponse>({
+            resp = await this.send<RunnerClassifyContinuousRequest, EimRunnerClassifyResponse>({
                 classify_continuous_shm: {
                     elements: data.length,
                 },
             }, timeout);
         }
         else {
-            resp = await this.send<RunnerClassifyContinuousRequest, RunnerClassifyResponse>({
+            resp = await this.send<RunnerClassifyContinuousRequest, EimRunnerClassifyResponse>({
                 classify_continuous: data
             }, timeout);
         }
@@ -361,11 +399,7 @@ export class LinuxImpulseRunner {
         if (!resp.success) {
             throw new Error(resp.error);
         }
-        return {
-            result: resp.result,
-            timing: resp.timing,
-            info: resp.info
-        };
+        return this.mapClassifyResponseSuccess(resp);
     }
 
     async setLearnBlockThreshold(obj: RunnerBlockThreshold) {
@@ -430,7 +464,8 @@ export class LinuxImpulseRunner {
                 sensor = 'positional'; break;
         }
 
-        this._shm = undefined;
+        this._inputShm = undefined;
+        this._freeformOutputShm = undefined;
 
         if (!resp.features_shm) {
             if (this._shmBehavior === 'always') {
@@ -458,17 +493,40 @@ export class LinuxImpulseRunner {
                 if (libc) {
                     const libcWrapper = new LibcWrapper(libc);
 
-                    const fd = libcWrapper.shmOpen(resp.features_shm.name, O_RDWR, 0o666);
-                    const buf = libcWrapper.mmapToArrayBuffer(fd, resp.features_shm.size_bytes);
+                    // input tensor
+                    {
+                        const fd = libcWrapper.shmOpen(resp.features_shm.name, O_RDWR, 0o666);
+                        const buf = libcWrapper.mmapToArrayBuffer(fd, resp.features_shm.size_bytes);
 
-                    this._shm = {
-                        libc: libcWrapper,
-                        fd: fd,
-                        buf: buf,
-                    };
+                        this._inputShm = {
+                            libc: libcWrapper,
+                            fd: fd,
+                            buf: buf,
+                        };
 
-                    if (this._verbose) {
-                        console.log(PREFIX, `Initialized shared memory (${resp.features_shm.name})`);
+                        if (this._verbose) {
+                            console.log(PREFIX, `Initialized shared memory (input features) (${resp.features_shm.name})`);
+                        }
+                    }
+
+                    if (resp.freeform_output_shm) {
+                        this._freeformOutputShm = [];
+                        for (const outputShm of resp.freeform_output_shm || []) {
+                            const fd = libcWrapper.shmOpen(outputShm.name, O_RDWR, 0o666);
+                            const buf = libcWrapper.mmapToArrayBuffer(fd, outputShm.size_bytes);
+
+                            this._freeformOutputShm.push({
+                                index: outputShm.index,
+                                libc: libcWrapper,
+                                fd: fd,
+                                buf: buf,
+                                features: new Float32Array(buf, 0, outputShm.elements),
+                            });
+
+                            if (this._verbose) {
+                                console.log(PREFIX, `Initialized shared memory (freeform output ${outputShm.index}) (${outputShm.name})`);
+                            }
+                        }
                     }
                 }
             }
@@ -508,7 +566,7 @@ export class LinuxImpulseRunner {
         return new Promise<U>((resolve, reject) => {
             const defaultTimeout = this._valgrind ?
                 120_000 : // valgrind takes its time (esp on x86)
-                10_000;
+                30_000;
 
             let timeout = typeof timeoutArg === 'number' ? timeoutArg : defaultTimeout;
 
@@ -542,7 +600,9 @@ export class LinuxImpulseRunner {
                     Buffer.concat(this._stdout).toString('utf-8'));
             }, timeout);
 
-            const onExit = (code: number) => {
+            const onExit = async (code: number) => {
+                await this.cleanupTempDirAsync();
+
                 if (!this._stopped) {
                     reject('Process exited with ' + code);
                 }
@@ -616,6 +676,57 @@ export class LinuxImpulseRunner {
         finally {
             if (progressIv) {
                 clearInterval(progressIv);
+            }
+        }
+    }
+
+    private mapClassifyResponseSuccess(resp: EimRunnerClassifyResponseSuccess): RunnerClassifyResponseSuccess {
+        // bit hard to get TypeScript to understand that these types are the same in this case...
+        if (!resp.result.freeform)  {
+            const { freeform: _omit, ...result } = resp.result;
+            return {
+                result: result,
+                info: resp.info,
+                timing: resp.timing,
+            };
+        }
+        if (Array.isArray(resp.result.freeform)) {
+            return {
+                result: {
+                    ...resp.result,
+                    freeform: resp.result.freeform,
+                },
+                info: resp.info,
+                timing: resp.timing,
+            };
+        }
+
+        const freeform: number[][] = [];
+
+        // ... actual mapping in SHM
+        for (const shm of this._freeformOutputShm || []) {
+            freeform.push(Array.from(shm.features));
+        }
+
+        return {
+            result: {
+                ...resp.result,
+                freeform: freeform,
+            },
+            info: resp.info,
+            timing: resp.timing,
+        };
+    }
+
+    private async cleanupTempDirAsync() {
+        // unmap shared memory for the socket
+        if (this._tempDir) {
+            try {
+                await fs.promises.rm(this._tempDir, { recursive: true });
+                this._tempDir = undefined;
+            }
+            catch (ex) {
+                // noop
             }
         }
     }

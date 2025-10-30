@@ -996,18 +996,8 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
                     }
                 }
                 else if (ev.result.freeform) {
-                    // print the raw predicted values for this frame
-                    const c = structuredClone(ev.result.freeform).map((x: number[], ix: number) => {
-                        let ret = '';
-                        if (ev.result.freeform!.length > 1) {
-                            ret += `Tensor ${ix}: `;
-                        }
-                        ret += `[ ${x.map(v => v.toFixed(4)).join(', ')} ]`;
-                        return ret;
-                    }).join(';');
-
                     if (!dontPrintPredictionsArgv) {
-                        console.log('freeformRes', timeMs + 'ms.', c);
+                        console.log('freeformRes', timeMs + 'ms.', freeformResToString(ev.result.freeform));
                     }
 
                     totalInferenceCount++;
@@ -1138,18 +1128,8 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
                 }
 
                 if (ev.result.freeform) {
-                    // print the raw predicted values for this frame
-                    const c = structuredClone(ev.result.freeform).map((x: number[], ix: number) => {
-                        let ret = '';
-                        if (ev.result.freeform!.length > 1) {
-                            ret += `Tensor ${ix}: `;
-                        }
-                        ret += `[ ${x.map(v => v.toFixed(4)).join(', ')} ]`;
-                        return ret;
-                    }).join(';');
-
                     if (!dontPrintPredictionsArgv) {
-                        console.log('freeformRes', timeMs + 'ms.', c);
+                        console.log('freeformRes', timeMs + 'ms.', freeformResToString(ev.result.freeform));
                     }
 
                     // AWS Integration
@@ -1308,4 +1288,24 @@ function roundValuesTo4Digits(obj: { [ key: string]: number }) {
         newObj[key] = Number(obj[key].toFixed(4));
     }
     return newObj;
+}
+
+function freeformResToString(freeform: number[][]) {
+    return structuredClone(freeform).map((x: number[], ix: number) => {
+        let ret = '';
+        if (freeform.length > 1) {
+            ret += `Tensor ${ix}: `;
+        }
+
+        if (x.length < 503) {
+            ret += `[ ${x.map(v => v.toFixed(4)).join(', ')} ]`;
+        }
+        else {
+            const slice = x.slice(0, 500);
+            const left = x.length - slice.length;
+            ret += `[ ${slice.map(v => v.toFixed(4)).join(', ')}, ... and ${left} others ]`;
+        }
+
+        return ret;
+    }).join('; ');
 }
