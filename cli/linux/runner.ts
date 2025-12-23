@@ -63,6 +63,7 @@ program
     .option('--force-engine <engine>', 'Do not autodetect the inference engine, but set it by hand (e.g. "tflite")')
     .option('--force-variant <variant>', 'Do not autodetect the model variant, but set it by hand (e.g. "int8")')
     .option('--force-resize-mode <mode>', 'Do not use the resize method from the impulse, but set it by hand (valid: "squash", "fit-shortest" or "fit-longest")')
+    .option('--force-camera-resolution <width,height>', 'Do not auto-select camera resolution based on your impulse, but force a resolution (format: "1280,720" for w=1280, h=720)')
     .option('--impulse-id <impulseId>', 'Select the impulse ID (if you have multiple impulses)')
     .option('--run-http-server <port>', 'Do not run using a sensor, but instead expose an API server at the specified port')
     .option('--preview-port <port>', 'Port to use to render the preview HTTP interface (default: 4912) (ignored when running with --run-http-server). ' +
@@ -115,6 +116,7 @@ const forceTargetArgv = <string | undefined>program.forceTarget;
 const forceEngineArgv = <string | undefined>program.forceEngine;
 const forceVariantArgv = <models.KerasModelVariantEnum | undefined>program.forceVariant;
 const forceResizeModeArgv = <RunnerHelloResponseModelParameters['image_resize_mode'] | undefined>program.forceResizeMode;
+const forceCameraResolutionArgv = <string | undefined>program.forceCameraResolution;
 const impulseIdArgvStr = <string | undefined>program.impulseId;
 const impulseIdArgv = impulseIdArgvStr && !isNaN(Number(impulseIdArgvStr)) ? Number(impulseIdArgvStr) : undefined;
 const monitorArgv: boolean = !!program.monitor;
@@ -155,6 +157,19 @@ let modeArgv = <'streaming' | 'http-server' | undefined>program.mode;
 
 if (modeArgv === 'http-server' && typeof runHttpServerPort === 'undefined') {
     runHttpServerPort = 1337;
+}
+
+let forceCameraResolution: { width: number, height: number } | undefined;
+if (forceCameraResolutionArgv) {
+    let split = forceCameraResolutionArgv.split(',');
+    if (split.length !== 2 || isNaN(Number(split[0])) || isNaN(Number(split[1]))) {
+        throw new Error(`Invalid value for --force-camera-resolution, expected 2 integer values split by , (e.g. 1280,720) ` +
+            `but got "${forceCameraResolutionArgv}"`);
+    }
+    forceCameraResolution = {
+        width: Number(split[0]),
+        height: Number(split[1]),
+    };
 }
 
 process.on('warning', e => console.warn(e.stack));
@@ -224,7 +239,7 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
         cameraType: cameraType,
         cameraDeviceNameInConfig: await configFactory.getCamera(),
         cameraNameArgv: cameraArgv,
-        dimensions: undefined,
+        dimensions: forceCameraResolution,
         gstLaunchArgs: gstLaunchArgsArgv,
         verboseOutput: verboseArgv,
         inferenceDimensions: inferenceDimensions,

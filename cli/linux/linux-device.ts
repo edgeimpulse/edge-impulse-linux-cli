@@ -128,7 +128,7 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
         if (this._camera) {
             const opts = this._camera.getLastOptions();
             const dimensions = opts?.dimensions;
-            const str = dimensions ? `(${dimensions.width}x${dimensions.height})` : `640x480`;
+            const str = dimensions ? `${dimensions.width}x${dimensions.height}` : `640x480`;
             sensors.push({
                 name: `Camera (${str})`,
                 frequencies: [],

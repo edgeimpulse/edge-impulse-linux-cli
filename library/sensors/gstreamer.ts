@@ -536,26 +536,19 @@ export class GStreamer extends EventEmitter<{
         let cropArgs: string[] = [];
         if (inferenceDims) {
             // fast path for fit-shortest and squash
-            if (inferenceDims.width === inferenceDims.height && inferenceDims.resizeMode === 'fit-shortest') {
-                const crop = this.determineSquareCrop(cap);
-                cropArgs.push(`!`);
-                if (crop.type === 'landscape') {
-                    cropArgs = cropArgs.concat([
-                        `videocrop`, `left=${crop.left}`, `right=${crop.right}`,
-                        `!`,
-                        `videoscale`, `method=lanczos`,
-                        `!`,
-                    ]);
-                }
-                else if (crop.type === 'portrait') {
-                    cropArgs = cropArgs.concat([
-                        `videocrop`, `top=${crop.top}`, `bottom=${crop.bottom}`,
-                        `!`,
-                        `videoscale`, `method=lanczos`,
-                        `!`,
-                    ]);
-                }
-                cropArgs.push(`video/x-raw,width=${inferenceDims.width},height=${inferenceDims.height}`);
+            if (inferenceDims.resizeMode === 'fit-shortest') {
+                const crop = this.computeCropForFitShort(
+                    dimensions.width, dimensions.height,
+                    inferenceDims.width, inferenceDims.height
+                );
+                cropArgs = cropArgs.concat([
+                    `!`,
+                    `videocrop`, `left=${crop.left}`, `right=${crop.right}`, `top=${crop.top}`, `bottom=${crop.bottom}`,
+                    `!`,
+                    `videoscale`, `method=lanczos`,
+                    `!`,
+                    `video/x-raw,width=${inferenceDims.width},height=${inferenceDims.height}`,
+                ]);
             }
             else if (inferenceDims.resizeMode === 'squash' || inferenceDims.resizeMode === 'none' /* old model */) {
                 cropArgs.push(`!`);
@@ -1383,25 +1376,48 @@ export class GStreamer extends EventEmitter<{
         }
     }
 
-    determineSquareCrop({ width, height }: { width: number; height: number }):
-        { type: 'landscape', left: number; right: number } |
-        { type: 'portrait', top: number; bottom: number } |
-        { type: 'none' } {
-         // no crop needed
-        if (width === height) return { type: 'none' };
+    /**
+     * Compute the crop to get to the right aspect ratio (fit-short only)
+     * @param srcW Input width (so the webcam resolution)
+     * @param srcH Input height (so the webcam resolution)
+     * @param tgtW Target width (so the inference dimensions)
+     * @param tgtH Target height (so the inference dimensions)
+     * @returns
+     */
+    private computeCropForFitShort(
+        srcW: number,
+        srcH: number,
+        tgtW: number,
+        tgtH: number
+    ) {
+        const srcAR = srcW / srcH;
+        const tgtAR = tgtW / tgtH;
 
-        if (width > height) {
-            const diff = width - height;
-            const left  = Math.floor(diff / 2);
-            const right = diff - left;
-            return { type: 'landscape', left, right };
+        let cropW: number;
+        let cropH: number;
+
+        if (srcAR > tgtAR) {
+            // Source is wider → crop LEFT/RIGHT
+            cropH = srcH;
+            cropW = Math.round(srcH * tgtAR);
         }
         else {
-            const diff  = height - width;
-            const top    = Math.floor(diff / 2);
-            const bottom = diff - top;
-            return { type: 'portrait', top, bottom };
+            // Source is taller/narrower → crop TOP/BOTTOM
+            cropW = srcW;
+            cropH = Math.round(srcW / tgtAR);
         }
+
+        const cropLeft   = Math.max(0, Math.floor((srcW - cropW) / 2));
+        const cropRight  = Math.max(0, srcW - cropW - cropLeft);
+        const cropTop    = Math.max(0, Math.floor((srcH - cropH) / 2));
+        const cropBottom = Math.max(0, srcH - cropH - cropTop);
+
+        return {
+            left: cropLeft,
+            right: cropRight,
+            top: cropTop,
+            bottom: cropBottom,
+        };
     }
 
     private startOriginalCleanupLoop() {

@@ -237,21 +237,22 @@ export class ImageClassifier extends EventEmitter<{
             img = img.removeAlpha();
             let buffer = await img.raw().toBuffer();
 
-            for (let ix = 0; ix < buffer.length; ix += 3) {
-                let r = buffer[ix + 0];
-                let g = buffer[ix + 1];
-                let b = buffer[ix + 2];
+            const numPixels = buffer.length / 3;
+            features = new Array<number>(numPixels);
+            for (let ix = 0, j = 0; ix < numPixels; ix++, j += 3) {
                 // eslint-disable-next-line no-bitwise
-                features.push((r << 16) + (g << 8) + b);
+                features[ix] = (buffer[j] << 16) | (buffer[j + 1] << 8) | buffer[j + 2];
             }
         }
         else {
             img = img.toColourspace('b-w');
             let buffer = await img.raw().toBuffer();
 
-            for (let p of buffer) {
+            features = new Array<number>(buffer.length);
+            for (let ix = 0; ix < buffer.length; ix++) {
+                const p = buffer[ix];
                 // eslint-disable-next-line no-bitwise
-                features.push((p << 16) + (p << 8) + p);
+                features[ix] = (p << 16) | (p << 8) | p;
             }
         }
 

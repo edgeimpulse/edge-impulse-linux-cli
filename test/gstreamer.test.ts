@@ -5317,7 +5317,7 @@ Freeing pipeline ...
                 'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
                 'tee name=t ' +
                     't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg ' +
-                    't. ! queue ! videocrop left=180 right=180 ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg'
+                    't. ! queue ! videocrop left=180 right=180 top=0 bottom=0 ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg'
             );
         });
 

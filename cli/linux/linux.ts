@@ -51,16 +51,28 @@ const noCamera: boolean = !!program.disableCamera;
 const noMicrophone: boolean = !!program.disableMicrophone;
 const isProphesee = process.env.PROPHESEE_CAM === '1';
 const enableVideo = isProphesee || (process.env.ENABLE_VIDEO === '1');
-const dimensions = program.width && program.height ? {
-    width: Number(program.width),
-    height: Number(program.height)
-} : undefined;
+const widthArgv = <string | undefined>program.width;
+const heightArgv = <string | undefined>program.height;
 const cameraArgv = <string | undefined>program.camera;
 const microphoneArgv = <string | undefined>program.microphone;
 
 if ((program.width && !program.height) || (!program.width && program.height)) {
     console.error('--width and --height need to either be both specified or both omitted');
     process.exit(1);
+}
+
+let cameraDimensions: { width: number, height: number } | undefined;
+if (widthArgv && heightArgv) {
+    if (isNaN(Number(widthArgv))) {
+        throw new Error(`Invalid value for --width, should be numeric (but was "${widthArgv}")`);
+    }
+    if (isNaN(Number(heightArgv))) {
+        throw new Error(`Invalid value for --height, should be numeric (but was "${heightArgv}")`);
+    }
+    cameraDimensions = {
+        width: Number(widthArgv),
+        height: Number(heightArgv),
+    };
 }
 
 const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
@@ -176,7 +188,7 @@ let isExiting = false;
                 cameraType: cameraType,
                 cameraDeviceNameInConfig: await configFactory.getCamera(),
                 cameraNameArgv: cameraArgv,
-                dimensions: dimensions,
+                dimensions: cameraDimensions,
                 gstLaunchArgs: gstLaunchArgsArgv,
                 verboseOutput: verboseArgv,
                 inferenceDimensions: undefined,
