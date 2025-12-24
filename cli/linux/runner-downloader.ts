@@ -86,9 +86,6 @@ export class RunnerDownloader extends EventEmitter<{
                 else if (await checkFileExists('/usr/lib/libQnnTFLiteDelegate.so')) {
                     downloadType = 'runner-linux-aarch64-qnn';
                 }
-                else if (await this.isGpuDelegateAvailable()) {
-                    downloadType = 'runner-linux-aarch64-gpu';
-                }
                 else {
                     downloadType = 'runner-linux-aarch64';
                 }
@@ -211,15 +208,6 @@ export class RunnerDownloader extends EventEmitter<{
             console.log(BUILD_PREFIX, d.trim());
         });
     }
-
-    private static async isGpuDelegateAvailable() {
-        const gpuDelegatePath = await spawnHelper('find', [ '/usr/lib', '-type', 'f', '-name', 'libtensorflowlite_gpu_delegate.so' ]);
-        if (gpuDelegatePath.trim() !== '') {
-            return true;
-        }
-        return false;
-    }
-
 }
 
 export class RunnerModelPath {
