@@ -23,12 +23,11 @@ import {
     startWebServer,
     printThresholds
 } from './runner-utils';
-import { initCamera, CameraType, initMicrophone } from '../../library/sensors/sensors-helper';
+import { initCamera, initMicrophone, getCameraType } from '../../library/sensors/sensors-helper';
 import { AWSSecretsManagerUtils } from "../../cli-common/aws-sm-utils";
 import { AWSIoTCoreConnector, Payload, AwsResult, AwsResultKey } from "../../cli-common/aws-iotcore-connector";
 import { v4 as uuidv4 } from 'uuid';
 import * as models from '../../sdk/studio/sdk/model/models';
-import { ICameraInferenceDimensions } from '../../library/sensors/icamera';
 import { RunnerProfiling } from './runner-profiling';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
@@ -194,6 +193,7 @@ const cliOptions = {
     }
 };
 
+let profiling: RunnerProfiling | undefined;
 let firstExit = true;
 let isExiting = false;
 
@@ -218,6 +218,9 @@ const onSignal = async () => {
             if (imageClassifier) {
                 await imageClassifier.stop();
             }
+            if (profiling) {
+                profiling.printSummary();
+            }
             process.exit(0);
         }
         catch (ex2) {
@@ -231,51 +234,7 @@ const onSignal = async () => {
 process.on('SIGHUP', onSignal);
 process.on('SIGINT', onSignal);
 
-async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraInferenceDimensions | undefined) {
-    if (!configFactory) {
-        throw new Error('No config factory');
-    }
-    let camera = await initCamera({
-        cameraType: cameraType,
-        cameraDeviceNameInConfig: await configFactory.getCamera(),
-        cameraNameArgv: cameraArgv,
-        dimensions: forceCameraResolution,
-        gstLaunchArgs: gstLaunchArgsArgv,
-        verboseOutput: verboseArgv,
-        inferenceDimensions: inferenceDimensions,
-        profiling: profilingArgv,
-    });
-    camera.on('error', error => {
-        if (isExiting) return;
-        console.log(RUNNER_PREFIX, 'camera error', error);
-        // AWS shutdown sematic check
-        if (greengrassArgv) {
-            // in greengrass context
-            const shutdownBehavior = (<string>process.env.EI_SHUTDOWN_BEHAVIOR);
-            if (shutdownBehavior !== undefined && shutdownBehavior === "wait_on_restart") {
-                // wait for the shutdown command... it will close runner down
-                console.log(RUNNER_PREFIX, "Waiting for restart command via IoTCore...");
-            }
-            else {
-                // just default...
-                console.log(RUNNER_PREFIX, "In greengrass context using default shutdown behavior...");
-                process.exit(1);
-            }
-        }
-        else {
-            process.exit(1);
-        }
-    });
-    let opts = camera.getLastOptions();
-    if (!opts) {
-        throw new Error('Could not get selected camera details');
-    }
-    console.log(RUNNER_PREFIX, 'Connected to camera ' + opts.device);
-    await configFactory.storeCamera(opts.device);
-
-    return camera;
-}
-
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try {
         let modelFile;
@@ -290,11 +249,7 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
         let devKeys: { apiKey: string, hmacKey: string };
         let runner: LinuxImpulseRunner;
         let model: ModelInformation;
-        const cameraType =
-            process.env.PROPHESEE_CAM === '1' ? CameraType.PropheseeCamera :
-            process.platform === 'darwin' ? CameraType.ImagesnapCamera :
-            process.platform === 'linux' ? CameraType.GStreamerCamera :
-                CameraType.UnknownCamera;
+        const cameraType = getCameraType();
 
         // AWS Support
         let awsSM: AWSSecretsManagerUtils | undefined;
@@ -885,7 +840,17 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
             audioClassifierHelloMsg(model);
 
             if (enableCameraArgv) {
-                await startCamera(cameraType, undefined);
+                const camera = await initCamera({
+                    cameraType: cameraType,
+                    cameraDeviceNameInConfig: await configFactory.getCamera(),
+                    cameraNameArgv: cameraArgv,
+                    dimensions: forceCameraResolution,
+                    gstLaunchArgs: gstLaunchArgsArgv,
+                    verboseOutput: verboseArgv,
+                    inferenceDimensions: undefined,
+                    profiling: profilingArgv,
+                });
+                await camera.start();
             }
 
             let audioDeviceName = '';
@@ -1007,7 +972,7 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
                         // create the payload
                         const payload = { time_ms: timeMs, c: c, info:ev.info, inference_count: count,
                             total_inferences: totalInferenceCount, id: uuidv4(), ts: Date.now()};
-                        awsIOT.sendInference(confidences[0], payload, "c");
+                        await awsIOT.sendInference(confidences[0], payload, "c");
                     }
                 }
                 else if (ev.result.freeform) {
@@ -1025,19 +990,63 @@ async function startCamera(cameraType: CameraType, inferenceDimensions: ICameraI
         }
         else if (param.sensorType === 'camera') {
             imageClassifierHelloMsg(model);
-            let camera = await startCamera(cameraType, {
-                width: param.image_input_width,
-                height: param.image_input_height,
-                resizeMode: forceResizeModeArgv || param.image_resize_mode || 'none',
+
+            const cameraInit = await initCamera({
+                cameraType: cameraType,
+                cameraDeviceNameInConfig: await configFactory.getCamera(),
+                cameraNameArgv: cameraArgv,
+                dimensions: forceCameraResolution,
+                gstLaunchArgs: gstLaunchArgsArgv,
+                verboseOutput: verboseArgv,
+                inferenceDimensions: {
+                    width: param.image_input_width,
+                    height: param.image_input_height,
+                    resizeMode: forceResizeModeArgv || param.image_resize_mode || 'none',
+                },
+                profiling: profilingArgv,
             });
 
-            imageClassifier = new ImageClassifier(runner, camera, {
+            imageClassifier = new ImageClassifier(runner, cameraInit.camera, {
                 verbose: verboseArgv,
             });
 
             if (profilingArgv) {
-                const profiling = new RunnerProfiling(camera, imageClassifier);
+                profiling = new RunnerProfiling(cameraInit.camera, imageClassifier);
             }
+
+            const camera = await cameraInit.start();
+
+            camera.on('error', error => {
+                if (isExiting) return;
+                console.log(RUNNER_PREFIX, 'camera error', error);
+
+                if (profiling) {
+                    profiling.printSummary();
+                }
+
+                // AWS shutdown sematic check
+                if (greengrassArgv) {
+                    // in greengrass context
+                    const shutdownBehavior = (<string>process.env.EI_SHUTDOWN_BEHAVIOR);
+                    if (shutdownBehavior !== undefined && shutdownBehavior === "wait_on_restart") {
+                        // wait for the shutdown command... it will close runner down
+                        console.log(RUNNER_PREFIX, "Waiting for restart command via IoTCore...");
+                    }
+                    else {
+                        // just default...
+                        console.log(RUNNER_PREFIX, "In greengrass context using default shutdown behavior...");
+                        process.exit(1);
+                    }
+                }
+                else {
+                    process.exit(1);
+                }
+            });
+            let opts = camera.getLastOptions();
+            if (!opts) {
+                throw new Error('Could not get selected camera details');
+            }
+            console.log(RUNNER_PREFIX, 'Connected to camera ' + opts.device);
 
             await imageClassifier.start();
 

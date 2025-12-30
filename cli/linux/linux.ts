@@ -9,7 +9,7 @@ import program from 'commander';
 import Path from 'path';
 import fs from 'fs';
 import Websocket from 'ws';
-import { initCamera, CameraType, initMicrophone } from '../../library/sensors/sensors-helper';
+import { initCamera, initMicrophone, getCameraType } from '../../library/sensors/sensors-helper';
 import { LinuxDevice } from './linux-device';
 
 const packageVersion = (<{ version: string }>JSON.parse(fs.readFileSync(
@@ -99,13 +99,11 @@ let camera: ICamera | undefined;
 let configFactory: Config;
 let isExiting = false;
 
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try {
-        const cameraType =
-            process.env.PROPHESEE_CAM === '1' ? CameraType.PropheseeCamera :
-            process.platform === 'darwin' ? CameraType.ImagesnapCamera :
-            process.platform === 'linux' ? CameraType.GStreamerCamera :
-                CameraType.UnknownCamera;
+        const cameraType = getCameraType();
+
         const init = await initCliApp(cliOptions);
         const config = init.config;
         configFactory = init.configFactory;
@@ -184,7 +182,7 @@ let isExiting = false;
         }
 
         if (!noCamera) {
-            camera = await initCamera({
+            const initedCamera = await initCamera({
                 cameraType: cameraType,
                 cameraDeviceNameInConfig: await configFactory.getCamera(),
                 cameraNameArgv: cameraArgv,
@@ -194,6 +192,12 @@ let isExiting = false;
                 inferenceDimensions: undefined,
                 profiling: false,
             });
+            camera = await initedCamera.start();
+            const cameraOpts = camera.getLastOptions();
+            if (cameraOpts) {
+                await configFactory.storeCamera(cameraOpts.device);
+                console.log(SERIAL_PREFIX, 'Connected to camera ' + cameraOpts.device);
+            }
 
             camera.on('error', error => {
                 if (isExiting) return;

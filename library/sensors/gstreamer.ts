@@ -1,10 +1,10 @@
-import { spawn, exec, ChildProcess } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'tsee';
 import fs from 'fs';
 import Path from 'path';
 import os from 'os';
 import { spawnHelper, SpawnHelperType } from './spawn-helper';
-import { ICamera, ICameraInferenceDimensions, ICameraStartOptions } from './icamera';
+import { ICamera, ICameraInferenceDimensions, ICameraProfilingInfoEvent, ICameraStartOptions } from './icamera';
 import util from 'util';
 import crypto from 'crypto';
 import { split as argvSplit } from '../argv-split';
@@ -38,7 +38,7 @@ export class GStreamer extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
     snapshotForInference: (buffer: Buffer, filename: string) => void,
     error: (message: string) => void,
-    profilingInfo: (ts: Date, name: string) => void,
+    profilingInfo: (ev: ICameraProfilingInfoEvent) => void,
 }> implements ICamera {
     private _captureProcess?: ChildProcess;
     private _tempDir?: string;
@@ -61,6 +61,9 @@ export class GStreamer extends EventEmitter<{
     private _customLaunchCommand: string | undefined;
     private _profiling: boolean;
     private _emitsOriginalSizeImages = false;
+    private _lastGstLaunchCommand = '';
+    private _imagesReceived = 0;
+    private _offset = 0;
 
     constructor(verbose: boolean, options?: {
         spawnHelperOverride?: SpawnHelperType,
@@ -210,6 +213,9 @@ export class GStreamer extends EventEmitter<{
         }
         args.push(pipeline);
 
+        // for logging purposes
+        this._lastGstLaunchCommand = `${command} ${args.join(' ')}`;
+
         if (this._verbose) {
             console.log(PREFIX, `Starting ${command} ${args.join(' ')}`);
         }
@@ -226,11 +232,85 @@ export class GStreamer extends EventEmitter<{
                     console.log(PREFIX, d.toString('utf-8'));
                 }
 
-                if (d.toString('utf-8').indexOf('frame_ready:sink') > -1) {
-                    this.emit('profilingInfo', new Date(), 'frame_ready');
-                }
-                if (d.toString('utf-8').indexOf('jpegenc_done:sink') > -1) {
-                    this.emit('profilingInfo', new Date(), 'jpegenc_done');
+                const ts = new Date();
+
+                const parsePtsFromLine = (line: string) => {
+                    const m = line.match(/pts: ([\d\.\:]+)/);
+                    if (m && m.length >= 2) {
+                        return m[1];
+                    }
+                    return null;
+                };
+
+                const parseOffsetFromLine = (line: string) => {
+                    const m = line.match(/offset: (-?[\d\.\:]+)/);
+                    if (m && m.length >= 2) {
+                        return Number(m[1]);
+                    }
+                    return null;
+                };
+
+                const str = d.toString('utf-8');
+                for (const line of str.split('\n')) {
+                    if (line.trim().startsWith('/GstPipeline:pipeline0/GstIdentity:')) {
+                        // identity elements
+                        const pts = parsePtsFromLine(line);
+                        let offset = parseOffsetFromLine(line);
+                        const identity = line.replace('/GstPipeline:pipeline0/GstIdentity:', '').split(' ')[0]
+                            .replace(':', '');
+
+                        // no pts -> skip
+                        if (!pts) {
+                            continue;
+                        }
+
+                        // frame_ready w/o offset -> also skip
+                        if (identity === 'frame_ready') {
+                            if (offset === null) {
+                                continue;
+                            }
+                            // e.g. qtiqmmfsrc always has offset -1 for frame_ready
+                            if (offset === -1) {
+                                offset = ++this._offset;
+                            }
+                            this.emit('profilingInfo', {
+                                type: 'frame_ready',
+                                ts: ts,
+                                pts: pts,
+                                offset: offset,
+                            });
+                        }
+                        else {
+                            this.emit('profilingInfo', {
+                                type: 'event-without-filename',
+                                ts: ts,
+                                name: identity,
+                                pts: pts,
+                            });
+                        }
+                    }
+                    else if (line.includes('GstMultiFileSink, filename=')) {
+                        let filenameM = line.match(/filename=\(string\)([\w\.]+)/);
+                        if (!filenameM || filenameM.length < 2) {
+                            console.log(PREFIX, `Failed to parse filename from GstMultiFileSink: ` + line.trim());
+                            continue;
+                        }
+
+                        let timestampM = line.match(/timestamp=\(guint64\)(\d+)/);
+                        if (!timestampM || timestampM.length < 2) {
+                            console.log(PREFIX, `Failed to parse timestamp from GstMultiFileSink: ` + line.trim());
+                            continue;
+                        }
+
+                        let filename = filenameM[1];
+                        let pts = this.timestampNsToPts(timestampM[1]);
+
+                        this.emit('profilingInfo', {
+                            type: 'pts-to-filename',
+                            pts: pts,
+                            filename: filename,
+                        });
+                    }
                 }
             });
             this._captureProcess.stderr.on('data', (d: Buffer) => {
@@ -254,6 +334,8 @@ export class GStreamer extends EventEmitter<{
             }
             if (!this._tempDir) return;
             if (this._handledFiles[fileName]) return;
+
+            this._imagesReceived++;
 
             // not next frame yet?
             if (this._processing || Date.now() < nextFrame) {
@@ -303,14 +385,16 @@ export class GStreamer extends EventEmitter<{
                     clearTimeout(this._keepAliveTimeout);
                 }
 
+                const tempDir = this._tempDir;
+
                 try {
                     let [
                         imgBuffer,
                         originalImgBuffer
                     ] = await Promise.all([
-                        fs.promises.readFile(Path.join(this._tempDir, fileName)),
+                        fs.promises.readFile(Path.join(tempDir, fileName)),
                         this._emitsOriginalSizeImages ?
-                            fs.promises.readFile(Path.join(this._tempDir, originalName)) :
+                            fs.promises.readFile(Path.join(tempDir, originalName)) :
                             null,
                     ]);
 
@@ -342,10 +426,9 @@ export class GStreamer extends EventEmitter<{
                     };
                 }
                 catch (ex) {
-                    console.error(PREFIX, 'Failed to load file', Path.join(this._tempDir, fileName), ex);
+                    console.error(PREFIX, 'Failed to load file', Path.join(tempDir, fileName), ex);
                 }
 
-                const tempDir = this._tempDir;
                 await Promise.all([
                     (async () => {
                         await this.safeUnlinkFile(Path.join(tempDir, fileName));
@@ -397,7 +480,13 @@ export class GStreamer extends EventEmitter<{
                                 return;
                             }
                             else {
-                                reject('Capture process failed with code ' + code);
+                                if (this._imagesReceived === 0 && this._lastGstLaunchCommand) {
+                                    reject(`Capture process failed with code ${code}\n\n` +
+                                        `command: ${this._lastGstLaunchCommand}`);
+                                }
+                                else {
+                                    reject('Capture process failed with code ' + code);
+                                }
                             }
                         }
                         else {
@@ -473,8 +562,7 @@ export class GStreamer extends EventEmitter<{
             let customArgs = argvSplit(this._customLaunchCommand);
             customArgs = customArgs.concat([
                 `!`,
-                `multifilesink`,
-                `location=resized%05d.jpg`
+                `multifilesink location=resized%05d.jpg post-messages=true sync=false`,
             ]);
 
             return {
@@ -511,14 +599,26 @@ export class GStreamer extends EventEmitter<{
             };
         }
 
-        let videoSource = [ device.videoSource, 'device=' + device.id ];
+        let videoSource: string[] = [];
+        if (this._profiling) {
+            videoSource.push('-m');
+        }
+        videoSource.push(device.videoSource);
+        if (device.id) {
+            videoSource.push(`device=${device.id}`);
+        }
 
         if ((this._mode === 'rpi') || (this._mode === 'microchip')) {
             // Rpi camera
             if ((!device.id)
                 || (device.name.indexOf('unicam') > -1)
                 || (device.name.indexOf('bcm2835-isp') > -1)) {
-                videoSource = [ 'libcamerasrc' ];
+
+                videoSource = [
+                    ...(this._profiling ? [ '-m' ] : []),
+                    'libcamerasrc',
+                ];
+
                 const hasPlugin = await this.hasGstPlugin('libcamerasrc');
                 if (!hasPlugin) {
                     throw new Error('Missing "libcamerasrc" gstreamer element. Install via `sudo apt install -y gstreamer1.0-libcamera`');
@@ -526,11 +626,19 @@ export class GStreamer extends EventEmitter<{
             }
         }
         else if ((this._mode === 'qualcomm-rb3gen2') || (this._mode === 'qualcomm-yupik')) {
-            videoSource = [ 'qtiqmmfsrc', 'name=camsrc', 'camera=' + device.id ];
+            videoSource = [
+                ...(this._profiling ? [ '-m' ] : []),
+                'qtiqmmfsrc',
+                'name=camsrc',
+                'camera=' + device.id,
+            ];
         }
 
         if (device.id === 'pylonsrc') {
-            videoSource = [ 'pylonsrc' ];
+            videoSource = [
+                ...(this._profiling ? [ '-m' ] : []),
+                'pylonsrc',
+            ];
         }
 
         let cropArgs: string[] = [];
@@ -586,12 +694,11 @@ export class GStreamer extends EventEmitter<{
                     `jpegenc`,
                     ...jpgencDoneArgs,
                     `!`,
-                    `multifilesink`,
-                    `location=resized%05d.jpg`,
+                    `multifilesink location=resized%05d.jpg post-messages=true sync=false`,
                 ]);
             }
             else {
-                let original = `t. ! queue ! jpegenc ! multifilesink location=original%05d.jpg`;
+                let original = `t. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false`;
                 let resized = [
                     `t. ! queue`,
                     ...cropArgs,
@@ -599,8 +706,7 @@ export class GStreamer extends EventEmitter<{
                     `jpegenc`,
                     ...jpgencDoneArgs,
                     `!`,
-                    `multifilesink`,
-                    `location=resized%05d.jpg`,
+                    `multifilesink location=resized%05d.jpg post-messages=true sync=false`,
                 ];
 
                 args = videoSource.concat([
@@ -621,15 +727,14 @@ export class GStreamer extends EventEmitter<{
                 `!`,
                 `image/jpeg,width=${cap.width},height=${cap.height}`,
                 `!`,
-                `multifilesink`,
-                `location=resized%05d.jpg`
+                `multifilesink location=resized%05d.jpg post-messages=true sync=false`
             ]);
         }
         else if (cap.type === 'nvarguscamerasrc') {
             args = [
                 `nvarguscamerasrc ! "video/x-raw(memory:NVMM),width=${cap.width},height=${cap.height}" ! ` +
                     `nvvidconv flip-method=0 ! video/x-raw,width=${cap.width},height=${cap.height} ! nvvidconv ! ` +
-                    `jpegenc ! multifilesink location=resized%05d.jpg`
+                    `jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false`
             ];
         }
         else {
@@ -1498,5 +1603,19 @@ export class GStreamer extends EventEmitter<{
                 // noop
             }
         }
+    }
+
+    private timestampNsToPts(nsStr: string) {
+        const ns = BigInt(nsStr); // important: avoid precision loss
+        const HOUR = 3600000000000n;
+        const MIN  = 60000000000n;
+        const SEC  = 1000000000n;
+
+        const h = ns / HOUR;
+        const m = (ns / MIN) % 60n;
+        const s = (ns / SEC) % 60n;
+        const n = ns % SEC;
+
+        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${n.toString().padStart(9, '0')}`;
     }
 }

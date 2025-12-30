@@ -4,7 +4,7 @@ import fs from 'fs';
 import Path from 'path';
 import os from 'os';
 import { spawnHelper } from './spawn-helper';
-import { ICamera, ICameraStartOptions } from './icamera';
+import { ICamera, ICameraProfilingInfoEvent, ICameraStartOptions } from './icamera';
 import crypto from 'crypto';
 import util from 'util';
 
@@ -14,7 +14,7 @@ export class Prophesee extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
     snapshotForInference: (buffer: Buffer, filename: string) => void,
     error: (message: string) => void,
-    profilingInfo: (ts: Date, name: string) => void,
+    profilingInfo: (ev: ICameraProfilingInfoEvent) => void,
 }> implements ICamera {
     private _captureProcess?: ChildProcess;
     private _tempDir?: string;

@@ -14,11 +14,32 @@ export type ICameraStartOptions = {
     inferenceDimensions?: ICameraInferenceDimensions,
 };
 
+export type ICameraProfilingInfoEvent = {
+    type: 'event-without-filename',
+    ts: Date,
+    name: string,
+    pts: string,
+} | {
+    type: 'frame_ready',
+    ts: Date,
+    pts: string,
+    offset: number,
+} | {
+    type: 'event-with-filename',
+    ts: Date,
+    name: string,
+    filename: string,
+} | {
+    type: 'pts-to-filename',
+    pts: string,
+    filename: string,
+};
+
 export interface ICamera extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
     snapshotForInference: (buffer: Buffer, filename: string) => void,
     error: (message: string) => void,
-    profilingInfo: (ts: Date, name: string) => void,
+    profilingInfo: (ev: ICameraProfilingInfoEvent) => void,
 }> {
     init(): Promise<void>;
     listDevices(): Promise<string[]>;

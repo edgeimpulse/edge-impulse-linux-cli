@@ -5268,7 +5268,7 @@ Freeing pipeline ...
 
             assert.equal(launchResp.command, 'gst-launch-1.0');
             assert.equal(launchResp.pipeline,
-                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=resized%05d.jpg');
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false');
         });
 
         it("w/ inference dims #1", async () => {
@@ -5316,8 +5316,8 @@ Freeing pipeline ...
             assert.equal(launchResp.pipeline,
                 'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
                 'tee name=t ' +
-                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg ' +
-                    't. ! queue ! videocrop left=180 right=180 top=0 bottom=0 ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg'
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! videocrop left=180 right=180 top=0 bottom=0 ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
             );
         });
 
@@ -5366,8 +5366,8 @@ Freeing pipeline ...
             assert.equal(launchResp.pipeline,
                 'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
                 'tee name=t ' +
-                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg ' +
-                    't. ! queue ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg'
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
             );
         });
 
@@ -5414,7 +5414,7 @@ Freeing pipeline ...
 
             assert.equal(launchResp.command, 'gst-launch-1.0');
             assert.equal(launchResp.pipeline,
-                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=resized%05d.jpg');
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false');
         });
 
         it("w/ inference dims #4", async () => {
@@ -5462,8 +5462,8 @@ Freeing pipeline ...
             assert.equal(launchResp.pipeline,
                 'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
                 'tee name=t ' +
-                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg ' +
-                    't. ! queue ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg'
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
             );
         });
     });

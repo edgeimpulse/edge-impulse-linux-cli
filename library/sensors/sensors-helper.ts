@@ -108,14 +108,19 @@ export async function initCamera(opts: {
     // TODO: move this message out of the camera init function
     // console.log(RUNNER_PREFIX, 'Using camera', cameraDevice, 'starting...');
 
-    await camera.start({
-        device: cameraDevice,
-        intervalMs: 0, // no artificial wait
-        dimensions: dimensions,
-        inferenceDimensions: inferenceDimensions,
-    });
+    return {
+        start: async () => {
+            await camera.start({
+                device: <string>cameraDevice,
+                intervalMs: 0, // no artificial wait
+                dimensions: dimensions,
+                inferenceDimensions: inferenceDimensions,
+            });
 
-    return camera;
+            return camera;
+        },
+        camera: camera,
+    };
 }
 
 export async function initMicrophone(opts: {
@@ -160,4 +165,21 @@ export async function initMicrophone(opts: {
     }
 
     return audioDevice;
+}
+
+export function getCameraType() {
+    let cameraType = CameraType.UnknownCamera;
+    if (process.env.PROPHESEE_CAM === '1') {
+        cameraType = CameraType.PropheseeCamera;
+    }
+    else if (process.env.USE_GSTREAMER === '1') {
+        cameraType = CameraType.GStreamerCamera;
+    }
+    else if (process.platform === 'darwin') {
+        cameraType = CameraType.ImagesnapCamera;
+    }
+    else if (process.platform === 'linux') {
+        cameraType = CameraType.GStreamerCamera;
+    }
+    return cameraType;
 }

@@ -4,7 +4,7 @@ import fs from 'fs';
 import Path from 'path';
 import os from 'os';
 import { spawnHelper } from './spawn-helper';
-import { ICamera, ICameraStartOptions } from './icamera';
+import { ICamera, ICameraProfilingInfoEvent, ICameraStartOptions } from './icamera';
 
 const PREFIX = '\x1b[35m[SNP]\x1b[0m';
 
@@ -12,7 +12,7 @@ export class Imagesnap extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
     snapshotForInference: (buffer: Buffer, filename: string) => void,
     error: (message: string) => void,
-    profilingInfo: (ts: Date, name: string) => void,
+    profilingInfo: (ev: ICameraProfilingInfoEvent) => void,
 }> implements ICamera {
     private _captureProcess?: ChildProcess;
     private _tempDir?: string;
@@ -22,6 +22,7 @@ export class Imagesnap extends EventEmitter<{
     private _verbose: boolean;
     private _isStarted = false;
     private _isRestarting = false;
+    private _pts = 0;
 
     /**
      * Instantiate the imagesnap backend (on macOS)
@@ -72,6 +73,11 @@ export class Imagesnap extends EventEmitter<{
             throw new Error('Capture was already started');
         }
 
+        if (this._verbose) {
+            console.log(PREFIX, `Using imagesnap to capture images. You can also use GStreamer by running this command ` +
+                `with USE_GSTREAMER=1`);
+        }
+
         this._lastOptions = options;
 
         this._tempDir = await fs.promises.mkdtemp(Path.join(os.tmpdir(), 'edge-impulse-cli'));
@@ -115,7 +121,20 @@ export class Imagesnap extends EventEmitter<{
                     clearTimeout(this._keepAliveTimeout);
                 }
 
-                this.emit('profilingInfo', new Date(), 'frame_ready');
+                // first event should be a frame_ready event
+                const offset = ++this._pts;
+                this.emit('profilingInfo', {
+                    type: 'frame_ready',
+                    ts: new Date(),
+                    pts: offset.toString(),
+                    offset: offset,
+                });
+
+                this.emit('profilingInfo', {
+                    type: 'pts-to-filename',
+                    pts: offset.toString(),
+                    filename: fileName,
+                });
 
                 try {
                     let data = await fs.promises.readFile(Path.join(this._tempDir, fileName));
