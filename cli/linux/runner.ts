@@ -56,6 +56,7 @@ program
     .option('--model-file <file>', 'Specify model file (either path to .eim, or the socket on which the model is running), ' +
         'if not provided the model will be fetched from Edge Impulse')
     .option('--api-key <key>', 'API key to authenticate with Edge Impulse (overrides current credentials)')
+    .option('--api-key-file <file>', 'File to read the API key from -- to authenticate with Edge Impulse (overrides current credentials)')
     .option('--download <file>', 'Just download the model and store it on the file system')
     .option('--list-targets', 'List all supported targets and inference engines')
     .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand (e.g. "runner-linux-aarch64")')
@@ -107,7 +108,7 @@ const silentArgv: boolean = !!program.silent;
 const quantizedArgv: boolean = !!program.quantized;
 const enableCameraArgv: boolean = !!program.enableCamera;
 const verboseArgv: boolean = !!program.verbose;
-const apiKeyArgv = <string | undefined>program.apiKey;
+const apiKeyArgv = <string | undefined>program.apiKey ?? fs.readFileSync(program.apiKeyFile, 'utf-8').trim() ?? undefined;
 const greengrassArgv: boolean = !!program.greengrass;
 const modelFileArgv = <string | undefined>program.modelFile;
 const downloadArgv = <string | undefined>program.download;
