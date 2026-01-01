@@ -42,6 +42,7 @@ You can pass in options to the CLI. Here are the key ones:
 * `--disable-microphone` - disable the microphone.
 * `--clean` - clear credentials, and re-authenticate. Use this to switch projects or devices.
 * `--api-key <apikey>` - set an API key, useful for automatic authentication with a new project.
+* `--api-key-file <apikey-file>` - set an API key to a value read from file. This is useful for automatic authentication with a new project in environments where secrets are managed via files (e.g., Docker compose, Docker Swarm, Kubernetes).
 * `--greengrass` - utilize the AWS IoT Greengrass authentication context and AWS Secrets Manager to authenticate with a new project. See additional Greegrass notes below.
 * `--help` - see all options.
 
