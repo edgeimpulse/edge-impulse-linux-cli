@@ -1,0 +1,568 @@
+1394:  dv1394src: Firewire (1394) DV video source
+1394:  hdv1394src: Firewire (1394) HDV video source
+aasink:  aasink: ASCII art video sink
+aasink:  aatv: aaTV effect
+adaptivedemux2:  dashdemux2: DASH Demuxer
+adaptivedemux2:  hlsdemux2: HLS Demuxer
+adaptivedemux2:  mssdemux2: Smooth Streaming demuxer (v2)
+adder:  adder: Adder
+alaw:  alawdec: A Law audio decoder
+alaw:  alawenc: A Law audio encoder
+alpha:  alpha: Alpha filter
+alphacolor:  alphacolor: Alpha color filter
+amrnb:  amrnbdec: AMR-NB audio decoder
+amrnb:  amrnbenc: AMR-NB audio encoder
+amrwbdec:  amrwbdec: AMR-WB audio decoder
+apetag:  apedemux: APE tag demuxer
+app:  appsink: AppSink
+app:  appsrc: AppSrc
+audioconvert:  audioconvert: Audio converter
+audiofx:  audioamplify: Audio amplifier
+audiofx:  audiochebband: Band pass & band reject filter
+audiofx:  audiocheblimit: Low pass & high pass filter
+audiofx:  audiodynamic: Dynamic range controller
+audiofx:  audioecho: Audio echo
+audiofx:  audiofirfilter: Audio FIR filter
+audiofx:  audioiirfilter: Audio IIR filter
+audiofx:  audioinvert: Audio inversion
+audiofx:  audiokaraoke: AudioKaraoke
+audiofx:  audiopanorama: Stereo positioning
+audiofx:  audiowsincband: Band pass & band reject filter
+audiofx:  audiowsinclimit: Low pass & high pass filter
+audiofx:  scaletempo: Scaletempo
+audiofx:  stereo: Stereo effect
+audiomixer:  audiointerleave: AudioInterleave
+audiomixer:  audiomixer: AudioMixer
+audiomixer:  liveadder: AudioMixer
+audioparsers:  aacparse: AAC audio stream parser
+audioparsers:  ac3parse: AC3 audio stream parser
+audioparsers:  amrparse: AMR audio stream parser
+audioparsers:  dcaparse: DTS Coherent Acoustics audio stream parser
+audioparsers:  flacparse: FLAC audio parser
+audioparsers:  mpegaudioparse: MPEG1 Audio Parser
+audioparsers:  sbcparse: SBC audio parser
+audioparsers:  wavpackparse: Wavpack audio stream parser
+audiorate:  audiorate: Audio rate adjuster
+audioresample:  audioresample: Audio resampler
+audiotestsrc:  audiotestsrc: Audio test source
+auparse:  auparse: AU audio demuxer
+autodetect:  autoaudiosink: Auto audio sink
+autodetect:  autoaudiosrc: Auto audio source
+autodetect:  autovideosink: Auto video sink
+autodetect:  autovideosrc: Auto video source
+avi:  avidemux: Avi demuxer
+avi:  avimux: Avi muxer
+avi:  avisubtitle: Avi subtitle parser
+basedebug:  fakevideodec: Fake Video Decoder
+cacasink:  cacasink: A colored ASCII art video sink
+cacasink:  cacatv: CacaTV effect
+cairo:  cairooverlay: Cairo overlay
+cdparanoia:  cdparanoiasrc: CD Audio (cdda) Source, Paranoia IV
+compositor:  compositor: Compositor
+coreelements:  capsfilter: CapsFilter
+coreelements:  clocksync: ClockSync
+coreelements:  concat: Concat
+coreelements:  dataurisrc: data: URI source element
+coreelements:  downloadbuffer: DownloadBuffer
+coreelements:  fakesink: Fake Sink
+coreelements:  fakesrc: Fake Source
+coreelements:  fdsink: Filedescriptor Sink
+coreelements:  fdsrc: Filedescriptor Source
+coreelements:  filesink: File Sink
+coreelements:  filesrc: File Source
+coreelements:  funnel: Funnel pipe fitting
+coreelements:  identity: Identity
+coreelements:  input-selector: Input selector
+coreelements:  multiqueue: MultiQueue
+coreelements:  output-selector: Output selector
+coreelements:  queue: Queue
+coreelements:  queue2: Queue 2
+coreelements:  streamiddemux: Streamid Demux
+coreelements:  tee: Tee pipe fitting
+coreelements:  typefind: TypeFind
+coreelements:  valve: Valve element
+coretracers:  dots (GstTracerFactory)
+coretracers:  factories (GstTracerFactory)
+coretracers:  latency (GstTracerFactory)
+coretracers:  leaks (GstTracerFactory)
+coretracers:  log (GstTracerFactory)
+coretracers:  rusage (GstTracerFactory)
+coretracers:  stats (GstTracerFactory)
+cutter:  cutter: Audio cutter
+debug:  breakmydata: Break my data
+debug:  capssetter: CapsSetter
+debug:  cpureport: CPU report
+debug:  navseek: Seek based on left-right arrows
+debug:  progressreport: Progress report
+debug:  pushfilesrc: Push File Source
+debug:  rndbuffersize: Random buffer size
+debug:  taginject: TagInject
+debug:  testsink: Test plugin
+deinterlace:  deinterlace: Deinterlacer
+dsd:  dsdconvert: DSD converter
+dtmf:  dtmfsrc: DTMF tone generator
+dtmf:  rtpdtmfdepay: RTP DTMF packet depayloader
+dtmf:  rtpdtmfsrc: RTP DTMF packet generator
+dv:  dvdec: DV video decoder
+dv:  dvdemux: DV system stream demuxer
+effectv:  agingtv: AgingTV effect
+effectv:  dicetv: DiceTV effect
+effectv:  edgetv: EdgeTV effect
+effectv:  optv: OpTV effect
+effectv:  quarktv: QuarkTV effect
+effectv:  radioactv: RadioacTV effect
+effectv:  revtv: RevTV effect
+effectv:  rippletv: RippleTV effect
+effectv:  shagadelictv: ShagadelicTV
+effectv:  streaktv: StreakTV effect
+effectv:  vertigotv: VertigoTV effect
+effectv:  warptv: WarpTV effect
+encoding:  encodebin: Encoder Bin
+encoding:  encodebin2: Encoder Bin
+equalizer:  equalizer-10bands: 10 Band Equalizer
+equalizer:  equalizer-3bands: 3 Band Equalizer
+equalizer:  equalizer-nbands: N Band Equalizer
+flac:  flacdec: FLAC audio decoder
+flac:  flacenc: FLAC audio encoder
+flac:  flactag: FLAC tagger
+flv:  flvdemux: FLV Demuxer
+flv:  flvmux: FLV muxer
+flxdec:  flxdec: FLX video decoder
+gdkpixbuf:  gdkpixbufdec: GdkPixbuf image decoder
+gdkpixbuf:  gdkpixbufoverlay: GdkPixbuf Overlay
+gdkpixbuf:  gdkpixbufsink: GdkPixbuf sink
+gio:  giosink: GIO sink
+gio:  giosrc: GIO source
+gio:  giostreamsink: GIO stream sink
+gio:  giostreamsrc: GIO stream source
+goom:  goom: GOOM: what a GOOM!
+goom2k1:  goom2k1: GOOM: what a GOOM! 2k1 edition
+icydemux:  icydemux: ICY tag demuxer
+id3demux:  id3demux: ID3 tag demuxer
+imagefreeze:  imagefreeze: Still frame stream generator
+interleave:  deinterleave: Audio deinterleaver
+interleave:  interleave: Audio interleaver
+isomp4:  3gppmux: 3GPP Muxer
+isomp4:  ismlmux: ISML Muxer
+isomp4:  mj2mux: MJ2 Muxer
+isomp4:  mp4mux: MP4 Muxer
+isomp4:  qtdemux: QuickTime demuxer
+isomp4:  qtmoovrecover: QT Moov Recover
+isomp4:  qtmux: QuickTime Muxer
+isomp4:  rtpxqtdepay: RTP packet depayloader
+jpeg:  jpegdec: JPEG image decoder
+jpeg:  jpegenc: JPEG image encoder
+lame:  lamemp3enc: L.A.M.E. mp3 encoder
+level:  level: Level
+libcamera:  libcameraprovider (GstDeviceProviderFactory)
+libcamera:  libcamerasrc: libcamera Source
+matroska:  matroskademux: Matroska demuxer
+matroska:  matroskamux: Matroska muxer
+matroska:  matroskaparse: Matroska parser
+matroska:  webmmux: WebM muxer
+monoscope:  monoscope: Monoscope
+mpg123:  mpg123audiodec: mpg123 mp3 decoder
+mulaw:  mulawdec: Mu Law audio decoder
+mulaw:  mulawenc: Mu Law audio encoder
+multifile:  imagesequencesrc: Image Sequence Source
+multifile:  multifilesink: Multi-File Sink
+multifile:  multifilesrc: Multi-File Source
+multifile:  splitfilesrc: Split-File Source
+multifile:  splitmuxsink: Split Muxing Bin
+multifile:  splitmuxsrc: Split File Demuxing Bin
+multipart:  multipartdemux: Multipart demuxer
+multipart:  multipartmux: Multipart muxer
+navigationtest:  navigationtest: Video navigation test
+ogg:  oggaviparse: Ogg AVI parser
+ogg:  oggdemux: Ogg demuxer
+ogg:  oggmux: Ogg muxer
+ogg:  oggparse: Ogg parser
+ogg:  ogmaudioparse: OGM audio stream parser
+ogg:  ogmtextparse: OGM text stream parser
+ogg:  ogmvideoparse: OGM video stream parser
+opus:  opusdec: Opus audio decoder
+opus:  opusenc: Opus audio encoder
+oss4:  oss4sink: OSS v4 Audio Sink
+oss4:  oss4src: OSS v4 Audio Source
+ossaudio:  ossdeviceprovider (GstDeviceProviderFactory)
+ossaudio:  osssink: Audio Sink (OSS)
+ossaudio:  osssrc: Audio Source (OSS)
+overlaycomposition:  overlaycomposition: Overlay Composition
+pango:  clockoverlay: Clock overlay
+pango:  textoverlay: Text overlay
+pango:  textrender: Text renderer
+pango:  timeoverlay: Time overlay
+pbtypes:  GstVideoMultiviewFlagsSet (GstDynamicTypeFactory)
+playback:  decodebin: Decoder Bin
+playback:  decodebin3: Decoder Bin 3
+playback:  parsebin: Parse Bin
+playback:  playbin: Player Bin 2
+playback:  playbin3: Player Bin 3
+playback:  playsink: Player Sink
+playback:  streamsynchronizer: Stream Synchronizer
+playback:  subtitleoverlay: Subtitle Overlay
+playback:  uridecodebin: URI Decoder
+playback:  uridecodebin3: URI Decoder
+playback:  urisourcebin: URI reader
+png:  pngdec: PNG image decoder
+png:  pngenc: PNG image encoder
+pulseaudio:  pulsedeviceprovider (GstDeviceProviderFactory)
+pulseaudio:  pulsesink: PulseAudio Audio Sink
+pulseaudio:  pulsesrc: PulseAudio Audio Source
+rawparse:  rawaudioparse: rawaudioparse
+rawparse:  rawvideoparse: rawvideoparse
+rawparse:  unalignedaudioparse: unalignedaudioparse
+rawparse:  unalignedvideoparse: unalignedvideoparse
+replaygain:  rganalysis: ReplayGain analysis
+replaygain:  rglimiter: ReplayGain limiter
+replaygain:  rgvolume: ReplayGain volume
+rtp:  asteriskh263: RTP Asterisk H263 depayloader
+rtp:  rtpL16depay: RTP audio depayloader
+rtp:  rtpL16pay: RTP audio payloader
+rtp:  rtpL24depay: RTP audio depayloader
+rtp:  rtpL24pay: RTP audio payloader
+rtp:  rtpL8depay: RTP audio depayloader
+rtp:  rtpL8pay: RTP audio payloader
+rtp:  rtpac3depay: RTP AC3 depayloader
+rtp:  rtpac3pay: RTP AC3 audio payloader
+rtp:  rtpamrdepay: RTP AMR depayloader
+rtp:  rtpamrpay: RTP AMR payloader
+rtp:  rtpbvdepay: RTP BroadcomVoice depayloader
+rtp:  rtpbvpay: RTP BV Payloader
+rtp:  rtpceltdepay: RTP CELT depayloader
+rtp:  rtpceltpay: RTP CELT payloader
+rtp:  rtpdvdepay: RTP DV Depayloader
+rtp:  rtpdvpay: RTP DV Payloader
+rtp:  rtpg722depay: RTP audio depayloader
+rtp:  rtpg722pay: RTP audio payloader
+rtp:  rtpg723depay: RTP G.723 depayloader
+rtp:  rtpg723pay: RTP G.723 payloader
+rtp:  rtpg726depay: RTP G.726 depayloader
+rtp:  rtpg726pay: RTP G.726 payloader
+rtp:  rtpg729depay: RTP G.729 depayloader
+rtp:  rtpg729pay: RTP G.729 payloader
+rtp:  rtpgsmdepay: RTP GSM depayloader
+rtp:  rtpgsmpay: RTP GSM payloader
+rtp:  rtpgstdepay: GStreamer depayloader
+rtp:  rtpgstpay: RTP GStreamer payloader
+rtp:  rtph261depay: RTP H261 depayloader
+rtp:  rtph261pay: RTP H261 packet payloader
+rtp:  rtph263depay: RTP H263 depayloader
+rtp:  rtph263pay: RTP H263 packet payloader
+rtp:  rtph263pdepay: RTP H263 depayloader
+rtp:  rtph263ppay: RTP H263 payloader
+rtp:  rtph264depay: RTP H264 depayloader
+rtp:  rtph264pay: RTP H264 payloader
+rtp:  rtph265depay: RTP H265 depayloader
+rtp:  rtph265pay: RTP H265 payloader
+rtp:  rtphdrextcolorspace: Color Space
+rtp:  rtpilbcdepay: RTP iLBC depayloader
+rtp:  rtpilbcpay: RTP iLBC Payloader
+rtp:  rtpisacdepay: RTP iSAC depayloader
+rtp:  rtpisacpay: RTP iSAC payloader
+rtp:  rtpj2kdepay: RTP JPEG 2000 depayloader
+rtp:  rtpj2kpay: RTP JPEG 2000 payloader
+rtp:  rtpjpegdepay: RTP JPEG depayloader
+rtp:  rtpjpegpay: RTP JPEG payloader
+rtp:  rtpklvdepay: RTP KLV Depayloader
+rtp:  rtpklvpay: RTP KLV Payloader
+rtp:  rtpldacpay: RTP packet payloader
+rtp:  rtpmp1sdepay: RTP MPEG1 System Stream depayloader
+rtp:  rtpmp2tdepay: RTP MPEG Transport Stream depayloader
+rtp:  rtpmp2tpay: RTP MPEG2 Transport Stream payloader
+rtp:  rtpmp4adepay: RTP MPEG4 audio depayloader
+rtp:  rtpmp4apay: RTP MPEG4 audio payloader
+rtp:  rtpmp4gdepay: RTP MPEG4 ES depayloader
+rtp:  rtpmp4gpay: RTP MPEG4 ES payloader
+rtp:  rtpmp4vdepay: RTP MPEG4 video depayloader
+rtp:  rtpmp4vpay: RTP MPEG4 Video payloader
+rtp:  rtpmpadepay: RTP MPEG audio depayloader
+rtp:  rtpmpapay: RTP MPEG audio payloader
+rtp:  rtpmparobustdepay: RTP MPEG audio depayloader
+rtp:  rtpmpvdepay: RTP MPEG video depayloader
+rtp:  rtpmpvpay: RTP MPEG2 ES video payloader
+rtp:  rtpopusdepay: RTP Opus packet depayloader
+rtp:  rtpopuspay: RTP Opus payloader
+rtp:  rtppassthroughpay: RTP Passthrough payloader
+rtp:  rtppcmadepay: RTP PCMA depayloader
+rtp:  rtppcmapay: RTP PCMA payloader
+rtp:  rtppcmudepay: RTP PCMU depayloader
+rtp:  rtppcmupay: RTP PCMU payloader
+rtp:  rtpqcelpdepay: RTP QCELP depayloader
+rtp:  rtpqdm2depay: RTP QDM2 depayloader
+rtp:  rtpreddec: Redundant Audio Data (RED) Decoder
+rtp:  rtpredenc: Redundant Audio Data (RED) Encoder
+rtp:  rtpsbcdepay: RTP SBC audio depayloader
+rtp:  rtpsbcpay: RTP packet payloader
+rtp:  rtpsirendepay: RTP Siren packet depayloader
+rtp:  rtpsirenpay: RTP Payloader for Siren Audio
+rtp:  rtpspeexdepay: RTP Speex depayloader
+rtp:  rtpspeexpay: RTP Speex payloader
+rtp:  rtpstorage: RTP storage
+rtp:  rtpstreamdepay: RTP Stream Depayloading
+rtp:  rtpstreampay: RTP Stream Payloading
+rtp:  rtpsv3vdepay: RTP SVQ3 depayloader
+rtp:  rtptheoradepay: RTP Theora depayloader
+rtp:  rtptheorapay: RTP Theora payloader
+rtp:  rtpulpfecdec: RTP FEC Decoder
+rtp:  rtpulpfecenc: RTP FEC Encoder
+rtp:  rtpvorbisdepay: RTP Vorbis depayloader
+rtp:  rtpvorbispay: RTP Vorbis payloader
+rtp:  rtpvp8depay: RTP VP8 depayloader
+rtp:  rtpvp8pay: RTP VP8 payloader
+rtp:  rtpvp9depay: RTP VP9 depayloader
+rtp:  rtpvp9pay: RTP VP9 payloader
+rtp:  rtpvrawdepay: RTP Raw Video depayloader
+rtp:  rtpvrawpay: RTP Raw Video payloader
+rtpmanager:  rtpbin: RTP Bin
+rtpmanager:  rtpdtmfmux: RTP muxer
+rtpmanager:  rtpfunnel: RTP funnel
+rtpmanager:  rtphdrextclientaudiolevel: Client-to-Mixer Audio Level Indication (RFC6464) RTP Header Extension
+rtpmanager:  rtphdrextmid: RTP BUNDLE MID Header Extension
+rtpmanager:  rtphdrextntp64: RTP Header Extension RFC6051 64-bit NTP timestamp
+rtpmanager:  rtphdrextrepairedstreamid: RTP Header Extension Repaired RFC8852 Stream ID
+rtpmanager:  rtphdrextstreamid: RTP Header Extension RFC8852 Stream ID
+rtpmanager:  rtphdrexttwcc: Transport Wide Congestion Control
+rtpmanager:  rtpjitterbuffer: RTP packet jitter-buffer
+rtpmanager:  rtpmux: RTP muxer
+rtpmanager:  rtpptdemux: RTP Demux
+rtpmanager:  rtprtxqueue: RTP Retransmission Queue
+rtpmanager:  rtprtxreceive: RTP Retransmission receiver
+rtpmanager:  rtprtxsend: RTP Retransmission Sender
+rtpmanager:  rtpsession: RTP Session
+rtpmanager:  rtpssrcdemux: RTP SSRC Demux
+rtpmanager:  rtpst2022-1-fecdec: SMPTE 2022-1 FEC decoder
+rtpmanager:  rtpst2022-1-fecenc: SMPTE 2022-1 FEC encoder
+rtsp:  rtpdec: RTP Decoder
+rtsp:  rtspsrc: RTSP packet receiver
+shapewipe:  shapewipe: Shape Wipe transition filter
+shout2:  shout2send: Icecast network sink
+smpte:  smpte: SMPTE transitions
+smpte:  smptealpha: SMPTE transitions
+soup:  souphttpclientsink: HTTP client sink
+soup:  souphttpsrc: HTTP client source
+spectrum:  spectrum: Spectrum analyzer
+speex:  speexdec: Speex audio decoder
+speex:  speexenc: Speex audio encoder
+staticelements:  bin: Generic bin
+staticelements:  pipeline: Pipeline object
+subparse:  ssaparse: SSA Subtitle Parser
+subparse:  subparse: Subtitle parser
+subparse: subparse_typefind: srt, sub, mpsub, mdvd, smi, txt, dks, vtt
+taglib:  apev2mux: TagLib-based APEv2 Muxer
+taglib:  id3v2mux: TagLib-based ID3v2 Muxer
+tcp:  multifdsink: Multi filedescriptor sink
+tcp:  multisocketsink: Multi socket sink
+tcp:  socketsrc: socket source
+tcp:  tcpclientsink: TCP client sink
+tcp:  tcpclientsrc: TCP client source
+tcp:  tcpserversink: TCP server sink
+tcp:  tcpserversrc: TCP server source
+theora:  theoradec: Theora video decoder
+theora:  theoraenc: Theora video encoder
+theora:  theoraparse: Theora video parser
+twolame:  twolamemp2enc: TwoLAME mp2 encoder
+typefindfunctions: application/dash+xml: mpd, MPD
+typefindfunctions: application/gxf: no extensions
+typefindfunctions: application/itc: itc
+typefindfunctions: application/msword: doc
+typefindfunctions: application/mxf: mxf
+typefindfunctions: application/octet-stream: no extensions
+typefindfunctions: application/ogg: ogg, oga, ogv, ogm, ogx, spx, anx, axa, axv
+typefindfunctions: application/pdf: pdf
+typefindfunctions: application/postscript: ps
+typefindfunctions: application/sdp: sdp
+typefindfunctions: application/smil: smil
+typefindfunctions: application/ttml+xml: ttml+xml
+typefindfunctions: application/vnd.apple-fcp+xml: fcpxml
+typefindfunctions: application/vnd.apple-xmeml+xml: xmeml
+typefindfunctions: application/vnd.ms-sstr+xml: no extensions
+typefindfunctions: application/vnd.pixar.opentimelineio+json: otio
+typefindfunctions: application/vnd.rn-realmedia: ra, ram, rm, rmvb
+typefindfunctions: application/x-3gp: 3gp
+typefindfunctions: application/x-ape: ape
+typefindfunctions: application/x-apetag: mp3, ape, mpc, wv
+typefindfunctions: application/x-ar: a
+typefindfunctions: application/x-bzip: bz2
+typefindfunctions: application/x-compress: Z
+typefindfunctions: application/x-executable: no extensions
+typefindfunctions: application/x-gzip: gz
+typefindfunctions: application/x-hls: m3u8
+typefindfunctions: application/x-id3v1: mp3, mp2, mp1, mpga, ogg, flac, tta
+typefindfunctions: application/x-id3v2: mp3, mp2, mp1, mpga, ogg, flac, tta
+typefindfunctions: application/x-iff: no extensions
+typefindfunctions: application/x-mcc: mcc
+typefindfunctions: application/x-mmsh: no extensions
+typefindfunctions: application/x-ms-dos-executable: dll, exe, ocx, sys, scr, msstyles, cpl
+typefindfunctions: application/x-ogg-skeleton: no extensions
+typefindfunctions: application/x-ogm-audio: no extensions
+typefindfunctions: application/x-ogm-text: no extensions
+typefindfunctions: application/x-ogm-video: no extensions
+typefindfunctions: application/x-pn-realaudio: ra, ram, rm, rmvb
+typefindfunctions: application/x-rar: rar
+typefindfunctions: application/x-scc: scc
+typefindfunctions: application/x-shockwave-flash: swf, swfl
+typefindfunctions: application/x-ssa: ssa, ass
+typefindfunctions: application/x-subtitle-vtt: vtt
+typefindfunctions: application/x-tar: tar
+typefindfunctions: application/x-yuv4mpeg: no extensions
+typefindfunctions: application/xges: xges
+typefindfunctions: application/xml: xml
+typefindfunctions: application/zip: zip
+typefindfunctions: audio/aac: aac, adts, adif, loas
+typefindfunctions: audio/audible: aa, aax
+typefindfunctions: audio/iLBC-sh: ilbc
+typefindfunctions: audio/midi: mid, midi
+typefindfunctions: audio/mobile-xmf: mxmf
+typefindfunctions: audio/mpeg: mp3, mp2, mp1, mpga
+typefindfunctions: audio/qcelp: qcp
+typefindfunctions: audio/riff-midi: mid, midi
+typefindfunctions: audio/x-ac3: ac3, eac3
+typefindfunctions: audio/x-aiff: aiff, aif, aifc
+typefindfunctions: audio/x-amr-nb-sh: amr
+typefindfunctions: audio/x-amr-wb-sh: amr
+typefindfunctions: audio/x-au: au, snd
+typefindfunctions: audio/x-ay: ay
+typefindfunctions: audio/x-bfstm: bfstm, bcstm
+typefindfunctions: audio/x-brstm: brstm
+typefindfunctions: audio/x-caf: caf
+typefindfunctions: audio/x-celt: no extensions
+typefindfunctions: audio/x-dsf: no extensions
+typefindfunctions: audio/x-dts: dts
+typefindfunctions: audio/x-flac: flac
+typefindfunctions: audio/x-gbs: gbs
+typefindfunctions: audio/x-gsm: gsm
+typefindfunctions: audio/x-gym: gym
+typefindfunctions: audio/x-imelody: imy, ime, imelody
+typefindfunctions: audio/x-ircam: sf
+typefindfunctions: audio/x-kss: kss
+typefindfunctions: audio/x-m4a: m4a
+typefindfunctions: audio/x-mod: 669, amf, ams, dbm, digi, dmf, dsm, gdm, far, imf, it, j2b, mdl, med, mod, mt2, mtm, okt, psm, ptm, sam, s3m, stm, stx, ult, umx, xm
+typefindfunctions: audio/x-musepack: mpc, mpp, mp+
+typefindfunctions: audio/x-nist: nist
+typefindfunctions: audio/x-nsf: nsf
+typefindfunctions: audio/x-paris: paf
+typefindfunctions: audio/x-rf64: rf64
+typefindfunctions: audio/x-sap: sap
+typefindfunctions: audio/x-sbc: sbc
+typefindfunctions: audio/x-sds: sds
+typefindfunctions: audio/x-shorten: shn
+typefindfunctions: audio/x-sid: sid
+typefindfunctions: audio/x-spc: spc
+typefindfunctions: audio/x-speex: no extensions
+typefindfunctions: audio/x-svx: iff, svx
+typefindfunctions: audio/x-tap-dmp: dmp
+typefindfunctions: audio/x-tap-tap: tap
+typefindfunctions: audio/x-ttafile: tta
+typefindfunctions: audio/x-vgm: vgm
+typefindfunctions: audio/x-voc: voc
+typefindfunctions: audio/x-vorbis: no extensions
+typefindfunctions: audio/x-w64: w64
+typefindfunctions: audio/x-wav: wav
+typefindfunctions: audio/x-wavpack: wv, wvp
+typefindfunctions: audio/x-wavpack-correction: wvc
+typefindfunctions: audio/x-xi: xi
+typefindfunctions: audio/x-xwma: no extensions
+typefindfunctions: image/bmp: bmp
+typefindfunctions: image/gif: gif
+typefindfunctions: image/jp2: jp2
+typefindfunctions: image/jpeg: jpg, jpe, jpeg
+typefindfunctions: image/png: png
+typefindfunctions: image/svg+xml: svg
+typefindfunctions: image/tiff: tif, tiff
+typefindfunctions: image/vnd.adobe.photoshop: psd
+typefindfunctions: image/vnd.wap.wbmp: no extensions
+typefindfunctions: image/webp: webp
+typefindfunctions: image/x-degas: no extensions
+typefindfunctions: image/x-exr: exr
+typefindfunctions: image/x-icon: no extensions
+typefindfunctions: image/x-jng: jng
+typefindfunctions: image/x-jpc: jpc, j2k
+typefindfunctions: image/x-portable-pixmap: pnm, ppm, pgm, pbm
+typefindfunctions: image/x-quicktime: qif, qtif, qti
+typefindfunctions: image/x-sun-raster: ras
+typefindfunctions: image/x-xcf: xcf
+typefindfunctions: image/x-xpixmap: xpm
+typefindfunctions: multipart/x-mixed-replace: no extensions
+typefindfunctions: subtitle/x-kate: no extensions
+typefindfunctions: text/html: htm, html
+typefindfunctions: text/plain: txt
+typefindfunctions: text/uri-list: ram
+typefindfunctions: text/utf-16: txt
+typefindfunctions: text/utf-32: txt
+typefindfunctions: text/x-cmml: no extensions
+typefindfunctions: video/mj2: mj2
+typefindfunctions: video/mpeg-elementary: mpv, mpeg, mpg
+typefindfunctions: video/mpeg-sys: mpe, mpeg, mpg
+typefindfunctions: video/mpeg4: m4v
+typefindfunctions: video/mpegts: ts, mts
+typefindfunctions: video/quicktime: mov, mp4
+typefindfunctions: video/vivo: viv
+typefindfunctions: video/x-4xm: no extensions
+typefindfunctions: video/x-av1: av1
+typefindfunctions: video/x-avs: no extensions
+typefindfunctions: video/x-cdxa: dat
+typefindfunctions: video/x-dirac: no extensions
+typefindfunctions: video/x-dv: dv, dif
+typefindfunctions: video/x-ea: no extensions
+typefindfunctions: video/x-film-cpk: cpk
+typefindfunctions: video/x-fli: flc, fli
+typefindfunctions: video/x-flv: flv
+typefindfunctions: video/x-h263: h263, 263
+typefindfunctions: video/x-h264: h264, x264, 264
+typefindfunctions: video/x-h265: h265, x265, 265
+typefindfunctions: video/x-h266: h266, 266
+typefindfunctions: video/x-ivf: ivf
+typefindfunctions: video/x-matroska: mkv, mka, mk3d, webm
+typefindfunctions: video/x-mng: mng
+typefindfunctions: video/x-ms-asf: asf, wm, wma, wmv
+typefindfunctions: video/x-msvideo: avi
+typefindfunctions: video/x-mve: mve
+typefindfunctions: video/x-nuv: nuv
+typefindfunctions: video/x-pva: pva
+typefindfunctions: video/x-theora: no extensions
+typefindfunctions: video/x-vcd: dat
+udp:  dynudpsink: UDP packet sender
+udp:  multiudpsink: UDP packet sender
+udp:  udpsink: UDP packet sender
+udp:  udpsrc: UDP packet receiver
+video4linux2:  v4l2deviceprovider (GstDeviceProviderFactory)
+video4linux2:  v4l2h264dec: V4L2 H264 Decoder
+video4linux2:  v4l2h265dec: V4L2 H265 Decoder
+video4linux2:  v4l2radio: Radio (video4linux2) Tuner
+video4linux2:  v4l2sink: Video (video4linux2) Sink
+video4linux2:  v4l2src: Video (video4linux2) Source
+video4linux2:  v4l2vp9dec: V4L2 VP9 Decoder
+videobox:  videobox: Video box filter
+videoconvertscale:  videoconvert: Video colorspace converter
+videoconvertscale:  videoconvertscale: Video colorspace converter and scaler
+videoconvertscale:  videoscale: Video scaler
+videocrop:  aspectratiocrop: aspectratiocrop
+videocrop:  videocrop: Crop
+videofilter:  gamma: Video gamma correction
+videofilter:  videobalance: Video balance
+videofilter:  videoflip: Video flipper
+videofilter:  videomedian: Median effect
+videomixer:  videomixer: Video mixer 2
+videorate:  videorate: Video rate adjuster
+videotestsrc:  videotestsrc: Video test source
+volume:  volume: Volume
+vorbis:  vorbisdec: Vorbis audio decoder
+vorbis:  vorbisenc: Vorbis audio encoder
+vorbis:  vorbisparse: VorbisParse
+vorbis:  vorbistag: VorbisTag
+vpx:  vp8dec: On2 VP8 Decoder
+vpx:  vp8enc: On2 VP8 Encoder
+vpx:  vp9dec: On2 VP9 Decoder
+vpx:  vp9enc: On2 VP9 Encoder
+wavenc:  wavenc: WAV audio muxer
+wavpack:  wavpackdec: Wavpack audio decoder
+wavpack:  wavpackenc: Wavpack audio encoder
+wavparse:  wavparse: WAV audio demuxer
+ximagesink:  ximagesink: Video sink
+ximagesrc:  ximagesrc: Ximage video source
+xingmux:  xingmux: MP3 Xing muxer
+xvimagesink:  xvimagesink: Video sink
+y4menc:  y4menc: YUV4MPEG video encoder
+
+Total count: 110 plugins, 566 features

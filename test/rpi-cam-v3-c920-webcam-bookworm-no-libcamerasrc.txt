@@ -1,0 +1,383 @@
+Probing devices...
+
+
+Device found:
+
+	name  : HD Pro Webcam C920
+	class : Video/Source
+	caps  : video/x-raw, format=YUY2, width=2560, height=1472, pixel-aspect-ratio=1/1, framerate=2/1
+	        video/x-raw, format=YUY2, width=1920, height=1080, pixel-aspect-ratio=1/1, framerate=5/1
+	        video/x-raw, format=YUY2, width=1600, height=896, pixel-aspect-ratio=1/1, framerate={ (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=1280, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=960, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=1024, height=576, pixel-aspect-ratio=1/1, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=800, height=600, pixel-aspect-ratio=1/1, framerate={ (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=864, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=800, height=448, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=640, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=640, height=360, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=432, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=352, height=288, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=320, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=320, height=180, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=176, height=144, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=160, height=120, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=160, height=90, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=1920, height=1080, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=1600, height=896, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=1280, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=960, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=1024, height=576, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=800, height=600, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=864, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=800, height=448, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=640, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=640, height=360, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=432, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=352, height=288, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=320, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=320, height=180, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=176, height=144, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=160, height=120, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, width=160, height=90, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	properties:
+		udev-probed = true
+		device.bus_path = platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.3:1.0
+		sysfs.path = /sys/devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1/1-1.3/1-1.3:1.0/video4linux/video2
+		device.bus = usb
+		device.subsystem = video4linux
+		device.vendor.id = 046d
+		device.vendor.name = 046d
+		device.product.id = 08e5
+		device.product.name = HD Pro Webcam C920
+		device.serial = 046d_HD_Pro_Webcam_C920
+		device.capabilities = :capture:
+		device.api = v4l2
+		device.path = /dev/video2
+		v4l2.device.driver = uvcvideo
+		v4l2.device.card = HD Pro Webcam C920
+		v4l2.device.bus_info = usb-0000:01:00.0-1.3
+		v4l2.device.version = 394803 (0x00060633)
+		v4l2.device.capabilities = 2225078273 (0x84a00001)
+		v4l2.device.device_caps = 69206017 (0x04200001)
+	gst-launch-1.0 v4l2src device=/dev/video2 ! ...
+
+
+Device found:
+
+	name  : bcm2835-isp
+	class : Video/Sink
+	caps  : video/x-raw, format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)1:4:7:1, (string)bt601, (string)bt709, (string)1:3:5:1 }
+	        video/x-raw(format:Interlaced), format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)1:4:7:1, (string)bt601, (string)bt709, (string)1:3:5:1 }
+	        video/x-raw, format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=BGRx, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=BGRx, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw, format=RGBx, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=RGBx, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw, format=BGR, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=BGR, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw, format=RGB, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=RGB, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw, format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=RGB16, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=RGB16, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-bayer, format=grbg, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], colorimetry={ (string)1:1:1:0 }
+	        video/x-bayer, format=gbrg, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], colorimetry={ (string)1:1:1:0 }
+	        video/x-bayer, format=rggb, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], colorimetry={ (string)1:1:1:0 }
+	        video/x-bayer, format=bggr, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], colorimetry={ (string)1:1:1:0 }
+	        video/x-raw, format=GRAY8, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)1:4:1:0 }
+	        video/x-raw(format:Interlaced), format=GRAY8, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)1:4:1:0 }
+	        video/x-raw, format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=GRAY16_LE, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)1:4:1:0 }
+	        video/x-raw(format:Interlaced), format=GRAY16_LE, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)1:4:1:0 }
+	properties:
+		udev-probed = true
+		device.bus_path = platform-bcm2835-isp
+		sysfs.path = /sys/devices/platform/soc/fe00b840.mailbox/bcm2835-isp/video4linux/video13
+		device.subsystem = video4linux
+		device.product.name = bcm2835-isp
+		device.capabilities = :video_output:
+		device.api = v4l2
+		device.path = /dev/video13
+		v4l2.device.driver = bcm2835-isp
+		v4l2.device.card = bcm2835-isp
+		v4l2.device.bus_info = platform:bcm2835-isp
+		v4l2.device.version = 394803 (0x00060633)
+		v4l2.device.capabilities = 2216689666 (0x84200002)
+		v4l2.device.device_caps = 69206018 (0x04200002)
+	gst-launch-1.0 ... ! v4l2sink device=/dev/video13
+
+
+Device found:
+
+	name  : bcm2835-isp
+	class : Video/Source
+	caps  : video/x-raw, format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=BGRx, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=BGRx, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=RGBx, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=RGBx, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=BGR, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=BGR, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=RGB, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=RGB, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=RGB16, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=RGB16, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	properties:
+		udev-probed = true
+		device.bus_path = platform-bcm2835-isp
+		sysfs.path = /sys/devices/platform/soc/fe00b840.mailbox/bcm2835-isp/video4linux/video14
+		device.subsystem = video4linux
+		device.product.name = bcm2835-isp
+		device.capabilities = :capture:
+		device.api = v4l2
+		device.path = /dev/video14
+		v4l2.device.driver = bcm2835-isp
+		v4l2.device.card = bcm2835-isp
+		v4l2.device.bus_info = platform:bcm2835-isp
+		v4l2.device.version = 394803 (0x00060633)
+		v4l2.device.capabilities = 2216689665 (0x84200001)
+		v4l2.device.device_caps = 69206017 (0x04200001)
+	gst-launch-1.0 v4l2src device=/dev/video14 ! ...
+
+
+Device found:
+
+	name  : bcm2835-isp
+	class : Video/Source
+	caps  : video/x-raw, format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	properties:
+		udev-probed = true
+		device.bus_path = platform-bcm2835-isp
+		sysfs.path = /sys/devices/platform/soc/fe00b840.mailbox/bcm2835-isp/video4linux/video15
+		device.subsystem = video4linux
+		device.product.name = bcm2835-isp
+		device.capabilities = :capture:
+		device.api = v4l2
+		device.path = /dev/video15
+		v4l2.device.driver = bcm2835-isp
+		v4l2.device.card = bcm2835-isp
+		v4l2.device.bus_info = platform:bcm2835-isp
+		v4l2.device.version = 394803 (0x00060633)
+		v4l2.device.capabilities = 2216689665 (0x84200001)
+		v4l2.device.device_caps = 69206017 (0x04200001)
+	gst-launch-1.0 v4l2src device=/dev/video15 ! ...
+
+
+Device found:
+
+	name  : bcm2835-isp
+	class : Video/Sink
+	caps  : video/x-raw, format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)1:4:7:1, (string)bt601, (string)bt709, (string)1:3:5:1 }
+	        video/x-raw(format:Interlaced), format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)1:4:7:1, (string)bt601, (string)bt709, (string)1:3:5:1 }
+	        video/x-raw, format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=BGRx, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=BGRx, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw, format=RGBx, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=RGBx, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw, format=BGR, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=BGR, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw, format=RGB, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=RGB, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw, format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=RGB16, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=progressive, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-raw(format:Interlaced), format=RGB16, width=[ 64, 16384 ], height=[ 64, 16384 ], interlace-mode=alternate, colorimetry={ (string)sRGB, (string)2:1:16:4, (string)2:1:5:1, (string)1:1:5:1 }
+	        video/x-bayer, format=grbg, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], colorimetry={ (string)1:1:1:0 }
+	        video/x-bayer, format=gbrg, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], colorimetry={ (string)1:1:1:0 }
+	        video/x-bayer, format=rggb, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], colorimetry={ (string)1:1:1:0 }
+	        video/x-bayer, format=bggr, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], colorimetry={ (string)1:1:1:0 }
+	        video/x-raw, format=GRAY8, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)1:4:1:0 }
+	        video/x-raw(format:Interlaced), format=GRAY8, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)1:4:1:0 }
+	        video/x-raw, format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw(format:Interlaced), format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)bt601, (string)bt709, (string)1:3:5:1, (string)1:4:7:1 }
+	        video/x-raw, format=GRAY16_LE, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=progressive, colorimetry={ (string)1:4:1:0 }
+	        video/x-raw(format:Interlaced), format=GRAY16_LE, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], interlace-mode=alternate, colorimetry={ (string)1:4:1:0 }
+	properties:
+		udev-probed = true
+		device.bus_path = platform-bcm2835-isp
+		sysfs.path = /sys/devices/platform/soc/fe00b840.mailbox/bcm2835-isp/video4linux/video20
+		device.subsystem = video4linux
+		device.product.name = bcm2835-isp
+		device.capabilities = :video_output:
+		device.api = v4l2
+		device.path = /dev/video20
+		v4l2.device.driver = bcm2835-isp
+		v4l2.device.card = bcm2835-isp
+		v4l2.device.bus_info = platform:bcm2835-isp
+		v4l2.device.version = 394803 (0x00060633)
+		v4l2.device.capabilities = 2216689666 (0x84200002)
+		v4l2.device.device_caps = 69206018 (0x04200002)
+	gst-launch-1.0 ... ! v4l2sink device=/dev/video20
+
+
+Device found:
+
+	name  : bcm2835-isp
+	class : Video/Source
+	caps  : video/x-raw, format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=BGRx, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=BGRx, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=RGBx, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=RGBx, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=BGR, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=BGR, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=RGB, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=RGB, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=RGB16, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=RGB16, width=[ 64, 16384 ], height=[ 64, 16384 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	properties:
+		udev-probed = true
+		device.bus_path = platform-bcm2835-isp
+		sysfs.path = /sys/devices/platform/soc/fe00b840.mailbox/bcm2835-isp/video4linux/video21
+		device.subsystem = video4linux
+		device.product.name = bcm2835-isp
+		device.capabilities = :capture:
+		device.api = v4l2
+		device.path = /dev/video21
+		v4l2.device.driver = bcm2835-isp
+		v4l2.device.card = bcm2835-isp
+		v4l2.device.bus_info = platform:bcm2835-isp
+		v4l2.device.version = 394803 (0x00060633)
+		v4l2.device.capabilities = 2216689665 (0x84200001)
+		v4l2.device.device_caps = 69206017 (0x04200001)
+	gst-launch-1.0 v4l2src device=/dev/video21 ! ...
+
+
+Device found:
+
+	name  : bcm2835-isp
+	class : Video/Source
+	caps  : video/x-raw, format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YUY2, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=UYVY, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=NV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=I420, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YV12, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=NV21, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YVYU, width=[ 64, 16384, 2 ], height=[ 64, 16384, 2 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	properties:
+		udev-probed = true
+		device.bus_path = platform-bcm2835-isp
+		sysfs.path = /sys/devices/platform/soc/fe00b840.mailbox/bcm2835-isp/video4linux/video22
+		device.subsystem = video4linux
+		device.product.name = bcm2835-isp
+		device.capabilities = :capture:
+		device.api = v4l2
+		device.path = /dev/video22
+		v4l2.device.driver = bcm2835-isp
+		v4l2.device.card = bcm2835-isp
+		v4l2.device.bus_info = platform:bcm2835-isp
+		v4l2.device.version = 394803 (0x00060633)
+		v4l2.device.capabilities = 2216689665 (0x84200001)
+		v4l2.device.device_caps = 69206017 (0x04200001)
+	gst-launch-1.0 v4l2src device=/dev/video22 ! ...
+
+
+Device found:
+
+	name  : unicam
+	class : Video/Source
+	caps  : video/x-raw, format=YUY2, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YUY2, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=UYVY, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=UYVY, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=xRGB, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=xRGB, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=BGR, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=BGR, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=RGB, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=RGB, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=BGR15, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=BGR15, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=RGB15, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=RGB15, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=RGB16, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=RGB16, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-bayer, format=rggb, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-bayer, format=grbg, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-bayer, format=gbrg, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-bayer, format=bggr, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw, format=GRAY8, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=GRAY8, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=GRAY16_LE, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=GRAY16_LE, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	        video/x-raw, format=YVYU, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ]
+	        video/x-raw(format:Interlaced), format=YVYU, width=[ 16, 16376 ], height=[ 16, 16376 ], framerate=[ 0/1, 2147483647/1 ], interlace-mode=alternate
+	properties:
+		udev-probed = true
+		device.bus_path = platform-fe801000.csi
+		sysfs.path = /sys/devices/platform/soc/fe801000.csi/video4linux/video0
+		device.subsystem = video4linux
+		device.product.name = unicam
+		device.capabilities = :capture:
+		device.api = v4l2
+		device.path = /dev/video0
+		v4l2.device.driver = unicam
+		v4l2.device.card = unicam
+		v4l2.device.bus_info = platform:fe801000.csi
+		v4l2.device.version = 394803 (0x00060633)
+		v4l2.device.capabilities = 2778726401 (0xa5a00001)
+		v4l2.device.device_caps = 622854145 (0x25200001)
+	gst-launch-1.0 v4l2src ! ...

@@ -34,6 +34,8 @@ program
         'If this argument is omitted, and multiple cameras are found, a CLI selector is shown.')
     .option('--microphone <microphone>', 'Which microphone to use (either the name, or the device address). ' +
         'If this argument is omitted, and multiple microphones are found, a CLI selector is shown.')
+    .option('--camera-color-format <format>', 'Set camera color format according to GStreamer caps format, e.g. "RGB", "BGR", "GRAY8", "NV12", "I420"' +
+        ' Used only on Raspberry Pi 5 with GStreamer libcamera backend. Default format on RPi 5 is "YUY2".')
     .option('--verbose', 'Enable debug logs')
     .option('--greengrass', 'Enable AWS IoT greengrass integration mode')
     .allowUnknownOption(true)
@@ -55,6 +57,7 @@ const widthArgv = <string | undefined>program.width;
 const heightArgv = <string | undefined>program.height;
 const cameraArgv = <string | undefined>program.camera;
 const microphoneArgv = <string | undefined>program.microphone;
+const cameraColorFormatArgv = <string | undefined>program.cameraColorFormat;
 
 if ((program.width && !program.height) || (!program.width && program.height)) {
     console.error('--width and --height need to either be both specified or both omitted');
@@ -184,11 +187,12 @@ let isExiting = false;
         if (!noCamera) {
             const initedCamera = await initCamera({
                 cameraType: cameraType,
-                cameraDeviceNameInConfig: await configFactory.getCamera(),
+                cameraDeviceNameInConfig: cleanArgv ? undefined : await configFactory.getCamera(),
                 cameraNameArgv: cameraArgv,
                 dimensions: cameraDimensions,
                 gstLaunchArgs: gstLaunchArgsArgv,
                 verboseOutput: verboseArgv,
+                cameraColorFormat: cameraColorFormatArgv,
                 inferenceDimensions: undefined,
                 profiling: false,
             });
@@ -228,6 +232,9 @@ let isExiting = false;
     }
     catch (ex) {
         console.error('Failed to initialize linux tool', ex);
+        if (verboseArgv === false) {
+            console.error('Re-run this command with --verbose to enable debug logs');
+        }
         if (camera) {
             await camera.stop();
         }

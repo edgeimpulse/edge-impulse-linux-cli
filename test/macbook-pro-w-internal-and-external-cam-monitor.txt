@@ -1,0 +1,209 @@
+Probing devices...
+
+
+Device found:
+
+	name  : Cam Link 4K
+	class : Video/Source
+	caps  : video/x-raw(memory:GLMemory), width=3840, height=2160, format={ (string)UYVY, (string)YUY2 }, framerate=30/1, texture-target=rectangle
+	        video/x-raw, width=3840, height=2160, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate=30/1
+	properties:
+		device.api = avf
+		avf.unique_id = 0x33100000fd9007b
+		avf.model_id = UVC Camera VendorID_4057 ProductID_123
+		avf.has_flash = false
+		avf.has_torch = false
+		avf.manufacturer = Elgato
+	gst-launch-1.0 avfvideosrc device-index=0 ! ...
+
+
+Device found:
+
+	name  : Studio Display Camera
+	class : Video/Source
+	caps  : video/x-raw(memory:GLMemory), width=1920, height=1080, format={ (string)UYVY, (string)YUY2 }, framerate={ (fraction)1/1, (fraction)2/1, (fraction)3/1, (fraction)4/1, (fraction)5/1, (fraction)6/1, (fraction)7/1, (fraction)8/1, (fraction)9/1, (fraction)10/1, (fraction)11/1, (fraction)12/1, (fraction)13/1, (fraction)14/1, (fraction)15/1, (fraction)16/1, (fraction)17/1, (fraction)18/1, (fraction)19/1, (fraction)20/1, (fraction)21/1, (fraction)22/1, (fraction)23/1, (fraction)24/1, (fraction)25/1, (fraction)26/1, (fraction)27/1, (fraction)28/1, (fraction)29/1, (fraction)30/1 }, texture-target=rectangle
+	        video/x-raw(memory:GLMemory), width=1664, height=1248, format={ (string)UYVY, (string)YUY2 }, framerate={ (fraction)1/1, (fraction)2/1, (fraction)3/1, (fraction)4/1, (fraction)5/1, (fraction)6/1, (fraction)7/1, (fraction)8/1, (fraction)9/1, (fraction)10/1, (fraction)11/1, (fraction)12/1, (fraction)13/1, (fraction)14/1, (fraction)15/1, (fraction)16/1, (fraction)17/1, (fraction)18/1, (fraction)19/1, (fraction)20/1, (fraction)21/1, (fraction)22/1, (fraction)23/1, (fraction)24/1, (fraction)25/1, (fraction)26/1, (fraction)27/1, (fraction)28/1, (fraction)29/1, (fraction)30/1 }, texture-target=rectangle
+	        video/x-raw(memory:GLMemory), width=1280, height=720, format={ (string)UYVY, (string)YUY2 }, framerate={ (fraction)1/1, (fraction)2/1, (fraction)3/1, (fraction)4/1, (fraction)5/1, (fraction)6/1, (fraction)7/1, (fraction)8/1, (fraction)9/1, (fraction)10/1, (fraction)11/1, (fraction)12/1, (fraction)13/1, (fraction)14/1, (fraction)15/1, (fraction)16/1, (fraction)17/1, (fraction)18/1, (fraction)19/1, (fraction)20/1, (fraction)21/1, (fraction)22/1, (fraction)23/1, (fraction)24/1, (fraction)25/1, (fraction)26/1, (fraction)27/1, (fraction)28/1, (fraction)29/1, (fraction)30/1 }, texture-target=rectangle
+	        video/x-raw(memory:GLMemory), width=640, height=480, format={ (string)UYVY, (string)YUY2 }, framerate={ (fraction)1/1, (fraction)2/1, (fraction)3/1, (fraction)4/1, (fraction)5/1, (fraction)6/1, (fraction)7/1, (fraction)8/1, (fraction)9/1, (fraction)10/1, (fraction)11/1, (fraction)12/1, (fraction)13/1, (fraction)14/1, (fraction)15/1, (fraction)16/1, (fraction)17/1, (fraction)18/1, (fraction)19/1, (fraction)20/1, (fraction)21/1, (fraction)22/1, (fraction)23/1, (fraction)24/1, (fraction)25/1, (fraction)26/1, (fraction)27/1, (fraction)28/1, (fraction)29/1, (fraction)30/1 }, texture-target=rectangle
+	        video/x-raw, width=1920, height=1080, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate={ (fraction)1/1, (fraction)2/1, (fraction)3/1, (fraction)4/1, (fraction)5/1, (fraction)6/1, (fraction)7/1, (fraction)8/1, (fraction)9/1, (fraction)10/1, (fraction)11/1, (fraction)12/1, (fraction)13/1, (fraction)14/1, (fraction)15/1, (fraction)16/1, (fraction)17/1, (fraction)18/1, (fraction)19/1, (fraction)20/1, (fraction)21/1, (fraction)22/1, (fraction)23/1, (fraction)24/1, (fraction)25/1, (fraction)26/1, (fraction)27/1, (fraction)28/1, (fraction)29/1, (fraction)30/1 }
+	        video/x-raw, width=1664, height=1248, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate={ (fraction)1/1, (fraction)2/1, (fraction)3/1, (fraction)4/1, (fraction)5/1, (fraction)6/1, (fraction)7/1, (fraction)8/1, (fraction)9/1, (fraction)10/1, (fraction)11/1, (fraction)12/1, (fraction)13/1, (fraction)14/1, (fraction)15/1, (fraction)16/1, (fraction)17/1, (fraction)18/1, (fraction)19/1, (fraction)20/1, (fraction)21/1, (fraction)22/1, (fraction)23/1, (fraction)24/1, (fraction)25/1, (fraction)26/1, (fraction)27/1, (fraction)28/1, (fraction)29/1, (fraction)30/1 }
+	        video/x-raw, width=1280, height=720, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate={ (fraction)1/1, (fraction)2/1, (fraction)3/1, (fraction)4/1, (fraction)5/1, (fraction)6/1, (fraction)7/1, (fraction)8/1, (fraction)9/1, (fraction)10/1, (fraction)11/1, (fraction)12/1, (fraction)13/1, (fraction)14/1, (fraction)15/1, (fraction)16/1, (fraction)17/1, (fraction)18/1, (fraction)19/1, (fraction)20/1, (fraction)21/1, (fraction)22/1, (fraction)23/1, (fraction)24/1, (fraction)25/1, (fraction)26/1, (fraction)27/1, (fraction)28/1, (fraction)29/1, (fraction)30/1 }
+	        video/x-raw, width=640, height=480, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate={ (fraction)1/1, (fraction)2/1, (fraction)3/1, (fraction)4/1, (fraction)5/1, (fraction)6/1, (fraction)7/1, (fraction)8/1, (fraction)9/1, (fraction)10/1, (fraction)11/1, (fraction)12/1, (fraction)13/1, (fraction)14/1, (fraction)15/1, (fraction)16/1, (fraction)17/1, (fraction)18/1, (fraction)19/1, (fraction)20/1, (fraction)21/1, (fraction)22/1, (fraction)23/1, (fraction)24/1, (fraction)25/1, (fraction)26/1, (fraction)27/1, (fraction)28/1, (fraction)29/1, (fraction)30/1 }
+	properties:
+		device.api = avf
+		avf.unique_id = 0x314000015bc0000
+		avf.model_id = UVC Camera VendorID_1452 ProductID_4372
+		avf.has_flash = false
+		avf.has_torch = false
+		avf.manufacturer = Apple Inc.
+	gst-launch-1.0 avfvideosrc device-index=1 ! ...
+
+
+Device found:
+
+	name  : MacBook Pro Camera
+	class : Video/Source
+	caps  : video/x-raw(memory:GLMemory), width=1080, height=1920, format={ (string)UYVY, (string)YUY2 }, framerate=[ 15/1, 30/1 ], texture-target=rectangle
+	        video/x-raw(memory:GLMemory), width=1920, height=1080, format={ (string)UYVY, (string)YUY2 }, framerate=[ 15/1, 30/1 ], texture-target=rectangle
+	        video/x-raw(memory:GLMemory), width=1552, height=1552, format={ (string)UYVY, (string)YUY2 }, framerate=[ 15/1, 30/1 ], texture-target=rectangle
+	        video/x-raw(memory:GLMemory), width=1328, height=1760, format={ (string)UYVY, (string)YUY2 }, framerate=[ 15/1, 30/1 ], texture-target=rectangle
+	        video/x-raw(memory:GLMemory), width=1760, height=1328, format={ (string)UYVY, (string)YUY2 }, framerate=[ 15/1, 30/1 ], texture-target=rectangle
+	        video/x-raw(memory:GLMemory), width=1280, height=720, format={ (string)UYVY, (string)YUY2 }, framerate=[ 15/1, 30/1 ], texture-target=rectangle
+	        video/x-raw(memory:GLMemory), width=640, height=480, format={ (string)UYVY, (string)YUY2 }, framerate=[ 15/1, 30/1 ], texture-target=rectangle
+	        video/x-raw, width=1080, height=1920, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate=[ 15/1, 30/1 ]
+	        video/x-raw, width=1920, height=1080, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate=[ 15/1, 30/1 ]
+	        video/x-raw, width=1552, height=1552, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate=[ 15/1, 30/1 ]
+	        video/x-raw, width=1328, height=1760, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate=[ 15/1, 30/1 ]
+	        video/x-raw, width=1760, height=1328, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate=[ 15/1, 30/1 ]
+	        video/x-raw, width=1280, height=720, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate=[ 15/1, 30/1 ]
+	        video/x-raw, width=640, height=480, format={ (string)UYVY, (string)YUY2, (string)NV12, (string)ARGB, (string)BGRA }, framerate=[ 15/1, 30/1 ]
+	properties:
+		device.api = avf
+		avf.unique_id = 6C707041-05AC-0010-0007-000000000001
+		avf.model_id = MacBook Pro Camera
+		avf.has_flash = false
+		avf.has_torch = false
+		avf.manufacturer = Apple Inc.
+	gst-launch-1.0 avfvideosrc device-index=2 ! ...
+
+
+Device found:
+
+	name  : Microsoft Teams Audio
+	class : Audio/Sink
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=48000, channels=1
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=[ 1, 2147483647 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=[ 1, 2147483647 ], channels=1
+	properties:
+		is-default = false
+		unique-id = MSLoopbackDriverDevice_UID
+	gst-launch-1.0 ... ! osxaudiosink device=90
+
+
+Device found:
+
+	name  : Microsoft Teams Audio
+	class : Audio/Source
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=48000, channels=1
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=1
+	properties:
+		is-default = false
+		unique-id = MSLoopbackDriverDevice_UID
+	gst-launch-1.0 osxaudiosrc device=90 ! ...
+
+
+Device found:
+
+	name  : MacBook Pro Speakers
+	class : Audio/Sink
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=48000, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=[ 1, 2147483647 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=[ 1, 2147483647 ], channels=1
+	properties:
+		is-default = false
+		unique-id = BuiltInSpeakerDevice
+	gst-launch-1.0 ... ! osxaudiosink device=100
+
+
+Device found:
+
+	name  : MacBook Pro Microphone
+	class : Audio/Source
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=48000, channels=1
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=1
+	properties:
+		is-default = false
+		unique-id = BuiltInMicrophoneDevice
+	gst-launch-1.0 osxaudiosrc device=107 ! ...
+
+
+Device found:
+
+	name  : Background Music (UI Sounds)
+	class : Audio/Sink
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=44100, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=[ 1, 2147483647 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=[ 1, 2147483647 ], channels=1
+	properties:
+		is-default = false
+		unique-id = BGMDevice_UISounds
+	gst-launch-1.0 ... ! osxaudiosink device=81
+
+
+Device found:
+
+	name  : Background Music (UI Sounds)
+	class : Audio/Source
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=44100, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=44100, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=44100, channels=1
+	properties:
+		is-default = false
+		unique-id = BGMDevice_UISounds
+	gst-launch-1.0 osxaudiosrc device=81 ! ...
+
+
+Device found:
+
+	name  : Background Music
+	class : Audio/Sink
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=44100, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=[ 1, 2147483647 ], channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=[ 1, 2147483647 ], channels=1
+	properties:
+		is-default = false
+		unique-id = BGMDevice
+	gst-launch-1.0 ... ! osxaudiosink device=75
+
+
+Device found:
+
+	name  : Background Music
+	class : Audio/Source
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=44100, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=44100, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=44100, channels=1
+	properties:
+		is-default = false
+		unique-id = BGMDevice
+	gst-launch-1.0 osxaudiosrc device=75 ! ...
+
+
+Device found:
+
+	name  : Cam Link 4K
+	class : Audio/Source
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=48000, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=1
+	properties:
+		is-default = false
+		unique-id = AppleUSBAudioEngine:Elgato:Cam Link 4K:A29YB41425P6BX:3
+	gst-launch-1.0 osxaudiosrc device=143 ! ...
+
+
+Device found:
+
+	name  : Studio Display Speakers
+	class : Audio/Sink
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=48000, channels=8, channel-mask=0x0000000000000000
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=[ 1, 2147483647 ], channels=8
+	properties:
+		is-default = true
+		unique-id = AppleUSBAudioEngine:Apple Inc.:Studio Display:00008030-000454E80EC0802E:8,9
+	gst-launch-1.0 ... ! osxaudiosink device=150
+
+
+Device found:
+
+	name  : Studio Display Microphone
+	class : Audio/Source
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=48000, channels=1
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=1
+	properties:
+		is-default = true
+		unique-id = AppleUSBAudioEngine:Apple Inc.:Studio Display:00008030-000454E80EC0802E:6,7
+	gst-launch-1.0 osxaudiosrc device=145 ! ...

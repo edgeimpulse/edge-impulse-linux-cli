@@ -31,15 +31,19 @@ export class RunnerDownloader extends EventEmitter<{
             }
         }
         else if (process.platform === 'linux') {
+            // 32-bit ARM
             if (process.arch === 'arm') {
                 let uname = (await spawnHelper('uname', [ '-m' ])).trim();
-                if (uname !== 'armv7l') {
+                // e.g. Rpi4 with 32-bit OS version has uname "aarch64" but process.arch "arm" -
+                // so both should be valid here
+                if (uname !== 'armv7l' && uname !== 'aarch64') {
                     throw new Error('Unsupported architecture "' + uname + '", only ' +
                         'armv7l or aarch64 supported for now');
                 }
 
                 downloadType = 'runner-linux-armv7';
             }
+            // 64-bit ARM
             else if (process.arch === 'arm64') {
                 let uname = (await spawnHelper('uname', [ '-m' ])).trim();
                 if (uname !== 'aarch64') {

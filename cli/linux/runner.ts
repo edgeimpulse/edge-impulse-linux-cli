@@ -96,6 +96,8 @@ program
     .option('--shm-behavior <mode>', `Whether to use shared memory to communicate between .eim file and Linux runner (experimental feature), valid: "auto", "always", "never". ` +
         `If not set, defaults to 'auto' - which will use shm if available, and fall back to JSON over TCP otherwise. ` +
         `If set to 'always' will only use shm to communicate (errors out if not available), if set to 'never' will always use JSON over TCP socket.`)
+    .option('--camera-color-format <format>', 'Set camera color format according to GStreamer caps format, e.g. "RGB", "BGR", "GRAY8", "NV12", "I420"' +
+        ' Applicable only on Raspberry Pi 5 with GStreamer libcamera backend. Default format on RPi 5 is "YUY2".')
     .option('--profiling', `If set, prints profiling info`)
     .option('--verbose', 'Enable debug logs')
     .allowUnknownOption(true)
@@ -152,6 +154,7 @@ const shmBehaviorArgv: 'auto' | 'always' | 'never' = <'auto' | 'always' | 'never
 const profilingArgv: boolean = !!program.profiling;
 const cameraArgv = <string | undefined>program.camera;
 const microphoneArgv = <string | undefined>program.microphone;
+const cameraColorFormatArgv = <string | undefined>program.cameraColorFormat;
 let modeArgv = <'streaming' | 'http-server' | undefined>program.mode;
 
 if (modeArgv === 'http-server' && typeof runHttpServerPort === 'undefined') {
@@ -842,13 +845,14 @@ process.on('SIGINT', onSignal);
             if (enableCameraArgv) {
                 const camera = await initCamera({
                     cameraType: cameraType,
-                    cameraDeviceNameInConfig: await configFactory.getCamera(),
+                    cameraDeviceNameInConfig: cleanArgv ? undefined : await configFactory.getCamera(),
                     cameraNameArgv: cameraArgv,
                     dimensions: forceCameraResolution,
                     gstLaunchArgs: gstLaunchArgsArgv,
                     verboseOutput: verboseArgv,
                     inferenceDimensions: undefined,
                     profiling: profilingArgv,
+                    cameraColorFormat: cameraColorFormatArgv,
                 });
                 await camera.start();
             }
@@ -993,7 +997,7 @@ process.on('SIGINT', onSignal);
 
             const cameraInit = await initCamera({
                 cameraType: cameraType,
-                cameraDeviceNameInConfig: await configFactory.getCamera(),
+                cameraDeviceNameInConfig: cleanArgv ? undefined : await configFactory.getCamera(),
                 cameraNameArgv: cameraArgv,
                 dimensions: forceCameraResolution,
                 gstLaunchArgs: gstLaunchArgsArgv,
@@ -1004,6 +1008,7 @@ process.on('SIGINT', onSignal);
                     resizeMode: forceResizeModeArgv || param.image_resize_mode || 'none',
                 },
                 profiling: profilingArgv,
+                cameraColorFormat: cameraColorFormatArgv,
             });
 
             imageClassifier = new ImageClassifier(runner, cameraInit.camera, {

@@ -1,0 +1,130 @@
+Probing devices...
+
+
+Device found:
+
+        name  : USB           : USB
+        class : Video/Source
+        caps  : image/jpeg, width=(int)1280, height=(int)720, pixel-aspect-ratio=(fraction)1/1, framerate=(fraction)30/1;
+        properties:
+                udev-probed = true
+                device.bus_path = platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.2:1.0
+                sysfs.path = /sys/devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1/1-1.2/1-1.2:1.0/video4linux/video0
+                device.bus = usb
+                device.subsystem = video4linux
+                device.vendor.id = 1b3f
+                device.vendor.name = "USB\\x20\\x20\\x20\\x20"
+                device.product.id = 2002
+                device.product.name = "USB\ \ \ \ \ \ \ \ \ \ \ :\ USB"
+                device.serial = USB_USB_Demo_1.00
+                device.capabilities = :capture:
+                device.api = v4l2
+                device.path = /dev/video0
+                v4l2.device.driver = uvcvideo
+                v4l2.device.card = "USB\ \ \ \ \ \ \ \ \ \ \ :\ USB\ \ \ \ \ \ \ \ \ \ \ \ "
+                v4l2.device.bus_info = usb-0000:01:00.0-1.2
+                v4l2.device.version = 328787 (0x00050453)
+                v4l2.device.capabilities = 2225078273 (0x84a00001)
+                v4l2.device.device_caps = 69206017 (0x04200001)
+        gst-launch-1.0 v4l2src ! ...
+
+
+Device found:
+
+        name  : bcm2835-isp
+        class : Video/Sink
+        caps  : video/x-raw, format=(string)YUY2, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], interlace-mode=(string)progressive, colorimetry=(string){ bt601 };
+                video/x-raw, format=(string)UYVY, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], interlace-mode=(string)progressive, colorimetry=(string){ bt601 };
+                video/x-raw, format=(string)I420, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], interlace-mode=(string)progressive, colorimetry=(string){ bt601 };
+                video/x-raw, format=(string)YV12, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], interlace-mode=(string)progressive, colorimetry=(string){ bt601 };
+                video/x-raw, format=(string)BGRA, width=(int)[ 64, 16384 ], height=(int)[ 64, 16384 ], interlace-mode=(string)progressive, colorimetry=(string){ sRGB };
+                video/x-raw, format=(string)BGR, width=(int)[ 64, 16384 ], height=(int)[ 64, 16384 ], interlace-mode=(string)progressive, colorimetry=(string){ sRGB };
+                video/x-raw, format=(string)RGB, width=(int)[ 64, 16384 ], height=(int)[ 64, 16384 ], interlace-mode=(string)progressive, colorimetry=(string){ sRGB };
+                video/x-raw, format=(string)NV21, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], interlace-mode=(string)progressive, colorimetry=(string){ bt601 };
+                video/x-raw, format=(string)NV12, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], interlace-mode=(string)progressive, colorimetry=(string){ bt601 };
+                video/x-raw, format=(string)RGB16, width=(int)[ 64, 16384 ], height=(int)[ 64, 16384 ], interlace-mode=(string)progressive, colorimetry=(string){ sRGB };
+                video/x-bayer, format=(string)grbg, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], colorimetry=(string){ 1:1:0:0 };
+                video/x-bayer, format=(string)gbrg, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], colorimetry=(string){ 1:1:0:0 };
+                video/x-bayer, format=(string)rggb, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], colorimetry=(string){ 1:1:0:0 };
+                video/x-bayer, format=(string)bggr, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], colorimetry=(string){ 1:1:0:0 };
+                video/x-raw, format=(string)GRAY8, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], interlace-mode=(string)progressive, colorimetry=(string){ 2:0:0:0 };
+                video/x-raw, format=(string)YVYU, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], interlace-mode=(string)progressive, colorimetry=(string){ bt601 };
+                video/x-raw, format=(string)GRAY16_LE, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], interlace-mode=(string)progressive, colorimetry=(string){ 2:0:0:0 };
+        properties:
+                udev-probed = true
+                device.bus_path = platform-bcm2835-isp
+                sysfs.path = /sys/devices/platform/soc/fe00b840.mailbox/bcm2835-isp/video4linux/video13
+                device.subsystem = video4linux
+                device.product.name = bcm2835-isp
+                device.capabilities = :video_output:
+                device.api = v4l2
+                device.path = /dev/video13
+                v4l2.device.driver = bcm2835-isp
+                v4l2.device.card = bcm2835-isp
+                v4l2.device.bus_info = platform:bcm2835-isp
+                v4l2.device.version = 328787 (0x00050453)
+                v4l2.device.capabilities = 2216689666 (0x84200002)
+                v4l2.device.device_caps = 69206018 (0x04200002)
+        gst-launch-1.0 ... ! v4l2sink device=/dev/video13
+
+
+Device found:
+
+        name  : bcm2835-isp
+        class : Video/Source
+        caps  : video/x-raw, format=(string)YUY2, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)UYVY, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)I420, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)YV12, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)BGRA, width=(int)[ 64, 16384 ], height=(int)[ 64, 16384 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)BGR, width=(int)[ 64, 16384 ], height=(int)[ 64, 16384 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)RGB, width=(int)[ 64, 16384 ], height=(int)[ 64, 16384 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)NV21, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)NV12, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)RGB16, width=(int)[ 64, 16384 ], height=(int)[ 64, 16384 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)YVYU, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+        properties:
+                udev-probed = true
+                device.bus_path = platform-bcm2835-isp
+                sysfs.path = /sys/devices/platform/soc/fe00b840.mailbox/bcm2835-isp/video4linux/video14
+                device.subsystem = video4linux
+                device.product.name = bcm2835-isp
+                device.capabilities = :capture:
+                device.api = v4l2
+                device.path = /dev/video14
+                v4l2.device.driver = bcm2835-isp
+                v4l2.device.card = bcm2835-isp
+                v4l2.device.bus_info = platform:bcm2835-isp
+                v4l2.device.version = 328787 (0x00050453)
+                v4l2.device.capabilities = 2216689665 (0x84200001)
+                v4l2.device.device_caps = 69206017 (0x04200001)
+        gst-launch-1.0 v4l2src device=/dev/video14 ! ...
+
+
+Device found:
+
+        name  : bcm2835-isp
+        class : Video/Source
+        caps  : video/x-raw, format=(string)YUY2, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)UYVY, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)I420, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)YV12, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)NV21, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)NV12, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+                video/x-raw, format=(string)YVYU, width=(int)[ 64, 16384, 2 ], height=(int)[ 64, 16384, 2 ], framerate=(fraction)[ 0/1, 2147483647/1 ];
+        properties:
+                udev-probed = true
+                device.bus_path = platform-bcm2835-isp
+                sysfs.path = /sys/devices/platform/soc/fe00b840.mailbox/bcm2835-isp/video4linux/video15
+                device.subsystem = video4linux
+                device.product.name = bcm2835-isp
+                device.capabilities = :capture:
+                device.api = v4l2
+                device.path = /dev/video15
+                v4l2.device.driver = bcm2835-isp
+                v4l2.device.card = bcm2835-isp
+                v4l2.device.bus_info = platform:bcm2835-isp
+                v4l2.device.version = 328787 (0x00050453)
+                v4l2.device.capabilities = 2216689665 (0x84200001)
+                v4l2.device.device_caps = 69206017 (0x04200001)
+        gst-launch-1.0 v4l2src device=/dev/video15 ! ...

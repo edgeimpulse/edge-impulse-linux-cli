@@ -17,6 +17,7 @@ type GStreamerCap = {
     width: number,
     height: number,
     framerate: number,
+    formats?: string[]
 };
 
 type GStreamerDevice = {
@@ -29,7 +30,7 @@ type GStreamerDevice = {
     videoSource: string,
 };
 
-export type GStreamerMode = 'default' | 'rpi' | 'microchip' | 'qualcomm-rb3gen2' | 'qualcomm-yupik';
+export type GStreamerMode = 'default' | 'rpi' | 'rpi5' | 'qualcomm-rb3gen2' | 'qualcomm-yupik' | 'unoq';
 
 const CUSTOM_GST_LAUNCH_COMMAND = 'custom-gst-launch-command';
 const DEFAULT_GST_VIDEO_SOURCE = 'v4l2src';
@@ -61,6 +62,7 @@ export class GStreamer extends EventEmitter<{
     private _customLaunchCommand: string | undefined;
     private _profiling: boolean;
     private _emitsOriginalSizeImages = false;
+    private _overrideColorFormat: string | undefined;
     private _lastGstLaunchCommand = '';
     private _imagesReceived = 0;
     private _offset = 0;
@@ -71,6 +73,7 @@ export class GStreamer extends EventEmitter<{
         modeOverride?: GStreamerMode,
         profiling?: boolean,
         dontRunCleanupLoop?: boolean,
+        colorFormat?: string,
     }) {
         super();
 
@@ -79,6 +82,7 @@ export class GStreamer extends EventEmitter<{
         this._spawnHelper = options?.spawnHelperOverride || spawnHelper;
         this._modeOverride = options?.modeOverride;
         this._profiling = options?.profiling || false;
+        this._overrideColorFormat = options?.colorFormat;
         if (options?.dontRunCleanupLoop === true) {
             // skip cleanup loop
         }
@@ -106,35 +110,45 @@ export class GStreamer extends EventEmitter<{
             console.log(PREFIX, 'checking for /etc/os-release');
             osRelease = await fs.promises.readFile('/etc/os-release', 'utf-8');
         }
+        else {
+            // so we don't need to check for undefined below
+            osRelease = '';
+        }
 
         let firmwareModel;
         // using /proc/device-tree as recommended in user space.
         if (await this.exists('/proc/device-tree/model')) {
             firmwareModel = await fs.promises.readFile('/proc/device-tree/model', 'utf-8');
         }
-
-        if (osRelease) {
-            if ((osRelease.indexOf('bullseye') > -1)
-                || (osRelease.indexOf('bookworm') > -1)) {
-
-                if (osRelease.indexOf('ID=raspbian') > -1) {
-                    this._mode = 'rpi';
-                }
-
-                if (firmwareModel && firmwareModel.indexOf('Raspberry Pi') > -1) {
-                    this._mode = 'rpi';
-                }
-            }
+        else {
+            // so we don't need to check for undefined below
+            firmwareModel = '';
         }
 
-        if (firmwareModel && firmwareModel.indexOf('Microchip SAMA7G5') > -1) {
-            this._mode = 'microchip';
-        }
-        else if (firmwareModel && firmwareModel.indexOf('RB3gen2') > -1 && firmwareModel.indexOf('vision') > -1) {
+        if (firmwareModel.indexOf('RB3gen2') > -1 && firmwareModel.indexOf('vision') > -1) {
             this._mode = 'qualcomm-rb3gen2';
         }
-        else if (firmwareModel && firmwareModel.indexOf('Qualcomm') > -1 && firmwareModel.indexOf('Yupik') > -1) {
+        else if (firmwareModel.indexOf('Qualcomm') > -1 && firmwareModel.indexOf('Yupik') > -1) {
             this._mode = 'qualcomm-yupik';
+        }
+        else if (firmwareModel.indexOf('Raspberry Pi') > -1) {
+            if (((osRelease.indexOf('bullseye') > -1) || (osRelease.indexOf('bookworm') > -1))
+                && (osRelease.indexOf('ID=raspbian') === -1)) {
+                    this._mode = 'rpi';
+            }
+            else if (osRelease.indexOf('trixie') > -1) {
+                this._mode = 'rpi';
+            }
+
+            // override to rpi5 if needed
+            if (firmwareModel.indexOf('Raspberry Pi 5') > -1) {
+                this._mode = 'rpi5';
+            }
+        }
+        else if ((firmwareModel.indexOf('Arduino') > -1 && firmwareModel.indexOf('Imola') > -1) ||
+                // this may be incorrect on the another platforms in the future
+                (process.env.EI_CLI_ENV === 'arduino')) {
+            this._mode = 'unoq';
         }
 
         this._mode = (this._modeOverride) ? this._modeOverride : this._mode;
@@ -571,7 +585,7 @@ export class GStreamer extends EventEmitter<{
             };
         }
 
-        // now we need to determine the resolution... we want something as close as possible to dimensions.widthx480
+        // now we need to determine the resolution... we want something as close as possible to dimensions.
         let caps = device.caps.filter(c => {
             return c.width >= dimensions.width && c.height >= dimensions.height;
         }).sort((a, b) => {
@@ -608,8 +622,8 @@ export class GStreamer extends EventEmitter<{
             videoSource.push(`device=${device.id}`);
         }
 
-        if ((this._mode === 'rpi') || (this._mode === 'microchip')) {
-            // Rpi camera
+        if ((this._mode === 'rpi') || (this._mode === 'rpi5') || device.videoSource === 'libcamerasrc') {
+            // libcamera devices don't have id set (or have some unique on Raspberry Pi or Microchip)
             if ((!device.id)
                 || (device.name.indexOf('unicam') > -1)
                 || (device.name.indexOf('bcm2835-isp') > -1)) {
@@ -617,12 +631,21 @@ export class GStreamer extends EventEmitter<{
                 videoSource = [
                     ...(this._profiling ? [ '-m' ] : []),
                     'libcamerasrc',
+                    ...device.name ? [ 'camera-name="' + device.name + '"' ] : [],
                 ];
 
                 const hasPlugin = await this.hasGstPlugin('libcamerasrc');
                 if (!hasPlugin) {
                     throw new Error('Missing "libcamerasrc" gstreamer element. Install via `sudo apt install -y gstreamer1.0-libcamera`');
                 }
+            }
+
+            // FIXME: dirty hack for IPASoft on QRB2210
+            // Some resolutions reported by camera causes the pipeline to hang. To fix that, it seems
+            // we need to increase width and/or height by 8 pixels. This hack should be removed once
+            // the hardware driver for ISP on QRB2210 is released.
+            if (this._mode === 'unoq') {
+                cap.width += 8;
             }
         }
         else if ((this._mode === 'qualcomm-rb3gen2') || (this._mode === 'qualcomm-yupik')) {
@@ -673,6 +696,23 @@ export class GStreamer extends EventEmitter<{
                 videoSource = videoSource.concat([
                     `!`,
                     `video/x-raw,width=${cap.width},height=${cap.height},format=YUY2`
+                    ]);
+            }
+            else if (this._mode === 'rpi5' ) {
+                // on RPi 5 we need to set color format
+                let colorFormat = '';
+                if (this._overrideColorFormat) {
+                    colorFormat = this._overrideColorFormat;
+                }
+                else if (cap.formats && cap.formats.indexOf('YUY2') > -1) {
+                    colorFormat = 'YUY2';
+                }
+                else if (cap.formats) {
+                    throw new Error('Detected RPi 5 camera. Please provide the color format with `--camera-color-format`, supported formats: ' + cap.formats.join(', '));
+                }
+                videoSource = videoSource.concat([
+                    `!`,
+                    `video/x-raw,width=${cap.width},height=${cap.height},format=${colorFormat}`
                     ]);
             }
             else {
@@ -864,7 +904,8 @@ export class GStreamer extends EventEmitter<{
             if (!currDevice) continue;
 
             if (l.startsWith('name  :')) {
-                currDevice.name = l.split(':')[1].trim();
+                // extract name from the l between 'name  : ' and '\n', because name may contain colons as well
+                currDevice.name = l.split(':').slice(1).join(':').trim();
                 continue;
             }
             if (l.startsWith('class :')) {
@@ -903,6 +944,13 @@ export class GStreamer extends EventEmitter<{
                     if (currDevice.videoSource === 'pipewiresrc') {
                         currDevice.videoSource = DEFAULT_GST_VIDEO_SOURCE;
                     }
+
+                    if (currDevice.videoSource === 'avfvideosrc') {
+                        const m = l.match(/gst-launch-1.0 avfvideosrc device-index=(\d+) \!/);
+                        if (m && m.length >= 2) {
+                            currDevice.videoSource = `avfvideosrc device-index=${m[1]}`;
+                        }
+                    }
                 }
             }
         }
@@ -917,6 +965,7 @@ export class GStreamer extends EventEmitter<{
                     let width = (l.match(/width=[^\d]+(\d+)/) || [])[1];
                     let height = (l.match(/height=[^\d]+(\d+)/) || [])[1];
                     let framerate = (l.match(/framerate=[^\d]+(\d+)/) || [])[1];
+                    let format = (l.match(/format=([a-zA-Z0-9]+)/) || [])[1];
 
                     // Rpi on bullseye has lines like this..
                     // eslint-disable-next-line @stylistic/max-len
@@ -936,11 +985,12 @@ export class GStreamer extends EventEmitter<{
                         width: Number(width || '0'),
                         height: Number(height || '0'),
                         framerate: Number(framerate || '0'),
+                        formats: format ? [ format ] : []
                     };
                     return r;
                 });
 
-            if (this._mode === 'rpi' || this._mode === 'microchip') { // no framerate here...
+            if (this._mode === 'rpi' || this._mode === 'rpi5' || d.videoSource === 'libcamerasrc') { // no framerate here...
                 c = c.filter(x => x.width && x.height);
             }
             else if (d.name === 'RZG2L_CRU') {
@@ -959,14 +1009,26 @@ export class GStreamer extends EventEmitter<{
                 c = c.filter(x => x.width && x.height && x.framerate);
             }
 
-            c = c.reduce((curr: GStreamerCap[], o) => {
-                // deduplicate caps
-                if (!curr.some(obj => obj.framerate === o.framerate &&
-                        obj.width === o.width &&
-                        obj.height === o.height &&
-                        obj.framerate === o.framerate)) {
+            // get list of all formats form the c list
+            const uniqueFormats = Array.from(new Set(c.map(cap => cap.formats).flat()));
+            c = c.reduce((curr: GStreamerCap[], o: GStreamerCap) => {
+                // deduplicate caps, prioritize 'video/x-raw' type
+                const existingIndex = curr.findIndex(obj => obj.framerate === o.framerate &&
+                    obj.width === o.width &&
+                    obj.height === o.height);
+
+                // store all supported formats (YUY2 etc.)
+                if (uniqueFormats) {
+                    o.formats = uniqueFormats.filter((format): format is string => format !== undefined);
+                }
+
+                if (existingIndex === -1) {
                     curr.push(o);
                 }
+                else if (o.type === 'video/x-raw' && curr[existingIndex].type !== 'video/x-raw') {
+                    curr[existingIndex] = o;
+                }
+
                 return curr;
             }, []);
 
@@ -981,13 +1043,14 @@ export class GStreamer extends EventEmitter<{
                 d.caps.length > 0;
         });
 
+
         // NVIDIA has their own plugins, query them too
         devices = devices.concat(await this.listNvarguscamerasrcDevices());
         devices = devices.concat(await this.listPylonsrcDevices());
         // Qualcomm has their own plugin, query its too
         // because listQtiqmmsrc* returns hardcoded devices ONLY if a specific gst plugin
         // is available we need to detect device type before, as it may be RubikPi, RB3Gen2 or
-        // any other with IMSDK loaded and unkniwn cameras
+        // any other with IMSDK loaded and unknown cameras
         if (this._mode === 'qualcomm-rb3gen2') {
             devices = devices.concat(await this.listQtiqmmsrcDevices());
         }
@@ -1008,9 +1071,19 @@ export class GStreamer extends EventEmitter<{
             };
         });
 
-        // deduplicate (by id)
+        // deduplicate (by id if present, otherwise by name)
         mapped = mapped.reduce((curr: { id: string, name: string, caps: GStreamerCap[], videoSource: string}[], m) => {
-            if (curr.find(x => x.id === m.id)) return curr;
+            if (m.id) {
+                if (curr.find(x => x.id === m.id)) {
+                    return curr;
+                }
+            }
+            else if (m.name) {
+                if (curr.find(x => x.name === m.name && !x.id)) {
+                    return curr;
+                }
+            }
+
             curr.push(m);
             return curr;
         }, []);

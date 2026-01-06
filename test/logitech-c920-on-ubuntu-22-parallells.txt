@@ -1,0 +1,211 @@
+Probing devices...
+            Device found:
+                name  : HD Pro Webcam C920
+                class : Video/Source
+                caps  : video/x-raw, format=YUY2, width=640, height=480, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=160, height=90, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=160, height=120, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=176, height=144, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=320, height=180, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=320, height=240, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=352, height=288, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=432, height=240, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=640, height=360, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=800, height=448, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=800, height=600, framerate={ (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=864, height=480, framerate={ (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=960, height=720, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=1024, height=576, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=1280, height=720, framerate={ (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        video/x-raw, format=YUY2, width=1600, height=896, framerate={ (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=640, height=480, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=160, height=90, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=160, height=120, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=176, height=144, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=320, height=180, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=320, height=240, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=352, height=288, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=432, height=240, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=640, height=360, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=800, height=448, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=800, height=600, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=864, height=480, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=960, height=720, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=1024, height=576, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=1280, height=720, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=1600, height=896, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                        image/jpeg, width=1920, height=1080, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+                properties:
+                    object.path = v4l2:/dev/video0
+                    device.api = v4l2
+                    media.class = Video/Source
+                    device.product.id = 2277
+                    device.vendor.id = 1133
+                    api.v4l2.path = /dev/video0
+                    api.v4l2.cap.driver = uvcvideo
+                    api.v4l2.cap.card = "HD\ Pro\ Webcam\ C920"
+                    api.v4l2.cap.bus_info = usb-0000:00:1d.7-14
+                    api.v4l2.cap.version = 6.5.13
+                    api.v4l2.cap.capabilities = 84a00001
+                    api.v4l2.cap.device-caps = 04200001
+                    device.id = 33
+                    node.name = v4l2_input.pci-0000_00_1d.7-usb-0_14_1.0.2
+                    node.description = "HD\ Pro\ Webcam\ C920"
+                    factory.name = api.v4l2.source
+                    node.pause-on-idle = false
+                    factory.id = 10
+                    client.id = 32
+                    clock.quantum-limit = 8192
+                    media.role = Camera
+                    node.driver = true
+                    object.id = 35
+                    object.serial = 40
+                gst-launch-1.0 pipewiresrc path=35 ! ...
+            Device found:
+                name  : Monitor of Built-in Audio Analog Stereo
+                class : Audio/Source
+                caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                properties:
+                    device.description = "Monitor\ of\ Built-in\ Audio\ Analog\ Stereo"
+                    device.class = monitor
+                    alsa.card = 0
+                    alsa.card_name = "Intel\ 82801BA-ICH2"
+                    alsa.long_card_name = "Intel\ 82801BA-ICH2\ with\ ALC850\ at\ irq\ 17"
+                    alsa.driver_name = snd_intel8x0
+                    device.bus_path = pci-0000:00:1f.4
+                    sysfs.path = /devices/pci0000:00/0000:00:1f.4/sound/card0
+                    device.bus = pci
+                    device.vendor.id = 8086
+                    device.vendor.name = "Intel\ Corporation"
+                    device.product.id = 2445
+                    device.product.name = "82801BA/BAM\ AC\'97\ Audio\ Controller"
+                    device.form_factor = internal
+                    device.string = 0
+                    module-udev-detect.discovered = 1
+                    device.icon_name = audio-card-pci
+                    is-default = false
+                gst-launch-1.0 pulsesrc device=alsa_output.pci-0000_00_1f.4.analog-stereo.monitor ! ...
+            Device found:
+                name  : Built-in Audio Analog Stereo
+                class : Audio/Source
+                caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                properties:
+                    alsa.resolution_bits = 16
+                    device.api = alsa
+                    device.class = sound
+                    alsa.class = generic
+                    alsa.subclass = generic-mix
+                    alsa.name = "Intel\ 82801BA-ICH2"
+                    alsa.id = "Intel\ ICH"
+                    alsa.subdevice = 0
+                    alsa.subdevice_name = "subdevice\ \#0"
+                    alsa.device = 0
+                    alsa.card = 0
+                    alsa.card_name = "Intel\ 82801BA-ICH2"
+                    alsa.long_card_name = "Intel\ 82801BA-ICH2\ with\ ALC850\ at\ irq\ 17"
+                    alsa.driver_name = snd_intel8x0
+                    device.bus_path = pci-0000:00:1f.4
+                    sysfs.path = /devices/pci0000:00/0000:00:1f.4/sound/card0
+                    device.bus = pci
+                    device.vendor.id = 8086
+                    device.vendor.name = "Intel\ Corporation"
+                    device.product.id = 2445
+                    device.product.name = "82801BA/BAM\ AC\'97\ Audio\ Controller"
+                    device.form_factor = internal
+                    device.string = front:0
+                    device.buffering.buffer_size = 17632
+                    device.buffering.fragment_size = 4408
+                    device.access_mode = mmap
+                    device.profile.name = analog-stereo
+                    device.profile.description = "Analog\ Stereo"
+                    device.description = "Built-in\ Audio\ Analog\ Stereo"
+                    module-udev-detect.discovered = 1
+                    device.icon_name = audio-card-pci
+                    is-default = false
+                gst-launch-1.0 pulsesrc device=alsa_input.pci-0000_00_1f.4.analog-stereo ! ...
+            Device found:
+                name  : HD Pro Webcam C920 Analog Stereo
+                class : Audio/Source
+                caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                properties:
+                    alsa.resolution_bits = 16
+                    device.api = alsa
+                    device.class = sound
+                    alsa.class = generic
+                    alsa.subclass = generic-mix
+                    alsa.name = "USB\ Audio"
+                    alsa.id = "USB\ Audio"
+                    alsa.subdevice = 0
+                    alsa.subdevice_name = "subdevice\ \#0"
+                    alsa.device = 0
+                    alsa.card = 1
+                    alsa.card_name = "HD\ Pro\ Webcam\ C920"
+                    alsa.long_card_name = "HD\ Pro\ Webcam\ C920\ at\ usb-0000:00:1d.7-14\,\ high\ speed"
+                    alsa.driver_name = snd_usb_audio
+                    device.bus_path = pci-0000:00:1d.7-usb-0:14:1.2
+                    sysfs.path = /devices/pci0000:00/0000:00:1d.7/usb1/1-14/1-14:1.2/sound/card1
+                    udev.id = usb-046d_HD_Pro_Webcam_C920_0D7DE91F-02
+                    device.bus = usb
+                    device.vendor.id = 046d
+                    device.vendor.name = "Logitech\,\ Inc."
+                    device.product.id = 08e5
+                    device.product.name = "HD\ Pro\ Webcam\ C920"
+                    device.serial = 046d_HD_Pro_Webcam_C920_0D7DE91F
+                    device.form_factor = webcam
+                    device.string = front:1
+                    device.buffering.buffer_size = 12792
+                    device.buffering.fragment_size = 3196
+                    device.access_mode = mmap
+                    device.profile.name = analog-stereo
+                    device.profile.description = "Analog\ Stereo"
+                    device.description = "HD\ Pro\ Webcam\ C920\ Analog\ Stereo"
+                    module-udev-detect.discovered = 1
+                    device.icon_name = camera-web-usb
+                    is-default = true
+                gst-launch-1.0 pulsesrc device=alsa_input.usb-046d_HD_Pro_Webcam_C920_0D7DE91F-02.analog-stereo ! ...
+            Device found:
+                name  : Built-in Audio Analog Stereo
+                class : Audio/Sink
+                caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                        audio/x-alaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                        audio/x-mulaw, rate=[ 1, 384000 ], channels=[ 1, 32 ]
+                properties:
+                    alsa.resolution_bits = 16
+                    device.api = alsa
+                    device.class = sound
+                    alsa.class = generic
+                    alsa.subclass = generic-mix
+                    alsa.name = "Intel\ 82801BA-ICH2"
+                    alsa.id = "Intel\ ICH"
+                    alsa.subdevice = 0
+                    alsa.subdevice_name = "subdevice\ \#0"
+                    alsa.device = 0
+                    alsa.card = 0
+                    alsa.card_name = "Intel\ 82801BA-ICH2"
+                    alsa.long_card_name = "Intel\ 82801BA-ICH2\ with\ ALC850\ at\ irq\ 17"
+                    alsa.driver_name = snd_intel8x0
+                    device.bus_path = pci-0000:00:1f.4
+                    sysfs.path = /devices/pci0000:00/0000:00:1f.4/sound/card0
+                    device.bus = pci
+                    device.vendor.id = 8086
+                    device.vendor.name = "Intel\ Corporation"
+                    device.product.id = 2445
+                    device.product.name = "82801BA/BAM\ AC\'97\ Audio\ Controller"
+                    device.form_factor = internal
+                    device.string = front:0
+                    device.buffering.buffer_size = 17632
+                    device.buffering.fragment_size = 4408
+                    device.access_mode = mmap
+                    device.profile.name = analog-stereo
+                    device.profile.description = "Analog\ Stereo"
+                    device.description = "Built-in\ Audio\ Analog\ Stereo"
+                    module-udev-detect.discovered = 1
+                    device.icon_name = audio-card-pci
+                    is-default = true
+                gst-launch-1.0 ... ! pulsesink device=alsa_output.pci-0000_00_1f.4.analog-stereo

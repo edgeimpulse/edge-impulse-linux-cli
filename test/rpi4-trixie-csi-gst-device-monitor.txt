@@ -1,0 +1,1110 @@
+Probing devices...
+
+[0:16:32.820501920] [2780]  INFO Camera camera_manager.cpp:340 libcamera v0.6.0+rpt20251202
+[0:16:32.865717152] [2785]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[0:16:32.872844279] [2785]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@1/imx708@1a' for pipeline handler rpi/vc4
+[0:16:32.872922001] [2785]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@1/imx708@1a to Unicam device /dev/media1 and ISP device /dev/media2
+[0:16:32.874493325] [2785]  INFO Camera camera_manager.cpp:223 Adding camera '/base/scb/pcie@7d500000/pci@0,0/usb@0,0-1.1:1.0-046d:085c' for pipeline handler uvcvideo
+
+(gst-device-monitor-1.0:2780): GStreamer-CRITICAL **: 11:16:24.616: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:2780): GStreamer-CRITICAL **: 11:16:24.616: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+Device found:
+
+	name  : /base/soc/i2c0mux/i2c@1/imx708@1a
+	class : Source/Video
+	caps  : video/x-raw, format=NV21, width=160, height=120
+	        video/x-raw, format=NV21, width=240, height=160
+	        video/x-raw, format=NV21, width=320, height=240
+	        video/x-raw, format=NV21, width=400, height=240
+	        video/x-raw, format=NV21, width=480, height=320
+	        video/x-raw, format=NV21, width=640, height=360
+	        video/x-raw, format=NV21, width=640, height=480
+	        video/x-raw, format=NV21, width=720, height=480
+	        video/x-raw, format=NV21, width=768, height=480
+	        video/x-raw, format=NV21, width=854, height=480
+	        video/x-raw, format=NV21, width=720, height=576
+	        video/x-raw, format=NV21, width=800, height=600
+	        video/x-raw, format=NV21, width=960, height=540
+	        video/x-raw, format=NV21, width=1024, height=576
+	        video/x-raw, format=NV21, width=960, height=640
+	        video/x-raw, format=NV21, width=1024, height=600
+	        video/x-raw, format=NV21, width=1024, height=768
+	        video/x-raw, format=NV21, width=1280, height=720
+	        video/x-raw, format=NV21, width=1152, height=864
+	        video/x-raw, format=NV21, width=1280, height=800
+	        video/x-raw, format=NV21, width=1360, height=768
+	        video/x-raw, format=NV21, width=1366, height=768
+	        video/x-raw, format=NV21, width=1440, height=900
+	        video/x-raw, format=NV21, width=1280, height=1024
+	        video/x-raw, format=NV21, width=1536, height=864
+	        video/x-raw, format=NV21, width=1280, height=1080
+	        video/x-raw, format=NV21, width=1600, height=900
+	        video/x-raw, format=NV21, width=1400, height=1050
+	        video/x-raw, format=NV21, width=1680, height=1050
+	        video/x-raw, format=NV21, width=1600, height=1200
+	        video/x-raw, format=NV21, width=1920, height=1080
+	        video/x-raw, format=NV21, width=2048, height=1080
+	        video/x-raw, format=NV21, width=1920, height=1200
+	        video/x-raw, format=NV21, width=2160, height=1080
+	        video/x-raw, format=NV21, width=2048, height=1152
+	        video/x-raw, format=NV21, width=2560, height=1080
+	        video/x-raw, format=NV21, width=2048, height=1536
+	        video/x-raw, format=NV21, width=2560, height=1440
+	        video/x-raw, format=NV21, width=2560, height=1600
+	        video/x-raw, format=NV21, width=3840, height=1080
+	        video/x-raw, format=NV21, width=2960, height=1440
+	        video/x-raw, format=NV21, width=3440, height=1440
+	        video/x-raw, format=NV21, width=2560, height=2048
+	        video/x-raw, format=NV21, width=3200, height=1800
+	        video/x-raw, format=NV21, width=3840, height=1600
+	        video/x-raw, format=NV21, width=3200, height=2048
+	        video/x-raw, format=NV21, width=3200, height=2400
+	        video/x-raw, format=NV21, width=3840, height=2160
+	        video/x-raw, format=NV21, width=4096, height=2160
+	        video/x-raw, format=NV21, width=3840, height=2400
+	        video/x-raw, format=NV21, width=[ 64, 4608, 2 ], height=[ 64, 2592, 2 ]
+	        video/x-raw, format=I420, width=160, height=120
+	        video/x-raw, format=I420, width=240, height=160
+	        video/x-raw, format=I420, width=320, height=240
+	        video/x-raw, format=I420, width=400, height=240
+	        video/x-raw, format=I420, width=480, height=320
+	        video/x-raw, format=I420, width=640, height=360
+	        video/x-raw, format=I420, width=640, height=480
+	        video/x-raw, format=I420, width=720, height=480
+	        video/x-raw, format=I420, width=768, height=480
+	        video/x-raw, format=I420, width=854, height=480
+	        video/x-raw, format=I420, width=720, height=576
+	        video/x-raw, format=I420, width=800, height=600
+	        video/x-raw, format=I420, width=960, height=540
+	        video/x-raw, format=I420, width=1024, height=576
+	        video/x-raw, format=I420, width=960, height=640
+	        video/x-raw, format=I420, width=1024, height=600
+	        video/x-raw, format=I420, width=1024, height=768
+	        video/x-raw, format=I420, width=1280, height=720
+	        video/x-raw, format=I420, width=1152, height=864
+	        video/x-raw, format=I420, width=1280, height=800
+	        video/x-raw, format=I420, width=1360, height=768
+	        video/x-raw, format=I420, width=1366, height=768
+	        video/x-raw, format=I420, width=1440, height=900
+	        video/x-raw, format=I420, width=1280, height=1024
+	        video/x-raw, format=I420, width=1536, height=864
+	        video/x-raw, format=I420, width=1280, height=1080
+	        video/x-raw, format=I420, width=1600, height=900
+	        video/x-raw, format=I420, width=1400, height=1050
+	        video/x-raw, format=I420, width=1680, height=1050
+	        video/x-raw, format=I420, width=1600, height=1200
+	        video/x-raw, format=I420, width=1920, height=1080
+	        video/x-raw, format=I420, width=2048, height=1080
+	        video/x-raw, format=I420, width=1920, height=1200
+	        video/x-raw, format=I420, width=2160, height=1080
+	        video/x-raw, format=I420, width=2048, height=1152
+	        video/x-raw, format=I420, width=2560, height=1080
+	        video/x-raw, format=I420, width=2048, height=1536
+	        video/x-raw, format=I420, width=2560, height=1440
+	        video/x-raw, format=I420, width=2560, height=1600
+	        video/x-raw, format=I420, width=3840, height=1080
+	        video/x-raw, format=I420, width=2960, height=1440
+	        video/x-raw, format=I420, width=3440, height=1440
+	        video/x-raw, format=I420, width=2560, height=2048
+	        video/x-raw, format=I420, width=3200, height=1800
+	        video/x-raw, format=I420, width=3840, height=1600
+	        video/x-raw, format=I420, width=3200, height=2048
+	        video/x-raw, format=I420, width=3200, height=2400
+	        video/x-raw, format=I420, width=3840, height=2160
+	        video/x-raw, format=I420, width=4096, height=2160
+	        video/x-raw, format=I420, width=3840, height=2400
+	        video/x-raw, format=I420, width=[ 64, 4608, 2 ], height=[ 64, 2592, 2 ]
+	        video/x-raw, format=NV12, width=160, height=120
+	        video/x-raw, format=NV12, width=240, height=160
+	        video/x-raw, format=NV12, width=320, height=240
+	        video/x-raw, format=NV12, width=400, height=240
+	        video/x-raw, format=NV12, width=480, height=320
+	        video/x-raw, format=NV12, width=640, height=360
+	        video/x-raw, format=NV12, width=640, height=480
+	        video/x-raw, format=NV12, width=720, height=480
+	        video/x-raw, format=NV12, width=768, height=480
+	        video/x-raw, format=NV12, width=854, height=480
+	        video/x-raw, format=NV12, width=720, height=576
+	        video/x-raw, format=NV12, width=800, height=600
+	        video/x-raw, format=NV12, width=960, height=540
+	        video/x-raw, format=NV12, width=1024, height=576
+	        video/x-raw, format=NV12, width=960, height=640
+	        video/x-raw, format=NV12, width=1024, height=600
+	        video/x-raw, format=NV12, width=1024, height=768
+	        video/x-raw, format=NV12, width=1280, height=720
+	        video/x-raw, format=NV12, width=1152, height=864
+	        video/x-raw, format=NV12, width=1280, height=800
+	        video/x-raw, format=NV12, width=1360, height=768
+	        video/x-raw, format=NV12, width=1366, height=768
+	        video/x-raw, format=NV12, width=1440, height=900
+	        video/x-raw, format=NV12, width=1280, height=1024
+	        video/x-raw, format=NV12, width=1536, height=864
+	        video/x-raw, format=NV12, width=1280, height=1080
+	        video/x-raw, format=NV12, width=1600, height=900
+	        video/x-raw, format=NV12, width=1400, height=1050
+	        video/x-raw, format=NV12, width=1680, height=1050
+	        video/x-raw, format=NV12, width=1600, height=1200
+	        video/x-raw, format=NV12, width=1920, height=1080
+	        video/x-raw, format=NV12, width=2048, height=1080
+	        video/x-raw, format=NV12, width=1920, height=1200
+	        video/x-raw, format=NV12, width=2160, height=1080
+	        video/x-raw, format=NV12, width=2048, height=1152
+	        video/x-raw, format=NV12, width=2560, height=1080
+	        video/x-raw, format=NV12, width=2048, height=1536
+	        video/x-raw, format=NV12, width=2560, height=1440
+	        video/x-raw, format=NV12, width=2560, height=1600
+	        video/x-raw, format=NV12, width=3840, height=1080
+	        video/x-raw, format=NV12, width=2960, height=1440
+	        video/x-raw, format=NV12, width=3440, height=1440
+	        video/x-raw, format=NV12, width=2560, height=2048
+	        video/x-raw, format=NV12, width=3200, height=1800
+	        video/x-raw, format=NV12, width=3840, height=1600
+	        video/x-raw, format=NV12, width=3200, height=2048
+	        video/x-raw, format=NV12, width=3200, height=2400
+	        video/x-raw, format=NV12, width=3840, height=2160
+	        video/x-raw, format=NV12, width=4096, height=2160
+	        video/x-raw, format=NV12, width=3840, height=2400
+	        video/x-raw, format=NV12, width=[ 64, 4608, 2 ], height=[ 64, 2592, 2 ]
+	        video/x-raw, format=YV12, width=160, height=120
+	        video/x-raw, format=YV12, width=240, height=160
+	        video/x-raw, format=YV12, width=320, height=240
+	        video/x-raw, format=YV12, width=400, height=240
+	        video/x-raw, format=YV12, width=480, height=320
+	        video/x-raw, format=YV12, width=640, height=360
+	        video/x-raw, format=YV12, width=640, height=480
+	        video/x-raw, format=YV12, width=720, height=480
+	        video/x-raw, format=YV12, width=768, height=480
+	        video/x-raw, format=YV12, width=854, height=480
+	        video/x-raw, format=YV12, width=720, height=576
+	        video/x-raw, format=YV12, width=800, height=600
+	        video/x-raw, format=YV12, width=960, height=540
+	        video/x-raw, format=YV12, width=1024, height=576
+	        video/x-raw, format=YV12, width=960, height=640
+	        video/x-raw, format=YV12, width=1024, height=600
+	        video/x-raw, format=YV12, width=1024, height=768
+	        video/x-raw, format=YV12, width=1280, height=720
+	        video/x-raw, format=YV12, width=1152, height=864
+	        video/x-raw, format=YV12, width=1280, height=800
+	        video/x-raw, format=YV12, width=1360, height=768
+	        video/x-raw, format=YV12, width=1366, height=768
+	        video/x-raw, format=YV12, width=1440, height=900
+	        video/x-raw, format=YV12, width=1280, height=1024
+	        video/x-raw, format=YV12, width=1536, height=864
+	        video/x-raw, format=YV12, width=1280, height=1080
+	        video/x-raw, format=YV12, width=1600, height=900
+	        video/x-raw, format=YV12, width=1400, height=1050
+	        video/x-raw, format=YV12, width=1680, height=1050
+	        video/x-raw, format=YV12, width=1600, height=1200
+	        video/x-raw, format=YV12, width=1920, height=1080
+	        video/x-raw, format=YV12, width=2048, height=1080
+	        video/x-raw, format=YV12, width=1920, height=1200
+	        video/x-raw, format=YV12, width=2160, height=1080
+	        video/x-raw, format=YV12, width=2048, height=1152
+	        video/x-raw, format=YV12, width=2560, height=1080
+	        video/x-raw, format=YV12, width=2048, height=1536
+	        video/x-raw, format=YV12, width=2560, height=1440
+	        video/x-raw, format=YV12, width=2560, height=1600
+	        video/x-raw, format=YV12, width=3840, height=1080
+	        video/x-raw, format=YV12, width=2960, height=1440
+	        video/x-raw, format=YV12, width=3440, height=1440
+	        video/x-raw, format=YV12, width=2560, height=2048
+	        video/x-raw, format=YV12, width=3200, height=1800
+	        video/x-raw, format=YV12, width=3840, height=1600
+	        video/x-raw, format=YV12, width=3200, height=2048
+	        video/x-raw, format=YV12, width=3200, height=2400
+	        video/x-raw, format=YV12, width=3840, height=2160
+	        video/x-raw, format=YV12, width=4096, height=2160
+	        video/x-raw, format=YV12, width=3840, height=2400
+	        video/x-raw, format=YV12, width=[ 64, 4608, 2 ], height=[ 64, 2592, 2 ]
+	        video/x-raw, format=RGBx, width=160, height=120
+	        video/x-raw, format=RGBx, width=240, height=160
+	        video/x-raw, format=RGBx, width=320, height=240
+	        video/x-raw, format=RGBx, width=400, height=240
+	        video/x-raw, format=RGBx, width=480, height=320
+	        video/x-raw, format=RGBx, width=640, height=360
+	        video/x-raw, format=RGBx, width=640, height=480
+	        video/x-raw, format=RGBx, width=720, height=480
+	        video/x-raw, format=RGBx, width=768, height=480
+	        video/x-raw, format=RGBx, width=854, height=480
+	        video/x-raw, format=RGBx, width=720, height=576
+	        video/x-raw, format=RGBx, width=800, height=600
+	        video/x-raw, format=RGBx, width=960, height=540
+	        video/x-raw, format=RGBx, width=1024, height=576
+	        video/x-raw, format=RGBx, width=960, height=640
+	        video/x-raw, format=RGBx, width=1024, height=600
+	        video/x-raw, format=RGBx, width=1024, height=768
+	        video/x-raw, format=RGBx, width=1280, height=720
+	        video/x-raw, format=RGBx, width=1152, height=864
+	        video/x-raw, format=RGBx, width=1280, height=800
+	        video/x-raw, format=RGBx, width=1360, height=768
+	        video/x-raw, format=RGBx, width=1366, height=768
+	        video/x-raw, format=RGBx, width=1440, height=900
+	        video/x-raw, format=RGBx, width=1280, height=1024
+	        video/x-raw, format=RGBx, width=1536, height=864
+	        video/x-raw, format=RGBx, width=1280, height=1080
+	        video/x-raw, format=RGBx, width=1600, height=900
+	        video/x-raw, format=RGBx, width=1400, height=1050
+	        video/x-raw, format=RGBx, width=1680, height=1050
+	        video/x-raw, format=RGBx, width=1600, height=1200
+	        video/x-raw, format=RGBx, width=1920, height=1080
+	        video/x-raw, format=RGBx, width=2048, height=1080
+	        video/x-raw, format=RGBx, width=1920, height=1200
+	        video/x-raw, format=RGBx, width=2160, height=1080
+	        video/x-raw, format=RGBx, width=2048, height=1152
+	        video/x-raw, format=RGBx, width=2560, height=1080
+	        video/x-raw, format=RGBx, width=2048, height=1536
+	        video/x-raw, format=RGBx, width=2560, height=1440
+	        video/x-raw, format=RGBx, width=2560, height=1600
+	        video/x-raw, format=RGBx, width=3840, height=1080
+	        video/x-raw, format=RGBx, width=2960, height=1440
+	        video/x-raw, format=RGBx, width=3440, height=1440
+	        video/x-raw, format=RGBx, width=2560, height=2048
+	        video/x-raw, format=RGBx, width=3200, height=1800
+	        video/x-raw, format=RGBx, width=3840, height=1600
+	        video/x-raw, format=RGBx, width=3200, height=2048
+	        video/x-raw, format=RGBx, width=3200, height=2400
+	        video/x-raw, format=RGBx, width=3840, height=2160
+	        video/x-raw, format=RGBx, width=4096, height=2160
+	        video/x-raw, format=RGBx, width=3840, height=2400
+	        video/x-raw, format=RGBx, width=[ 64, 4608 ], height=[ 64, 2592 ]
+	        video/x-raw, format=RGB, width=160, height=120
+	        video/x-raw, format=RGB, width=240, height=160
+	        video/x-raw, format=RGB, width=320, height=240
+	        video/x-raw, format=RGB, width=400, height=240
+	        video/x-raw, format=RGB, width=480, height=320
+	        video/x-raw, format=RGB, width=640, height=360
+	        video/x-raw, format=RGB, width=640, height=480
+	        video/x-raw, format=RGB, width=720, height=480
+	        video/x-raw, format=RGB, width=768, height=480
+	        video/x-raw, format=RGB, width=854, height=480
+	        video/x-raw, format=RGB, width=720, height=576
+	        video/x-raw, format=RGB, width=800, height=600
+	        video/x-raw, format=RGB, width=960, height=540
+	        video/x-raw, format=RGB, width=1024, height=576
+	        video/x-raw, format=RGB, width=960, height=640
+	        video/x-raw, format=RGB, width=1024, height=600
+	        video/x-raw, format=RGB, width=1024, height=768
+	        video/x-raw, format=RGB, width=1280, height=720
+	        video/x-raw, format=RGB, width=1152, height=864
+	        video/x-raw, format=RGB, width=1280, height=800
+	        video/x-raw, format=RGB, width=1360, height=768
+	        video/x-raw, format=RGB, width=1366, height=768
+	        video/x-raw, format=RGB, width=1440, height=900
+	        video/x-raw, format=RGB, width=1280, height=1024
+	        video/x-raw, format=RGB, width=1536, height=864
+	        video/x-raw, format=RGB, width=1280, height=1080
+	        video/x-raw, format=RGB, width=1600, height=900
+	        video/x-raw, format=RGB, width=1400, height=1050
+	        video/x-raw, format=RGB, width=1680, height=1050
+	        video/x-raw, format=RGB, width=1600, height=1200
+	        video/x-raw, format=RGB, width=1920, height=1080
+	        video/x-raw, format=RGB, width=2048, height=1080
+	        video/x-raw, format=RGB, width=1920, height=1200
+	        video/x-raw, format=RGB, width=2160, height=1080
+	        video/x-raw, format=RGB, width=2048, height=1152
+	        video/x-raw, format=RGB, width=2560, height=1080
+	        video/x-raw, format=RGB, width=2048, height=1536
+	        video/x-raw, format=RGB, width=2560, height=1440
+	        video/x-raw, format=RGB, width=2560, height=1600
+	        video/x-raw, format=RGB, width=3840, height=1080
+	        video/x-raw, format=RGB, width=2960, height=1440
+	        video/x-raw, format=RGB, width=3440, height=1440
+	        video/x-raw, format=RGB, width=2560, height=2048
+	        video/x-raw, format=RGB, width=3200, height=1800
+	        video/x-raw, format=RGB, width=3840, height=1600
+	        video/x-raw, format=RGB, width=3200, height=2048
+	        video/x-raw, format=RGB, width=3200, height=2400
+	        video/x-raw, format=RGB, width=3840, height=2160
+	        video/x-raw, format=RGB, width=4096, height=2160
+	        video/x-raw, format=RGB, width=3840, height=2400
+	        video/x-raw, format=RGB, width=[ 64, 4608 ], height=[ 64, 2592 ]
+	        video/x-raw, format=BGR, width=160, height=120
+	        video/x-raw, format=BGR, width=240, height=160
+	        video/x-raw, format=BGR, width=320, height=240
+	        video/x-raw, format=BGR, width=400, height=240
+	        video/x-raw, format=BGR, width=480, height=320
+	        video/x-raw, format=BGR, width=640, height=360
+	        video/x-raw, format=BGR, width=640, height=480
+	        video/x-raw, format=BGR, width=720, height=480
+	        video/x-raw, format=BGR, width=768, height=480
+	        video/x-raw, format=BGR, width=854, height=480
+	        video/x-raw, format=BGR, width=720, height=576
+	        video/x-raw, format=BGR, width=800, height=600
+	        video/x-raw, format=BGR, width=960, height=540
+	        video/x-raw, format=BGR, width=1024, height=576
+	        video/x-raw, format=BGR, width=960, height=640
+	        video/x-raw, format=BGR, width=1024, height=600
+	        video/x-raw, format=BGR, width=1024, height=768
+	        video/x-raw, format=BGR, width=1280, height=720
+	        video/x-raw, format=BGR, width=1152, height=864
+	        video/x-raw, format=BGR, width=1280, height=800
+	        video/x-raw, format=BGR, width=1360, height=768
+	        video/x-raw, format=BGR, width=1366, height=768
+	        video/x-raw, format=BGR, width=1440, height=900
+	        video/x-raw, format=BGR, width=1280, height=1024
+	        video/x-raw, format=BGR, width=1536, height=864
+	        video/x-raw, format=BGR, width=1280, height=1080
+	        video/x-raw, format=BGR, width=1600, height=900
+	        video/x-raw, format=BGR, width=1400, height=1050
+	        video/x-raw, format=BGR, width=1680, height=1050
+	        video/x-raw, format=BGR, width=1600, height=1200
+	        video/x-raw, format=BGR, width=1920, height=1080
+	        video/x-raw, format=BGR, width=2048, height=1080
+	        video/x-raw, format=BGR, width=1920, height=1200
+	        video/x-raw, format=BGR, width=2160, height=1080
+	        video/x-raw, format=BGR, width=2048, height=1152
+	        video/x-raw, format=BGR, width=2560, height=1080
+	        video/x-raw, format=BGR, width=2048, height=1536
+	        video/x-raw, format=BGR, width=2560, height=1440
+	        video/x-raw, format=BGR, width=2560, height=1600
+	        video/x-raw, format=BGR, width=3840, height=1080
+	        video/x-raw, format=BGR, width=2960, height=1440
+	        video/x-raw, format=BGR, width=3440, height=1440
+	        video/x-raw, format=BGR, width=2560, height=2048
+	        video/x-raw, format=BGR, width=3200, height=1800
+	        video/x-raw, format=BGR, width=3840, height=1600
+	        video/x-raw, format=BGR, width=3200, height=2048
+	        video/x-raw, format=BGR, width=3200, height=2400
+	        video/x-raw, format=BGR, width=3840, height=2160
+	        video/x-raw, format=BGR, width=4096, height=2160
+	        video/x-raw, format=BGR, width=3840, height=2400
+	        video/x-raw, format=BGR, width=[ 64, 4608 ], height=[ 64, 2592 ]
+	        video/x-raw, format=BGRx, width=160, height=120
+	        video/x-raw, format=BGRx, width=240, height=160
+	        video/x-raw, format=BGRx, width=320, height=240
+	        video/x-raw, format=BGRx, width=400, height=240
+	        video/x-raw, format=BGRx, width=480, height=320
+	        video/x-raw, format=BGRx, width=640, height=360
+	        video/x-raw, format=BGRx, width=640, height=480
+	        video/x-raw, format=BGRx, width=720, height=480
+	        video/x-raw, format=BGRx, width=768, height=480
+	        video/x-raw, format=BGRx, width=854, height=480
+	        video/x-raw, format=BGRx, width=720, height=576
+	        video/x-raw, format=BGRx, width=800, height=600
+	        video/x-raw, format=BGRx, width=960, height=540
+	        video/x-raw, format=BGRx, width=1024, height=576
+	        video/x-raw, format=BGRx, width=960, height=640
+	        video/x-raw, format=BGRx, width=1024, height=600
+	        video/x-raw, format=BGRx, width=1024, height=768
+	        video/x-raw, format=BGRx, width=1280, height=720
+	        video/x-raw, format=BGRx, width=1152, height=864
+	        video/x-raw, format=BGRx, width=1280, height=800
+	        video/x-raw, format=BGRx, width=1360, height=768
+	        video/x-raw, format=BGRx, width=1366, height=768
+	        video/x-raw, format=BGRx, width=1440, height=900
+	        video/x-raw, format=BGRx, width=1280, height=1024
+	        video/x-raw, format=BGRx, width=1536, height=864
+	        video/x-raw, format=BGRx, width=1280, height=1080
+	        video/x-raw, format=BGRx, width=1600, height=900
+	        video/x-raw, format=BGRx, width=1400, height=1050
+	        video/x-raw, format=BGRx, width=1680, height=1050
+	        video/x-raw, format=BGRx, width=1600, height=1200
+	        video/x-raw, format=BGRx, width=1920, height=1080
+	        video/x-raw, format=BGRx, width=2048, height=1080
+	        video/x-raw, format=BGRx, width=1920, height=1200
+	        video/x-raw, format=BGRx, width=2160, height=1080
+	        video/x-raw, format=BGRx, width=2048, height=1152
+	        video/x-raw, format=BGRx, width=2560, height=1080
+	        video/x-raw, format=BGRx, width=2048, height=1536
+	        video/x-raw, format=BGRx, width=2560, height=1440
+	        video/x-raw, format=BGRx, width=2560, height=1600
+	        video/x-raw, format=BGRx, width=3840, height=1080
+	        video/x-raw, format=BGRx, width=2960, height=1440
+	        video/x-raw, format=BGRx, width=3440, height=1440
+	        video/x-raw, format=BGRx, width=2560, height=2048
+	        video/x-raw, format=BGRx, width=3200, height=1800
+	        video/x-raw, format=BGRx, width=3840, height=1600
+	        video/x-raw, format=BGRx, width=3200, height=2048
+	        video/x-raw, format=BGRx, width=3200, height=2400
+	        video/x-raw, format=BGRx, width=3840, height=2160
+	        video/x-raw, format=BGRx, width=4096, height=2160
+	        video/x-raw, format=BGRx, width=3840, height=2400
+	        video/x-raw, format=BGRx, width=[ 64, 4608 ], height=[ 64, 2592 ]
+	        video/x-raw, format=RGB16, width=160, height=120
+	        video/x-raw, format=RGB16, width=240, height=160
+	        video/x-raw, format=RGB16, width=320, height=240
+	        video/x-raw, format=RGB16, width=400, height=240
+	        video/x-raw, format=RGB16, width=480, height=320
+	        video/x-raw, format=RGB16, width=640, height=360
+	        video/x-raw, format=RGB16, width=640, height=480
+	        video/x-raw, format=RGB16, width=720, height=480
+	        video/x-raw, format=RGB16, width=768, height=480
+	        video/x-raw, format=RGB16, width=854, height=480
+	        video/x-raw, format=RGB16, width=720, height=576
+	        video/x-raw, format=RGB16, width=800, height=600
+	        video/x-raw, format=RGB16, width=960, height=540
+	        video/x-raw, format=RGB16, width=1024, height=576
+	        video/x-raw, format=RGB16, width=960, height=640
+	        video/x-raw, format=RGB16, width=1024, height=600
+	        video/x-raw, format=RGB16, width=1024, height=768
+	        video/x-raw, format=RGB16, width=1280, height=720
+	        video/x-raw, format=RGB16, width=1152, height=864
+	        video/x-raw, format=RGB16, width=1280, height=800
+	        video/x-raw, format=RGB16, width=1360, height=768
+	        video/x-raw, format=RGB16, width=1366, height=768
+	        video/x-raw, format=RGB16, width=1440, height=900
+	        video/x-raw, format=RGB16, width=1280, height=1024
+	        video/x-raw, format=RGB16, width=1536, height=864
+	        video/x-raw, format=RGB16, width=1280, height=1080
+	        video/x-raw, format=RGB16, width=1600, height=900
+	        video/x-raw, format=RGB16, width=1400, height=1050
+	        video/x-raw, format=RGB16, width=1680, height=1050
+	        video/x-raw, format=RGB16, width=1600, height=1200
+	        video/x-raw, format=RGB16, width=1920, height=1080
+	        video/x-raw, format=RGB16, width=2048, height=1080
+	        video/x-raw, format=RGB16, width=1920, height=1200
+	        video/x-raw, format=RGB16, width=2160, height=1080
+	        video/x-raw, format=RGB16, width=2048, height=1152
+	        video/x-raw, format=RGB16, width=2560, height=1080
+	        video/x-raw, format=RGB16, width=2048, height=1536
+	        video/x-raw, format=RGB16, width=2560, height=1440
+	        video/x-raw, format=RGB16, width=2560, height=1600
+	        video/x-raw, format=RGB16, width=3840, height=1080
+	        video/x-raw, format=RGB16, width=2960, height=1440
+	        video/x-raw, format=RGB16, width=3440, height=1440
+	        video/x-raw, format=RGB16, width=2560, height=2048
+	        video/x-raw, format=RGB16, width=3200, height=1800
+	        video/x-raw, format=RGB16, width=3840, height=1600
+	        video/x-raw, format=RGB16, width=3200, height=2048
+	        video/x-raw, format=RGB16, width=3200, height=2400
+	        video/x-raw, format=RGB16, width=3840, height=2160
+	        video/x-raw, format=RGB16, width=4096, height=2160
+	        video/x-raw, format=RGB16, width=3840, height=2400
+	        video/x-raw, format=RGB16, width=[ 64, 4608 ], height=[ 64, 2592 ]
+	        video/x-raw, format=YVYU, width=160, height=120
+	        video/x-raw, format=YVYU, width=240, height=160
+	        video/x-raw, format=YVYU, width=320, height=240
+	        video/x-raw, format=YVYU, width=400, height=240
+	        video/x-raw, format=YVYU, width=480, height=320
+	        video/x-raw, format=YVYU, width=640, height=360
+	        video/x-raw, format=YVYU, width=640, height=480
+	        video/x-raw, format=YVYU, width=720, height=480
+	        video/x-raw, format=YVYU, width=768, height=480
+	        video/x-raw, format=YVYU, width=854, height=480
+	        video/x-raw, format=YVYU, width=720, height=576
+	        video/x-raw, format=YVYU, width=800, height=600
+	        video/x-raw, format=YVYU, width=960, height=540
+	        video/x-raw, format=YVYU, width=1024, height=576
+	        video/x-raw, format=YVYU, width=960, height=640
+	        video/x-raw, format=YVYU, width=1024, height=600
+	        video/x-raw, format=YVYU, width=1024, height=768
+	        video/x-raw, format=YVYU, width=1280, height=720
+	        video/x-raw, format=YVYU, width=1152, height=864
+	        video/x-raw, format=YVYU, width=1280, height=800
+	        video/x-raw, format=YVYU, width=1360, height=768
+	        video/x-raw, format=YVYU, width=1366, height=768
+	        video/x-raw, format=YVYU, width=1440, height=900
+	        video/x-raw, format=YVYU, width=1280, height=1024
+	        video/x-raw, format=YVYU, width=1536, height=864
+	        video/x-raw, format=YVYU, width=1280, height=1080
+	        video/x-raw, format=YVYU, width=1600, height=900
+	        video/x-raw, format=YVYU, width=1400, height=1050
+	        video/x-raw, format=YVYU, width=1680, height=1050
+	        video/x-raw, format=YVYU, width=1600, height=1200
+	        video/x-raw, format=YVYU, width=1920, height=1080
+	        video/x-raw, format=YVYU, width=2048, height=1080
+	        video/x-raw, format=YVYU, width=1920, height=1200
+	        video/x-raw, format=YVYU, width=2160, height=1080
+	        video/x-raw, format=YVYU, width=2048, height=1152
+	        video/x-raw, format=YVYU, width=2560, height=1080
+	        video/x-raw, format=YVYU, width=2048, height=1536
+	        video/x-raw, format=YVYU, width=2560, height=1440
+	        video/x-raw, format=YVYU, width=2560, height=1600
+	        video/x-raw, format=YVYU, width=3840, height=1080
+	        video/x-raw, format=YVYU, width=2960, height=1440
+	        video/x-raw, format=YVYU, width=3440, height=1440
+	        video/x-raw, format=YVYU, width=2560, height=2048
+	        video/x-raw, format=YVYU, width=3200, height=1800
+	        video/x-raw, format=YVYU, width=3840, height=1600
+	        video/x-raw, format=YVYU, width=3200, height=2048
+	        video/x-raw, format=YVYU, width=3200, height=2400
+	        video/x-raw, format=YVYU, width=3840, height=2160
+	        video/x-raw, format=YVYU, width=4096, height=2160
+	        video/x-raw, format=YVYU, width=3840, height=2400
+	        video/x-raw, format=YVYU, width=[ 64, 4608, 2 ], height=[ 64, 2592, 2 ]
+	        video/x-raw, format=YUY2, width=160, height=120
+	        video/x-raw, format=YUY2, width=240, height=160
+	        video/x-raw, format=YUY2, width=320, height=240
+	        video/x-raw, format=YUY2, width=400, height=240
+	        video/x-raw, format=YUY2, width=480, height=320
+	        video/x-raw, format=YUY2, width=640, height=360
+	        video/x-raw, format=YUY2, width=640, height=480
+	        video/x-raw, format=YUY2, width=720, height=480
+	        video/x-raw, format=YUY2, width=768, height=480
+	        video/x-raw, format=YUY2, width=854, height=480
+	        video/x-raw, format=YUY2, width=720, height=576
+	        video/x-raw, format=YUY2, width=800, height=600
+	        video/x-raw, format=YUY2, width=960, height=540
+	        video/x-raw, format=YUY2, width=1024, height=576
+	        video/x-raw, format=YUY2, width=960, height=640
+	        video/x-raw, format=YUY2, width=1024, height=600
+	        video/x-raw, format=YUY2, width=1024, height=768
+	        video/x-raw, format=YUY2, width=1280, height=720
+	        video/x-raw, format=YUY2, width=1152, height=864
+	        video/x-raw, format=YUY2, width=1280, height=800
+	        video/x-raw, format=YUY2, width=1360, height=768
+	        video/x-raw, format=YUY2, width=1366, height=768
+	        video/x-raw, format=YUY2, width=1440, height=900
+	        video/x-raw, format=YUY2, width=1280, height=1024
+	        video/x-raw, format=YUY2, width=1536, height=864
+	        video/x-raw, format=YUY2, width=1280, height=1080
+	        video/x-raw, format=YUY2, width=1600, height=900
+	        video/x-raw, format=YUY2, width=1400, height=1050
+	        video/x-raw, format=YUY2, width=1680, height=1050
+	        video/x-raw, format=YUY2, width=1600, height=1200
+	        video/x-raw, format=YUY2, width=1920, height=1080
+	        video/x-raw, format=YUY2, width=2048, height=1080
+	        video/x-raw, format=YUY2, width=1920, height=1200
+	        video/x-raw, format=YUY2, width=2160, height=1080
+	        video/x-raw, format=YUY2, width=2048, height=1152
+	        video/x-raw, format=YUY2, width=2560, height=1080
+	        video/x-raw, format=YUY2, width=2048, height=1536
+	        video/x-raw, format=YUY2, width=2560, height=1440
+	        video/x-raw, format=YUY2, width=2560, height=1600
+	        video/x-raw, format=YUY2, width=3840, height=1080
+	        video/x-raw, format=YUY2, width=2960, height=1440
+	        video/x-raw, format=YUY2, width=3440, height=1440
+	        video/x-raw, format=YUY2, width=2560, height=2048
+	        video/x-raw, format=YUY2, width=3200, height=1800
+	        video/x-raw, format=YUY2, width=3840, height=1600
+	        video/x-raw, format=YUY2, width=3200, height=2048
+	        video/x-raw, format=YUY2, width=3200, height=2400
+	        video/x-raw, format=YUY2, width=3840, height=2160
+	        video/x-raw, format=YUY2, width=4096, height=2160
+	        video/x-raw, format=YUY2, width=3840, height=2400
+	        video/x-raw, format=YUY2, width=[ 64, 4608, 2 ], height=[ 64, 2592, 2 ]
+	        video/x-raw, format=VYUY, width=160, height=120
+	        video/x-raw, format=VYUY, width=240, height=160
+	        video/x-raw, format=VYUY, width=320, height=240
+	        video/x-raw, format=VYUY, width=400, height=240
+	        video/x-raw, format=VYUY, width=480, height=320
+	        video/x-raw, format=VYUY, width=640, height=360
+	        video/x-raw, format=VYUY, width=640, height=480
+	        video/x-raw, format=VYUY, width=720, height=480
+	        video/x-raw, format=VYUY, width=768, height=480
+	        video/x-raw, format=VYUY, width=854, height=480
+	        video/x-raw, format=VYUY, width=720, height=576
+	        video/x-raw, format=VYUY, width=800, height=600
+	        video/x-raw, format=VYUY, width=960, height=540
+	        video/x-raw, format=VYUY, width=1024, height=576
+	        video/x-raw, format=VYUY, width=960, height=640
+	        video/x-raw, format=VYUY, width=1024, height=600
+	        video/x-raw, format=VYUY, width=1024, height=768
+	        video/x-raw, format=VYUY, width=1280, height=720
+	        video/x-raw, format=VYUY, width=1152, height=864
+	        video/x-raw, format=VYUY, width=1280, height=800
+	        video/x-raw, format=VYUY, width=1360, height=768
+	        video/x-raw, format=VYUY, width=1366, height=768
+	        video/x-raw, format=VYUY, width=1440, height=900
+	        video/x-raw, format=VYUY, width=1280, height=1024
+	        video/x-raw, format=VYUY, width=1536, height=864
+	        video/x-raw, format=VYUY, width=1280, height=1080
+	        video/x-raw, format=VYUY, width=1600, height=900
+	        video/x-raw, format=VYUY, width=1400, height=1050
+	        video/x-raw, format=VYUY, width=1680, height=1050
+	        video/x-raw, format=VYUY, width=1600, height=1200
+	        video/x-raw, format=VYUY, width=1920, height=1080
+	        video/x-raw, format=VYUY, width=2048, height=1080
+	        video/x-raw, format=VYUY, width=1920, height=1200
+	        video/x-raw, format=VYUY, width=2160, height=1080
+	        video/x-raw, format=VYUY, width=2048, height=1152
+	        video/x-raw, format=VYUY, width=2560, height=1080
+	        video/x-raw, format=VYUY, width=2048, height=1536
+	        video/x-raw, format=VYUY, width=2560, height=1440
+	        video/x-raw, format=VYUY, width=2560, height=1600
+	        video/x-raw, format=VYUY, width=3840, height=1080
+	        video/x-raw, format=VYUY, width=2960, height=1440
+	        video/x-raw, format=VYUY, width=3440, height=1440
+	        video/x-raw, format=VYUY, width=2560, height=2048
+	        video/x-raw, format=VYUY, width=3200, height=1800
+	        video/x-raw, format=VYUY, width=3840, height=1600
+	        video/x-raw, format=VYUY, width=3200, height=2048
+	        video/x-raw, format=VYUY, width=3200, height=2400
+	        video/x-raw, format=VYUY, width=3840, height=2160
+	        video/x-raw, format=VYUY, width=4096, height=2160
+	        video/x-raw, format=VYUY, width=3840, height=2400
+	        video/x-raw, format=VYUY, width=[ 64, 4608, 2 ], height=[ 64, 2592, 2 ]
+	        video/x-raw, format=UYVY, width=160, height=120
+	        video/x-raw, format=UYVY, width=240, height=160
+	        video/x-raw, format=UYVY, width=320, height=240
+	        video/x-raw, format=UYVY, width=400, height=240
+	        video/x-raw, format=UYVY, width=480, height=320
+	        video/x-raw, format=UYVY, width=640, height=360
+	        video/x-raw, format=UYVY, width=640, height=480
+	        video/x-raw, format=UYVY, width=720, height=480
+	        video/x-raw, format=UYVY, width=768, height=480
+	        video/x-raw, format=UYVY, width=854, height=480
+	        video/x-raw, format=UYVY, width=720, height=576
+	        video/x-raw, format=UYVY, width=800, height=600
+	        video/x-raw, format=UYVY, width=960, height=540
+	        video/x-raw, format=UYVY, width=1024, height=576
+	        video/x-raw, format=UYVY, width=960, height=640
+	        video/x-raw, format=UYVY, width=1024, height=600
+	        video/x-raw, format=UYVY, width=1024, height=768
+	        video/x-raw, format=UYVY, width=1280, height=720
+	        video/x-raw, format=UYVY, width=1152, height=864
+	        video/x-raw, format=UYVY, width=1280, height=800
+	        video/x-raw, format=UYVY, width=1360, height=768
+	        video/x-raw, format=UYVY, width=1366, height=768
+	        video/x-raw, format=UYVY, width=1440, height=900
+	        video/x-raw, format=UYVY, width=1280, height=1024
+	        video/x-raw, format=UYVY, width=1536, height=864
+	        video/x-raw, format=UYVY, width=1280, height=1080
+	        video/x-raw, format=UYVY, width=1600, height=900
+	        video/x-raw, format=UYVY, width=1400, height=1050
+	        video/x-raw, format=UYVY, width=1680, height=1050
+	        video/x-raw, format=UYVY, width=1600, height=1200
+	        video/x-raw, format=UYVY, width=1920, height=1080
+	        video/x-raw, format=UYVY, width=2048, height=1080
+	        video/x-raw, format=UYVY, width=1920, height=1200
+	        video/x-raw, format=UYVY, width=2160, height=1080
+	        video/x-raw, format=UYVY, width=2048, height=1152
+	        video/x-raw, format=UYVY, width=2560, height=1080
+	        video/x-raw, format=UYVY, width=2048, height=1536
+	        video/x-raw, format=UYVY, width=2560, height=1440
+	        video/x-raw, format=UYVY, width=2560, height=1600
+	        video/x-raw, format=UYVY, width=3840, height=1080
+	        video/x-raw, format=UYVY, width=2960, height=1440
+	        video/x-raw, format=UYVY, width=3440, height=1440
+	        video/x-raw, format=UYVY, width=2560, height=2048
+	        video/x-raw, format=UYVY, width=3200, height=1800
+	        video/x-raw, format=UYVY, width=3840, height=1600
+	        video/x-raw, format=UYVY, width=3200, height=2048
+	        video/x-raw, format=UYVY, width=3200, height=2400
+	        video/x-raw, format=UYVY, width=3840, height=2160
+	        video/x-raw, format=UYVY, width=4096, height=2160
+	        video/x-raw, format=UYVY, width=3840, height=2400
+	        video/x-raw, format=UYVY, width=[ 64, 4608, 2 ], height=[ 64, 2592, 2 ]
+	properties:
+		api.libcamera.SystemDevices = < (gint64)20739, (gint64)20740, (gint64)20738, (gint64)20741, (gint64)20744 >
+		api.libcamera.ScalerCropMaximum = < (int)0, (int)0, (int)0, (int)0 >
+		api.libcamera.PixelArrayActiveAreas = < (int)16, (int)24, (int)4608, (int)2592 >
+		api.libcamera.PixelArraySize = < (int)4608, (int)2592 >
+		api.libcamera.Rotation = 180
+		api.libcamera.Location = CameraLocationExternal
+		api.libcamera.ColorFilterArrangement = RGGB
+		api.libcamera.UnitCellSize = < (int)1400, (int)1400 >
+		api.libcamera.Model = imx708
+	gst-launch-1.0 libcamerasrc camera-name="/base/soc/i2c0mux/i2c\@1/imx708\@1a" ! ...
+
+
+Device found:
+
+	name  : /base/scb/pcie@7d500000/pci@0,0/usb@0,0-1.1:1.0-046d:085c
+	class : Source/Video
+	caps  : image/jpeg, width=160, height=90
+	        image/jpeg, width=160, height=120
+	        image/jpeg, width=176, height=144
+	        image/jpeg, width=320, height=180
+	        image/jpeg, width=320, height=240
+	        image/jpeg, width=352, height=288
+	        image/jpeg, width=432, height=240
+	        image/jpeg, width=640, height=360
+	        image/jpeg, width=640, height=480
+	        image/jpeg, width=800, height=448
+	        image/jpeg, width=864, height=480
+	        image/jpeg, width=800, height=600
+	        image/jpeg, width=1024, height=576
+	        image/jpeg, width=960, height=720
+	        image/jpeg, width=1280, height=720
+	        image/jpeg, width=1600, height=896
+	        image/jpeg, width=1920, height=1080
+	        video/x-raw, format=YUY2, width=160, height=90
+	        video/x-raw, format=YUY2, width=160, height=120
+	        video/x-raw, format=YUY2, width=176, height=144
+	        video/x-raw, format=YUY2, width=320, height=180
+	        video/x-raw, format=YUY2, width=320, height=240
+	        video/x-raw, format=YUY2, width=352, height=288
+	        video/x-raw, format=YUY2, width=432, height=240
+	        video/x-raw, format=YUY2, width=640, height=360
+	        video/x-raw, format=YUY2, width=640, height=480
+	        video/x-raw, format=YUY2, width=800, height=448
+	        video/x-raw, format=YUY2, width=864, height=480
+	        video/x-raw, format=YUY2, width=800, height=600
+	        video/x-raw, format=YUY2, width=1024, height=576
+	        video/x-raw, format=YUY2, width=960, height=720
+	        video/x-raw, format=YUY2, width=1280, height=720
+	        video/x-raw, format=YUY2, width=1600, height=896
+	        video/x-raw, format=YUY2, width=1920, height=1080
+	        video/x-raw, format=YUY2, width=2304, height=1296
+	        video/x-raw, format=YUY2, width=2304, height=1536
+	properties:
+		api.libcamera.SystemDevices = < (gint64)20754 >
+		api.libcamera.PixelArrayActiveAreas = < (int)0, (int)0, (int)2304, (int)1536 >
+		api.libcamera.PixelArraySize = < (int)2304, (int)1536 >
+		api.libcamera.Location = CameraLocationExternal
+		api.libcamera.Model = C922 Pro Stream Webcam
+	gst-launch-1.0 libcamerasrc camera-name="/base/scb/pcie\@7d500000/pci\@0\,0/usb\@0\,0-1.1:1.0-046d:085c" ! ...
+
+
+Device found:
+
+	name  : Monitor of Built-in Audio Stereo
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 768000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 768000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 768000 ], channels=[ 1, 32 ]
+	properties:
+		alsa.card = 2
+		alsa.card_name = bcm2835 Headphones
+		alsa.class = generic
+		alsa.device = 0
+		alsa.id = bcm2835 Headphones
+		alsa.long_card_name = bcm2835 Headphones
+		alsa.mixer_name = Broadcom Mixer
+		alsa.name = bcm2835 Headphones
+		alsa.resolution_bits = 16
+		alsa.subclass = generic-mix
+		alsa.subdevice = 0
+		alsa.subdevice_name = subdevice #0
+		alsa.sync.id = 00000000:00000000:00000000:00000000
+		api.alsa.card.longname = bcm2835 Headphones
+		api.alsa.card.name = bcm2835 Headphones
+		api.alsa.path = hw:2
+		api.alsa.pcm.card = 2
+		api.alsa.pcm.stream = playback
+		audio.channels = 2
+		audio.position = FL,FR
+		card.profile.device = 1
+		device.api = alsa
+		device.class = monitor
+		device.icon_name = audio-card-analog
+		device.id = 48
+		device.profile.description = Stereo
+		device.profile.name = stereo-fallback
+		device.routes = 1
+		factory.name = api.alsa.pcm.sink
+		media.class = Audio/Sink
+		device.description = Built-in Audio
+		node.name = alsa_output.platform-fe00b840.mailbox.stereo-fallback
+		node.nick = bcm2835 Headphones
+		node.pause-on-idle = false
+		object.path = alsa:acp:Headphones:1:playback
+		port.group = playback
+		priority.driver = 1000
+		priority.session = 1000
+		factory.id = 19
+		clock.quantum-limit = 8192
+		client.id = 47
+		node.driver = true
+		node.loop.name = data-loop.0
+		library.name = audioconvert/libspa-audioconvert
+		object.id = 57
+		object.serial = 57
+		api.acp.auto-port = false
+		api.acp.auto-profile = false
+		api.alsa.card = 2
+		api.alsa.split-enable = true
+		api.alsa.use-acp = true
+		api.dbus.ReserveDevice1 = Audio2
+		api.dbus.ReserveDevice1.Priority = -20
+		device.bus_path = platform-fe00b840.mailbox
+		device.enum.api = udev
+		device.form_factor = internal
+		device.name = alsa_card.platform-fe00b840.mailbox
+		device.nick = bcm2835 Headphones
+		device.plugged.usec = 5853011
+		device.subsystem = sound
+		sysfs.path = /devices/platform/soc/fe00b840.mailbox/bcm2835-audio/sound/card2
+		spa.object.id = 6
+		device.string = 2
+		is-default = false
+	gst-launch-1.0 pulsesrc device=alsa_output.platform-fe00b840.mailbox.stereo-fallback.monitor ! ...
+
+
+Device found:
+
+	name  : C922 Pro Stream Webcam Analog Stereo
+	class : Audio/Source
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 768000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 768000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 768000 ], channels=[ 1, 32 ]
+	properties:
+		alsa.card = 3
+		alsa.card_name = C922 Pro Stream Webcam
+		alsa.class = generic
+		alsa.components = USB046d:085c
+		alsa.device = 0
+		alsa.driver_name = snd_usb_audio
+		alsa.id = USB Audio
+		alsa.long_card_name = C922 Pro Stream Webcam at usb-0000:01:00.0-1.1, high speed
+		alsa.mixer_name = USB Mixer
+		alsa.name = USB Audio
+		alsa.resolution_bits = 16
+		alsa.subclass = generic-mix
+		alsa.subdevice = 0
+		alsa.subdevice_name = subdevice #0
+		alsa.sync.id = 00000000:00000000:00000000:00000000
+		api.alsa.card.longname = C922 Pro Stream Webcam at usb-0000:01:00.0-1.1, high speed
+		api.alsa.card.name = C922 Pro Stream Webcam
+		api.alsa.path = front:3
+		api.alsa.pcm.card = 3
+		api.alsa.pcm.stream = capture
+		audio.channels = 2
+		audio.position = FL,FR
+		card.profile.device = 0
+		device.api = alsa
+		device.class = sound
+		device.icon_name = audio-card-analog
+		device.id = 86
+		device.profile.description = Analog Stereo
+		device.profile.name = analog-stereo
+		device.routes = 1
+		factory.name = api.alsa.pcm.source
+		media.class = Audio/Source
+		device.description = C922 Pro Stream Webcam
+		node.name = alsa_input.usb-046d_C922_Pro_Stream_Webcam_C72F6EDF-02.analog-stereo
+		node.nick = C922 Pro Stream Webcam
+		node.pause-on-idle = false
+		object.path = alsa:acp:Webcam:0:capture
+		port.group = capture
+		priority.driver = 2009
+		priority.session = 2009
+		factory.id = 19
+		clock.quantum-limit = 8192
+		client.id = 47
+		node.driver = true
+		node.loop.name = data-loop.0
+		library.name = audioconvert/libspa-audioconvert
+		object.id = 87
+		object.serial = 96
+		api.acp.auto-port = false
+		api.acp.auto-profile = false
+		api.alsa.card = 3
+		api.alsa.split-enable = true
+		api.alsa.use-acp = true
+		api.dbus.ReserveDevice1 = Audio3
+		api.dbus.ReserveDevice1.Priority = -20
+		device.bus = usb
+		device.bus-id = usb-046d_C922_Pro_Stream_Webcam_C72F6EDF-02
+		device.bus_path = platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.1:1.2
+		device.enum.api = udev
+		device.form_factor = webcam
+		device.name = alsa_card.usb-046d_C922_Pro_Stream_Webcam_C72F6EDF-02
+		device.nick = C922 Pro Stream Webcam
+		device.plugged.usec = 991336409
+		device.product.id = 0x085c
+		device.product.name = C922 Pro Stream Webcam
+		device.serial = 046d_C922_Pro_Stream_Webcam_C72F6EDF
+		device.subsystem = sound
+		sysfs.path = /devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1/1-1.1/1-1.1:1.2/sound/card3
+		device.vendor.id = 0x046d
+		device.vendor.name = Logitech, Inc.
+		spa.object.id = 8
+		device.string = 3
+		is-default = true
+	gst-launch-1.0 pulsesrc device=alsa_input.usb-046d_C922_Pro_Stream_Webcam_C72F6EDF-02.analog-stereo ! ...
+
+
+Device found:
+
+	name  : Built-in Audio Stereo
+	class : Audio/Sink
+	caps  : audio/x-raw, format={ (string)S16LE, (string)S16BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)S24LE, (string)S24BE, (string)S24_32LE, (string)S24_32BE, (string)U8 }, layout=interleaved, rate=[ 1, 768000 ], channels=[ 1, 32 ]
+	        audio/x-alaw, rate=[ 1, 768000 ], channels=[ 1, 32 ]
+	        audio/x-mulaw, rate=[ 1, 768000 ], channels=[ 1, 32 ]
+	properties:
+		alsa.card = 2
+		alsa.card_name = bcm2835 Headphones
+		alsa.class = generic
+		alsa.device = 0
+		alsa.id = bcm2835 Headphones
+		alsa.long_card_name = bcm2835 Headphones
+		alsa.mixer_name = Broadcom Mixer
+		alsa.name = bcm2835 Headphones
+		alsa.resolution_bits = 16
+		alsa.subclass = generic-mix
+		alsa.subdevice = 0
+		alsa.subdevice_name = subdevice #0
+		alsa.sync.id = 00000000:00000000:00000000:00000000
+		api.alsa.card.longname = bcm2835 Headphones
+		api.alsa.card.name = bcm2835 Headphones
+		api.alsa.path = hw:2
+		api.alsa.pcm.card = 2
+		api.alsa.pcm.stream = playback
+		audio.channels = 2
+		audio.position = FL,FR
+		card.profile.device = 1
+		device.api = alsa
+		device.class = sound
+		device.icon_name = audio-card-analog
+		device.id = 48
+		device.profile.description = Stereo
+		device.profile.name = stereo-fallback
+		device.routes = 1
+		factory.name = api.alsa.pcm.sink
+		media.class = Audio/Sink
+		device.description = Built-in Audio
+		node.name = alsa_output.platform-fe00b840.mailbox.stereo-fallback
+		node.nick = bcm2835 Headphones
+		node.pause-on-idle = false
+		object.path = alsa:acp:Headphones:1:playback
+		port.group = playback
+		priority.driver = 1000
+		priority.session = 1000
+		factory.id = 19
+		clock.quantum-limit = 8192
+		client.id = 47
+		node.driver = true
+		node.loop.name = data-loop.0
+		library.name = audioconvert/libspa-audioconvert
+		object.id = 57
+		object.serial = 57
+		api.acp.auto-port = false
+		api.acp.auto-profile = false
+		api.alsa.card = 2
+		api.alsa.split-enable = true
+		api.alsa.use-acp = true
+		api.dbus.ReserveDevice1 = Audio2
+		api.dbus.ReserveDevice1.Priority = -20
+		device.bus_path = platform-fe00b840.mailbox
+		device.enum.api = udev
+		device.form_factor = internal
+		device.name = alsa_card.platform-fe00b840.mailbox
+		device.nick = bcm2835 Headphones
+		device.plugged.usec = 5853011
+		device.subsystem = sound
+		sysfs.path = /devices/platform/soc/fe00b840.mailbox/bcm2835-audio/sound/card2
+		spa.object.id = 6
+		device.string = 2
+		is-default = true
+	gst-launch-1.0 ... ! pulsesink device=alsa_output.platform-fe00b840.mailbox.stereo-fallback
+
+
+Device found:
+
+	name  : UvcH264 C922 Pro Stream Webcam
+	class : Video/CameraSource
+	caps  : video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=2304, height={ (int)1536, (int)1296 }, pixel-aspect-ratio=1/1, framerate=2/1
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=1920, height=1080, pixel-aspect-ratio=1/1, framerate=5/1
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=1600, height=896, pixel-aspect-ratio=1/1, framerate={ (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=1280, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=960, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=1024, height=576, pixel-aspect-ratio=1/1, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=800, height=600, pixel-aspect-ratio=1/1, framerate={ (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=864, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=800, height=448, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=640, height={ (int)480, (int)360 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=432, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=352, height=288, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=320, height={ (int)240, (int)180 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=176, height=144, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw(memory:DMABuf), format=DMA_DRM, drm-format=YUYV, width=160, height={ (int)120, (int)90 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=1920, height=1080, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=1600, height=896, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=1280, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)60/1, (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=960, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=1024, height=576, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=800, height={ (int)600, (int)448 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=864, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=640, height={ (int)480, (int)360 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=432, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=352, height=288, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=320, height={ (int)240, (int)180 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=176, height=144, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        image/jpeg, parsed=true, width=160, height={ (int)120, (int)90 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=2304, height={ (int)1536, (int)1296 }, pixel-aspect-ratio=1/1, framerate=2/1
+	        video/x-raw, format=YUY2, width=1920, height=1080, pixel-aspect-ratio=1/1, framerate=5/1
+	        video/x-raw, format=YUY2, width=1600, height=896, pixel-aspect-ratio=1/1, framerate={ (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=1280, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=960, height=720, pixel-aspect-ratio=1/1, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=1024, height=576, pixel-aspect-ratio=1/1, framerate={ (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=800, height=600, pixel-aspect-ratio=1/1, framerate={ (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=864, height=480, pixel-aspect-ratio=1/1, framerate={ (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=800, height=448, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=640, height={ (int)480, (int)360 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=432, height=240, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=352, height=288, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=320, height={ (int)240, (int)180 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=176, height=144, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	        video/x-raw, format=YUY2, width=160, height={ (int)120, (int)90 }, pixel-aspect-ratio=1/1, framerate={ (fraction)30/1, (fraction)24/1, (fraction)20/1, (fraction)15/1, (fraction)10/1, (fraction)15/2, (fraction)5/1 }
+	properties:
+		device.path = /dev/video2
+		udev-probed = false
+		device.api = uvch264
+		v4l2.device.driver = uvcvideo
+		v4l2.device.card = C922 Pro Stream Webcam
+		v4l2.device.bus_info = usb-0000:01:00.0-1.1
+		v4l2.device.version = 396335 (0x00060c2f)
+		v4l2.device.capabilities = 2225078273 (0x84a00001)
+		v4l2.device.device_caps = 69206017 (0x04200001)
+		device.is-camerasrc = true
+	gst-launch-1.0 uvch264src device=/dev/video2.vfsrc name=camerasrc ! ... camerasrc.vidsrc ! [video/x-h264] ...
+
+
+Device found:
+
+	name  : llvmpipe (LLVM 19.1.7, 128 bits)
+	class : Video/Sink
+	caps  : video/x-raw(memory:VulkanImage)
+	properties:
+		vulkan.name = llvmpipe (LLVM 19.1.7, 128 bits)
+		vulkan.type = CPU
+		vulkan.api.version = 1.4.305
+		vulkan.api.version.major = 1 (0x00000001)
+		vulkan.api.version.minor = 4 (0x00000004)
+		vulkan.api.version.patch = 305 (0x00000131)
+		vulkan.driver.version = 0.0.1
+		vulkan.driver.version.major = 0 (0x00000000)
+		vulkan.driver.version.minor = 0 (0x00000000)
+		vulkan.driver.version.patch = 1 (0x00000001)
+		vulkan.vendor.id = 65541 (0x00010005)
+		vulkan.device.id = 0 (0x00000000)
+		vulkan.memory.n_heaps = 1 (0x00000001)
+		vulkan.memory.heaps.0.size = 3221225472
+		vulkan.memory.heaps.0.flags = 1 (0x00000001)
+		vulkan.memory.heaps.0.flags.str = device-local
+		vulkan.memory.n_types = 1 (0x00000001)
+		vulkan.memory.types.0.heap = 0 (0x00000000)
+		vulkan.memory.types.0.flags = 15 (0x0000000f)
+		vulkan.memory.types.0.flags.str = device-local|host-visible|host-coherent|host-cached
+		vulkan.n_queue_families = 1 (0x00000001)
+		vulkan.queue_family.0.n_queues = 1 (0x00000001)
+		vulkan.queue_family.0.flags = 15 (0x0000000f)
+		vulkan.queue_family.0.flags.str = graphics|compute|transfer|sparse-binding
+		vulkan.queue_family.0.timestamp_resolution = 64 (0x00000040)
+		vulkan.queue_family.0.min_image_transfer_granuality.width = 1 (0x00000001)
+		vulkan.queue_family.0.min_image_transfer_granuality.height = 1 (0x00000001)
+		vulkan.queue_family.0.min_image_transfer_granuality.depth = 1 (0x00000001)
+		is-default = false
+	gst-launch-1.0 ... ! vulkansink
+
+
+Device found:
+
+	name  : V3D 4.2.14.0
+	class : Video/Sink
+	caps  : video/x-raw(memory:VulkanImage)
+	properties:
+		vulkan.name = V3D 4.2.14.0
+		vulkan.type = integrated
+		vulkan.api.version = 1.3.305
+		vulkan.api.version.major = 1 (0x00000001)
+		vulkan.api.version.minor = 3 (0x00000003)
+		vulkan.api.version.patch = 305 (0x00000131)
+		vulkan.driver.version = 25.0.7
+		vulkan.driver.version.major = 25 (0x00000019)
+		vulkan.driver.version.minor = 0 (0x00000000)
+		vulkan.driver.version.patch = 7 (0x00000007)
+		vulkan.vendor.id = 5348 (0x000014e4)
+		vulkan.device.id = 3192414163 (0xbe485fd3)
+		vulkan.memory.n_heaps = 1 (0x00000001)
+		vulkan.memory.heaps.0.size = 1990584320
+		vulkan.memory.heaps.0.flags = 1 (0x00000001)
+		vulkan.memory.heaps.0.flags.str = device-local
+		vulkan.memory.n_types = 1 (0x00000001)
+		vulkan.memory.types.0.heap = 0 (0x00000000)
+		vulkan.memory.types.0.flags = 7 (0x00000007)
+		vulkan.memory.types.0.flags.str = device-local|host-visible|host-coherent
+		vulkan.n_queue_families = 1 (0x00000001)
+		vulkan.queue_family.0.n_queues = 1 (0x00000001)
+		vulkan.queue_family.0.flags = 7 (0x00000007)
+		vulkan.queue_family.0.flags.str = graphics|compute|transfer
+		vulkan.queue_family.0.timestamp_resolution = 64 (0x00000040)
+		vulkan.queue_family.0.min_image_transfer_granuality.width = 1 (0x00000001)
+		vulkan.queue_family.0.min_image_transfer_granuality.height = 1 (0x00000001)
+		vulkan.queue_family.0.min_image_transfer_granuality.depth = 1 (0x00000001)
+		is-default = true
+	gst-launch-1.0 ... ! vulkansink

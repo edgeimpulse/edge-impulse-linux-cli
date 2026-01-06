@@ -19,11 +19,12 @@ export async function initCamera(opts: {
     dimensions: { width: number, height: number } | undefined,
     inferenceDimensions: ICameraInferenceDimensions | undefined,
     gstLaunchArgs: string | undefined,
+    cameraColorFormat: string | undefined,
     verboseOutput: boolean,
     profiling: boolean,
 }) {
     const { cameraType, cameraDeviceNameInConfig, dimensions, inferenceDimensions,
-        gstLaunchArgs, verboseOutput } = opts;
+        gstLaunchArgs, verboseOutput, cameraColorFormat } = opts;
     let { cameraNameArgv } = opts;
 
     let camera: ICamera;
@@ -37,6 +38,7 @@ export async function initCamera(opts: {
         camera = new GStreamer(verboseOutput, {
             customLaunchCommand: gstLaunchArgs,
             profiling: opts.profiling,
+            colorFormat: cameraColorFormat,
         });
     }
     else {
