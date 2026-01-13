@@ -75,31 +75,17 @@ export class ImageClassifier extends EventEmitter<{
 
         this._stopped = false;
 
-        let frameQueue: { features: number[], img: sharp.Sharp }[] = [];
-
-        this._camera.on('snapshotForInference', async (data, filename) => {
+        this._camera.on('snapshotForInference', async (ev) => {
             try {
+                const filename = ev.filename;
+
                 let model = this._model;
                 if (this._stopped) {
                     return;
                 }
 
-                // are we looking at video? Then we always add to the frameQueue
-                if (model.modelParameters.image_input_frames > 1) {
-                    this.emit('profileFeaturesBegin', filename);
-                    let resized = await ImageClassifier.resizeImage(model, data);
-                    frameQueue.push(resized);
-                    this.emit('profileFeaturesEnd', filename);
-                }
-
                 // still running inferencing?
                 if (this._runningInference) {
-                    return;
-                }
-
-                // too little frames? then wait for next one
-                if (model.modelParameters.image_input_frames > 1 &&
-                    frameQueue.length < model.modelParameters.image_input_frames) {
                     return;
                 }
 
@@ -108,65 +94,81 @@ export class ImageClassifier extends EventEmitter<{
                 this._runningInference = true;
 
                 try {
-                    let imgSharpMetadata: sharp.Metadata | undefined;
 
-                    // if we have single frame then resize now
-                    if (model.modelParameters.image_input_frames > 1) {
-                        frameQueue = frameQueue.slice(frameQueue.length - model.modelParameters.image_input_frames);
+                    if (ev.imageForInferenceRgb) {
+                        const expectedBufferSize = model.modelParameters.image_input_width *
+                            model.modelParameters.image_input_height * 3;
+                        if (ev.imageForInferenceRgb.length !== expectedBufferSize) {
+                            console.log(PREFIX, `Invalid size for imageForInferenceRgb, ` +
+                                `expected=${expectedBufferSize}, received=${ev.imageForInferenceRgb.length}`);
+                            ev.imageForInferenceRgb = undefined;
+                        }
                     }
+
+                    // If we get the data in RGB format -> great, guaranteed to be in the right w/h
+                    // already.
+                    if (ev.imageForInferenceRgb) {
+                        this.emit('profileFeaturesBegin', filename);
+                        const features = ImageClassifier.rgbBufferToFeatures(ev.imageForInferenceRgb);
+                        this.emit('profileFeaturesEnd', filename);
+
+                        this.emit('profileClassifyBegin', filename);
+
+                        const { classifyRes, timingMs } = await this.classify(features);
+
+                        this.emit('profileClassifyEnd', filename, classifyRes.timing);
+
+                        // todo: what if grayscale image? imageForInferenceJpg is in RGB
+                        this.emit('profileEmitResultBegin', filename);
+                        this.emit('result', classifyRes,
+                                timingMs,
+                                ev.imageForInferenceJpg);
+                        this.emit('profileEmitResultEnd', filename);
+                    }
+                    // received a JPG instead
                     else {
+                        const data = ev.imageForInferenceJpg;
+
+                        let imgSharpMetadata: sharp.Metadata | undefined;
+
+                        // if we have single frame then resize now
+                        if (model.modelParameters.image_input_frames > 1) {
+                            throw new Error(`image_input_frames with a value other than 1 is not supported`);
+                        }
                         this.emit('profileFeaturesBegin', filename);
                         imgSharpMetadata = await sharp(data).metadata();
                         let resized = await ImageClassifier.resizeImage(model, data, imgSharpMetadata);
-                        frameQueue = [ resized ];
                         this.emit('profileFeaturesEnd', filename);
+
+                        if (this._stopped) {
+                            return;
+                        }
+
+                        this.emit('profileClassifyBegin', filename);
+
+                        const { classifyRes, timingMs } = await this.classify(resized.features);
+
+                        this.emit('profileClassifyEnd', filename, classifyRes.timing);
+
+                        this.emit('profileEmitResultBegin', filename);
+                        if (model.modelParameters.image_input_frames === 1 &&
+                            imgSharpMetadata &&
+                            imgSharpMetadata.width === model.modelParameters.image_input_width &&
+                            imgSharpMetadata.height === model.modelParameters.image_input_height &&
+                            model.modelParameters.image_channel_count === 3 &&
+                            filename.toLowerCase().endsWith('.jpg')
+                        ) {
+                            // data is already a JPG file in the right encoding, no need to re-encode
+                            this.emit('result', classifyRes, timingMs, data);
+                        }
+                        else {
+                            // data might have changed (e.g. w/h/channel), re-encode the new buffer
+                            this.emit('result', classifyRes,
+                                timingMs,
+                                await resized.img.jpeg({ quality: 90 }).toBuffer());
+                        }
+                        this.emit('profileEmitResultEnd', filename);
                     }
-
-                    let img = frameQueue[frameQueue.length - 1].img;
-
-                    // slice the frame queue
-                    frameQueue = frameQueue.slice(frameQueue.length - model.modelParameters.image_input_frames);
-
-                    // concat the frames
-                    let values: number[] = [];
-                    for (let ix = 0; ix < model.modelParameters.image_input_frames; ix++) {
-                        values = values.concat(frameQueue[ix].features);
-                    }
-
-                    if (this._stopped) {
-                        return;
-                    }
-
-                    this.emit('profileClassifyBegin', filename);
-
-                    let classifyRes = await this._runner.classify(values);
-
-                    let timingMs = classifyRes.timing.dsp + classifyRes.timing.classification +
-                        classifyRes.timing.anomaly;
-                    if (timingMs === 0) {
-                        timingMs = 1;
-                    }
-
-                    this.emit('profileClassifyEnd', filename, classifyRes.timing);
-
-                    this.emit('profileEmitResultBegin', filename);
-                    if (model.modelParameters.image_input_frames === 1 &&
-                        imgSharpMetadata &&
-                        imgSharpMetadata.width === model.modelParameters.image_input_width &&
-                        imgSharpMetadata.height === model.modelParameters.image_input_height &&
-                        model.modelParameters.image_channel_count === 3 &&
-                        filename.toLowerCase().endsWith('.jpg')
-                    ) {
-                        // data is already a JPG file in the right encoding, no need to re-encode
-                        this.emit('result', classifyRes, timingMs, data);
-                    }
-                    else {
-                        // data might have changed (e.g. w/h/channel), re-encode the new buffer
-                        this.emit('result', classifyRes,
-                            timingMs,
-                            await img.jpeg({ quality: 90 }).toBuffer());
-                    }
-                    this.emit('profileEmitResultEnd', filename);
                 }
                 finally {
                     this._runningInference = false;
@@ -174,7 +176,7 @@ export class ImageClassifier extends EventEmitter<{
             }
             catch (ex2) {
                 const ex = <Error>ex2;
-                console.log(PREFIX, `Failed to handle snapshot "${filename}":`, ex.message || ex.toString());
+                console.log(PREFIX, `Failed to handle snapshot "${ev.filename}":`, ex.message || ex.toString());
                 if (this._verbose) {
                     console.log(PREFIX, ex);
                 }
@@ -266,6 +268,45 @@ export class ImageClassifier extends EventEmitter<{
             originalHeight: metadata.height,
             newWidth: model.modelParameters.image_input_width,
             newHeight: model.modelParameters.image_input_height,
+        };
+    }
+
+    static rgbBufferToFeatures(data: Buffer) {
+        const numPixels = data.length / 3;
+        const features = new Array<number>(numPixels);
+        for (let ix = 0, j = 0; ix < numPixels; ix++, j += 3) {
+            // eslint-disable-next-line no-bitwise
+            features[ix] = (data[j] << 16) | (data[j + 1] << 8) | data[j + 2];
+        }
+        return features;
+    }
+
+    private async classify(values: number[]): Promise<{
+        classifyRes: RunnerClassifyResponseSuccess,
+        timingMs: number,
+    }> {
+        if (process.env.EI_DONT_CLASSIFY === '1') { // useful to profile
+            return {
+                classifyRes: {
+                    info: undefined,
+                    result: { },
+                    timing: { dsp: 0, classification: 0, anomaly: 0 },
+                },
+                timingMs: 0,
+            };
+        }
+
+        const classifyRes = await this._runner.classify(values);
+
+        let timingMs = classifyRes.timing.dsp + classifyRes.timing.classification +
+            classifyRes.timing.anomaly;
+        if (timingMs === 0) {
+            timingMs = 1;
+        }
+
+        return {
+            classifyRes,
+            timingMs,
         };
     }
 }

@@ -4,13 +4,13 @@ import fs from 'fs';
 import Path from 'path';
 import os from 'os';
 import { spawnHelper } from './spawn-helper';
-import { ICamera, ICameraProfilingInfoEvent, ICameraStartOptions } from './icamera';
+import { ICamera, ICameraProfilingInfoEvent, ICameraSnapshotForInferenceEvent, ICameraStartOptions } from './icamera';
 
 const PREFIX = '\x1b[35m[SNP]\x1b[0m';
 
 export class Imagesnap extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
-    snapshotForInference: (buffer: Buffer, filename: string) => void,
+    snapshotForInference: (ev: ICameraSnapshotForInferenceEvent) => void,
     error: (message: string) => void,
     profilingInfo: (ev: ICameraProfilingInfoEvent) => void,
 }> implements ICamera {
@@ -41,7 +41,8 @@ export class Imagesnap extends EventEmitter<{
             await spawnHelper('which', [ 'imagesnap' ]);
         }
         catch (ex) {
-            throw new Error('Missing "imagesnap" in PATH. Install via `brew install imagesnap`');
+            throw new Error('Missing "imagesnap" in PATH. Install via `brew install imagesnap`; ' +
+                'or use USE_GSTREAMER=1 to use GStreamer instead.');
         }
     }
 
@@ -139,7 +140,12 @@ export class Imagesnap extends EventEmitter<{
                 try {
                     let data = await fs.promises.readFile(Path.join(this._tempDir, fileName));
                     this.emit('snapshot', data, Path.basename(fileName));
-                    this.emit('snapshotForInference', data, Path.basename(fileName));
+                    this.emit('snapshotForInference', {
+                        imageForInferenceJpg: data,
+                        filename: Path.basename(fileName),
+                        imageFromCameraJpg: data,
+                        imageForInferenceRgb: undefined,
+                    });
 
                     // 2 seconds no new data? trigger timeout
                     if (this._keepAliveTimeout) {

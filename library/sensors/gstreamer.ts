@@ -4,7 +4,7 @@ import fs from 'fs';
 import Path from 'path';
 import os from 'os';
 import { spawnHelper, SpawnHelperType } from './spawn-helper';
-import { ICamera, ICameraInferenceDimensions, ICameraProfilingInfoEvent, ICameraStartOptions } from './icamera';
+import { ICamera, ICameraInferenceDimensions, ICameraProfilingInfoEvent, ICameraSnapshotForInferenceEvent, ICameraStartOptions } from './icamera';
 import util from 'util';
 import crypto from 'crypto';
 import { split as argvSplit } from '../argv-split';
@@ -37,14 +37,14 @@ const DEFAULT_GST_VIDEO_SOURCE = 'v4l2src';
 
 export class GStreamer extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
-    snapshotForInference: (buffer: Buffer, filename: string) => void,
+    snapshotForInference: (ev: ICameraSnapshotForInferenceEvent) => void,
     error: (message: string) => void,
     profilingInfo: (ev: ICameraProfilingInfoEvent) => void,
 }> implements ICamera {
     private _captureProcess?: ChildProcess;
     private _tempDir?: string;
     private _watcher?: fs.FSWatcher;
-    private _originalFilesSeen = new Set<string>();
+    private _originalAndRgbFilesSeen = new Set<string>();
     private _handledFiles: { [k: string]: true } = { };
     private _verbose: boolean;
     private _lastFile: {
@@ -62,8 +62,10 @@ export class GStreamer extends EventEmitter<{
     private _customLaunchCommand: string | undefined;
     private _profiling: boolean;
     private _emitsOriginalSizeImages = false;
+    private _emitsRgbBuffers = false;
     private _overrideColorFormat: string | undefined;
     private _lastGstLaunchCommand = '';
+    private _outputRgbBuffers: boolean;
     private _imagesReceived = 0;
     private _offset = 0;
 
@@ -74,6 +76,7 @@ export class GStreamer extends EventEmitter<{
         profiling?: boolean,
         dontRunCleanupLoop?: boolean,
         colorFormat?: string,
+        dontOutputRgbBuffers?: boolean,
     }) {
         super();
 
@@ -83,6 +86,9 @@ export class GStreamer extends EventEmitter<{
         this._modeOverride = options?.modeOverride;
         this._profiling = options?.profiling || false;
         this._overrideColorFormat = options?.colorFormat;
+        this._outputRgbBuffers = options?.dontOutputRgbBuffers === true ?
+            false :
+            true;
         if (options?.dontRunCleanupLoop === true) {
             // skip cleanup loop
         }
@@ -336,14 +342,18 @@ export class GStreamer extends EventEmitter<{
 
         let lastPhoto = 0;
         let nextFrame = Date.now();
-        this._originalFilesSeen = new Set<string>();
+        this._originalAndRgbFilesSeen = new Set<string>();
 
         this._watcher = fs.watch(this._tempDir, async (eventType, fileName) => {
             if (eventType !== 'rename') return;
             if (fileName === null) return;
-            if (!(fileName.endsWith('.jpeg') || fileName.endsWith('.jpg'))) return;
+            if (!(fileName.endsWith('.jpeg') || fileName.endsWith('.jpg') || fileName.endsWith('.rgb'))) return;
             if (fileName.startsWith('original')) {
-                this._originalFilesSeen.add(fileName);
+                this._originalAndRgbFilesSeen.add(fileName);
+                return;
+            }
+            if (fileName.endsWith('.rgb')) {
+                this._originalAndRgbFilesSeen.add(fileName);
                 return;
             }
             if (!this._tempDir) return;
@@ -351,10 +361,12 @@ export class GStreamer extends EventEmitter<{
 
             this._imagesReceived++;
 
+            const tempDir = this._tempDir; // this can get unset later on -> so cache here
+
             // not next frame yet?
             if (this._processing || Date.now() < nextFrame) {
                 this._handledFiles[fileName] = true;
-                await this.safeUnlinkFile(Path.join(this._tempDir, fileName));
+                await this.safeUnlinkFile(Path.join(tempDir, fileName));
                 return;
             }
 
@@ -366,7 +378,7 @@ export class GStreamer extends EventEmitter<{
 
                 const originalName = fileName.replace('resized', 'original');
                 if (this._emitsOriginalSizeImages) {
-                    if (!this._originalFilesSeen.has(originalName)) {
+                    if (!this._originalAndRgbFilesSeen.has(originalName)) {
                         let waitForOriginalStart = Date.now();
                         if (this._verbose) {
                             console.log(PREFIX, `Waiting for original file "${originalName}"...`);
@@ -374,18 +386,44 @@ export class GStreamer extends EventEmitter<{
                         await new Promise<void>(async (resolve, reject) => {
                             let start = Date.now();
                             while (1) {
-                                if (this._originalFilesSeen.has(originalName)) {
+                                if (this._originalAndRgbFilesSeen.has(originalName)) {
                                     return resolve();
                                 }
                                 if (Date.now() - start > 1_000) {
                                     return reject(`Did not find original image ("${originalName}") within 1sec`);
                                 }
-                                await this.wait(10);
+                                await this.wait(1);
                             }
                         });
                         if (this._verbose) {
                             console.log(PREFIX, `Waiting for original file "${originalName}" OK ` +
                                 `(took ${Date.now() - waitForOriginalStart}ms.)`);
+                        }
+                    }
+                }
+
+                const rgbName = fileName.replace('.jpg', '.rgb');
+                if (this._emitsRgbBuffers) {
+                    if (!this._originalAndRgbFilesSeen.has(rgbName)) {
+                        let waitForRgbStart = Date.now();
+                        if (this._verbose) {
+                            console.log(PREFIX, `Waiting for RGB file "${rgbName}"...`);
+                        }
+                        await new Promise<void>(async (resolve, reject) => {
+                            let start = Date.now();
+                            while (1) {
+                                if (this._originalAndRgbFilesSeen.has(rgbName)) {
+                                    return resolve();
+                                }
+                                if (Date.now() - start > 1_000) {
+                                    return reject(`Did not find RGB image ("${rgbName}") within 1sec`);
+                                }
+                                await this.wait(1);
+                            }
+                        });
+                        if (this._verbose) {
+                            console.log(PREFIX, `Waiting for RGB file "${rgbName}" OK ` +
+                                `(took ${Date.now() - waitForRgbStart}ms.)`);
                         }
                     }
                 }
@@ -399,16 +437,18 @@ export class GStreamer extends EventEmitter<{
                     clearTimeout(this._keepAliveTimeout);
                 }
 
-                const tempDir = this._tempDir;
-
                 try {
                     let [
                         imgBuffer,
-                        originalImgBuffer
+                        originalImgBuffer,
+                        rgbBuffer,
                     ] = await Promise.all([
                         fs.promises.readFile(Path.join(tempDir, fileName)),
                         this._emitsOriginalSizeImages ?
                             fs.promises.readFile(Path.join(tempDir, originalName)) :
+                            null,
+                        this._emitsRgbBuffers ?
+                            fs.promises.readFile(Path.join(tempDir, rgbName)) :
                             null,
                     ]);
 
@@ -418,7 +458,12 @@ export class GStreamer extends EventEmitter<{
                         // snapshot() sends out the original size image
                         this.emit('snapshot', originalImgBuffer || imgBuffer, Path.basename(fileName));
                         // snapshotForInference() sends out the resized image
-                        this.emit('snapshotForInference', imgBuffer, Path.basename(fileName));
+                        this.emit('snapshotForInference', {
+                            imageForInferenceJpg: imgBuffer,
+                            filename: Path.basename(fileName),
+                            imageFromCameraJpg: originalImgBuffer || imgBuffer,
+                            imageForInferenceRgb: rgbBuffer || undefined,
+                        });
 
                         lastPhoto = Date.now();
 
@@ -450,7 +495,13 @@ export class GStreamer extends EventEmitter<{
                     (async () => {
                         if (originalName) {
                             await this.safeUnlinkFile(Path.join(tempDir, originalName));
-                            this._originalFilesSeen.delete(originalName);
+                            this._originalAndRgbFilesSeen.delete(originalName);
+                        }
+                    })(),
+                    (async () => {
+                        if (rgbName) {
+                            await this.safeUnlinkFile(Path.join(tempDir, rgbName));
+                            this._originalAndRgbFilesSeen.delete(rgbName);
                         }
                     })(),
                 ]);
@@ -494,9 +545,26 @@ export class GStreamer extends EventEmitter<{
                                 return;
                             }
                             else {
+                                const errMsg = `GStreamer (gst-launch-1.0) stopped before emitting any images. This most likely ` +
+                                    `means that the launch command is incorrect or that your camera is unresponsive. Here is the launch command:\n\n` +
+                                    `${this._lastGstLaunchCommand}\n\n` +
+                                    `You can try one of the following:\n\n` +
+                                    `* If your camera used to work:\n` +
+                                    `    * Disconnect and reconnect the camera (if you use an external camera)\n` +
+                                    `    * Kill all other GStreamer commands, via: 'sudo killall gst-launch-1.0'\n` +
+                                    `* Run with '--verbose' to see the raw GStreamer output. It might contain a hint why the process fails.\n` +
+                                    `* Run with '--dont-output-rgb-buffers' - this will disable RGB output buffer creation which can help with ` +
+                                        `targets that advertise RGB capabilities on the video source, but don't actually support this.\n\n` +
+                                    `If this does not resolve your issue, then please open a forum post at https://forum.edgeimpulse.com and include:\n\n` +
+                                    `* Your device, operating system, what camera you're using, and how the camera is connected (e.g. USB, CSI)\n` +
+                                    `* The launch command (above)\n` +
+                                    `* The verbose output (run this application with --verbose)\n` +
+                                    `* The output of 'gst-device-monitor-1.0'\n` +
+                                    `* The output of 'gst-inspect-1.0'`;
+
                                 if (this._imagesReceived === 0 && this._lastGstLaunchCommand) {
                                     reject(`Capture process failed with code ${code}\n\n` +
-                                        `command: ${this._lastGstLaunchCommand}`);
+                                        `${errMsg}`);
                                 }
                                 else {
                                     reject('Capture process failed with code ' + code);
@@ -568,6 +636,7 @@ export class GStreamer extends EventEmitter<{
         pipeline: string,
     }> {
         this._emitsOriginalSizeImages = false;
+        this._emitsRgbBuffers = false;
 
         if (device.id === CUSTOM_GST_LAUNCH_COMMAND) {
             if (!this._customLaunchCommand) {
@@ -664,6 +733,27 @@ export class GStreamer extends EventEmitter<{
             ];
         }
 
+        const frameReadyArgs = this._profiling ? [ `!`, `identity name=frame_ready silent=false` ] : [];
+        const jpgencDoneArgs = this._profiling ? [ `!`, `identity name=jpegenc_done silent=false` ] : [];
+        const resizeDoneArgs = this._profiling ? [ `!`, `identity name=resize_done silent=false` ] : [];
+
+        let teeToBothResizedJpgAndRgb: string[];
+        let videoFormat = '';
+
+        if (this._outputRgbBuffers) {
+            teeToBothResizedJpgAndRgb = [
+                `tee name=u`,
+                    `u. ! queue ! jpegenc ${jpgencDoneArgs.join(' ')} ! multifilesink location=resized%05d.jpg post-messages=true sync=false `,
+                    `u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false `,
+            ];
+            videoFormat = ',format=RGB'; // Don't do this if outputRgbBuffers is RGB, because we don't want to force RGB video format
+        }
+        else {
+            teeToBothResizedJpgAndRgb = [
+                `jpegenc ${jpgencDoneArgs.join(' ')} ! multifilesink location=resized%05d.jpg post-messages=true sync=false`,
+            ];
+        }
+
         let cropArgs: string[] = [];
         if (inferenceDims) {
             // fast path for fit-shortest and squash
@@ -678,14 +768,14 @@ export class GStreamer extends EventEmitter<{
                     `!`,
                     `videoscale`, `method=lanczos`,
                     `!`,
-                    `video/x-raw,width=${inferenceDims.width},height=${inferenceDims.height}`,
+                    `video/x-raw${videoFormat},width=${inferenceDims.width},height=${inferenceDims.height}`,
                 ]);
             }
-            else if (inferenceDims.resizeMode === 'squash' || inferenceDims.resizeMode === 'none' /* old model */) {
+            else if (inferenceDims.resizeMode === 'squash' || inferenceDims.resizeMode === 'none' /* old model -> squash */) {
                 cropArgs.push(`!`);
                 cropArgs.push(`videoscale`, `method=lanczos`);
                 cropArgs.push(`!`);
-                cropArgs.push(`video/x-raw,width=${inferenceDims.width},height=${inferenceDims.height}`);
+                cropArgs.push(`video/x-raw${videoFormat},width=${inferenceDims.width},height=${inferenceDims.height}`);
             }
         }
 
@@ -696,7 +786,13 @@ export class GStreamer extends EventEmitter<{
                 videoSource = videoSource.concat([
                     `!`,
                     `video/x-raw,width=${cap.width},height=${cap.height},format=YUY2`
-                    ]);
+                ]);
+            }
+            else if (device.videoSource === 'qtiqmmfsrc') {
+                videoSource = videoSource.concat([
+                    `!`,
+                    `video/x-raw,width=${cap.width},height=${cap.height},format=NV12`
+                ]);
             }
             else if (this._mode === 'rpi5' ) {
                 // on RPi 5 we need to set color format
@@ -713,7 +809,7 @@ export class GStreamer extends EventEmitter<{
                 videoSource = videoSource.concat([
                     `!`,
                     `video/x-raw,width=${cap.width},height=${cap.height},format=${colorFormat}`
-                    ]);
+                ]);
             }
             else {
                 videoSource = videoSource.concat([
@@ -721,9 +817,6 @@ export class GStreamer extends EventEmitter<{
                     `video/x-raw,width=${cap.width},height=${cap.height}`
                 ]);
             }
-
-            let frameReadyArgs = this._profiling ? [ `!`, `identity name=frame_ready silent=false` ] : [];
-            let jpgencDoneArgs = this._profiling ? [ `!`, `identity name=jpegenc_done silent=false` ] : [];
 
             if (cropArgs.length === 0) {
                 args = videoSource.concat([
@@ -742,11 +835,9 @@ export class GStreamer extends EventEmitter<{
                 let resized = [
                     `t. ! queue`,
                     ...cropArgs,
+                    ...resizeDoneArgs,
                     `!`,
-                    `jpegenc`,
-                    ...jpgencDoneArgs,
-                    `!`,
-                    `multifilesink location=resized%05d.jpg post-messages=true sync=false`,
+                    ...teeToBothResizedJpgAndRgb,
                 ];
 
                 args = videoSource.concat([
@@ -760,15 +851,54 @@ export class GStreamer extends EventEmitter<{
                 ]);
 
                 this._emitsOriginalSizeImages = true;
+                if (this._outputRgbBuffers) {
+                    this._emitsRgbBuffers = true;
+                }
             }
         }
         else if (cap.type === 'image/jpeg') {
-            args = videoSource.concat([
+            videoSource = videoSource.concat([
                 `!`,
                 `image/jpeg,width=${cap.width},height=${cap.height}`,
-                `!`,
-                `multifilesink location=resized%05d.jpg post-messages=true sync=false`
             ]);
+
+            if (cropArgs.length === 0) {
+                args = videoSource.concat([
+                    ...frameReadyArgs,
+                    `!`,
+                    `multifilesink`,
+                    `location=resized%05d.jpg`,
+                    `post-messages=true`,
+                    `sync=false`,
+                ]);
+            }
+            else {
+                let original = `t. ! queue ! multifilesink location=original%05d.jpg  post-messages=true sync=false`;
+                let resized = [
+                    `t. ! queue`,
+                    `!`,
+                    `jpegdec`,
+                    `!`,
+                    `videoconvert`,
+                    ...cropArgs,
+                    ...resizeDoneArgs,
+                    `!`,
+                    ...teeToBothResizedJpgAndRgb,
+                ];
+
+                args = videoSource.concat([
+                    ...frameReadyArgs,
+                    `!`,
+                    `tee name=t`,
+                    original,
+                    ...resized,
+                ]);
+
+                this._emitsOriginalSizeImages = true;
+                if (this._outputRgbBuffers) {
+                    this._emitsRgbBuffers = true;
+                }
+            }
         }
         else if (cap.type === 'nvarguscamerasrc') {
             args = [
@@ -783,7 +913,8 @@ export class GStreamer extends EventEmitter<{
 
         return {
             command: 'gst-launch-1.0',
-            pipeline: args.join(' '),
+            // replace multiple spaces with one space
+            pipeline: args.join(' ').trim().replace(/(\s+)/g, ' '),
         };
     }
 
@@ -797,7 +928,10 @@ export class GStreamer extends EventEmitter<{
                 this._captureProcess.on('close', code => {
                     if (this._watcher) {
                         this._watcher.on('close', async () => {
-                            await this.cleanupTempDirAsync();
+                            try {
+                                await this.cleanupTempDirAsync();
+                            }
+                            catch (ex) { /* noop */ }
                         });
                         this._watcher.close();
                     }
@@ -1591,6 +1725,8 @@ export class GStreamer extends EventEmitter<{
         const cropBottom = Math.max(0, srcH - cropH - cropTop);
 
         return {
+            width: cropW,
+            height: cropH,
             left: cropLeft,
             right: cropRight,
             top: cropTop,
@@ -1620,7 +1756,7 @@ export class GStreamer extends EventEmitter<{
                 let filesToUnlink: string[] = [];
 
                 // copy as we're manipulating this set
-                for (let originalFileName of Array.from(this._originalFilesSeen)) {
+                for (let originalFileName of Array.from(this._originalAndRgbFilesSeen)) {
                     let originalNumberMatch = originalFileName.match(/(\d+)/);
                     let originalNumber = originalNumberMatch ? Number(originalNumberMatch[1]) : NaN;
                     if (isNaN(originalNumber)) {
@@ -1638,14 +1774,14 @@ export class GStreamer extends EventEmitter<{
 
 
                 if (this._verbose) {
-                    console.log(PREFIX, `Unlinking ${filesToUnlink.length} original files...`);
+                    console.log(PREFIX, `Unlinking ${filesToUnlink.length} original / RGB files...`);
                 }
 
                 if (filesToUnlink.length > 0) {
                     const tempDir = this._tempDir;
                     await asyncPool(10, filesToUnlink, async (originalFileName) => {
                         await this.safeUnlinkFile(Path.join(tempDir, originalFileName));
-                        this._originalFilesSeen.delete(originalFileName);
+                        this._originalAndRgbFilesSeen.delete(originalFileName);
                     });
                 }
             }

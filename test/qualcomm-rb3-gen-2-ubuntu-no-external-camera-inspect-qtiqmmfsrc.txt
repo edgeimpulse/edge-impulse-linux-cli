@@ -1,0 +1,438 @@
+Factory Details:
+  Rank                     primary (256)
+  Long-name                QMMF Video Source
+  Klass                    Source/Video
+  Description              Reads frames from a device via QMMF service
+  Author                   QTI
+
+Plugin Details:
+  Name                     qtiqmmfsrc
+  Description              QTI QMMF plugin library
+  Filename                 /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstqtiqmmfsrc.so
+  Version                  1.0.0
+  License                  BSD
+  Source module            gstreamer1.0-plugins-qcom-oss
+  Binary package           Qualcomm open-source GStreamer Plug-ins
+  Origin URL               http://www.qualcomm.com
+
+GObject
+ +----GInitiallyUnowned
+       +----GstObject
+             +----GstElement
+                   +----GstQmmfSrc
+
+Implemented Interfaces:
+  GstChildProxy
+
+Pad Templates:
+  SRC template: 'image_%u'
+    Availability: On request
+    Capabilities:
+      image/jpeg
+                  width: [ 16, 5184 ]
+                 height: [ 16, 3880 ]
+              framerate: [ 0/1, 30/1 ]
+      video/x-raw
+                 format: { (string)NV21 }
+                  width: [ 16, 5184 ]
+                 height: [ 16, 3880 ]
+              framerate: [ 0/1, 30/1 ]
+      video/x-bayer
+                 format: { (string)bggr, (string)rggb, (string)gbrg, (string)grbg, (string)mono }
+                    bpp: { (string)8, (string)10, (string)12, (string)16 }
+                  width: [ 16, 5184 ]
+                 height: [ 16, 3880 ]
+              framerate: [ 0/1, 30/1 ]
+    Type: GstQmmfSrcImagePad
+    Pad Properties:
+
+      rotate              : Set Orientation Angle for Image Stream
+                            flags: readable, writable
+                            Enum "GstRotate" Default: 0, "none"
+                               (0): none             - No Rotation
+                               (1): 90CCW            - Rotate 90 degrees counter-clockwise
+                               (2): 180CCW           - Rotate 180 degrees counter-clockwise
+                               (3): 270CCW           - Rotate 270 degrees counter-clockwise
+
+
+  SRC template: 'video_%u'
+    Availability: On request
+    Capabilities:
+      image/jpeg
+                  width: [ 16, 5184 ]
+                 height: [ 16, 3880 ]
+              framerate: [ 0/1, 120/1 ]
+      video/x-raw
+                 format: { (string)NV12, (string)NV16, (string)NV12_Q08C, (string)RGB }
+                  width: [ 16, 5184 ]
+                 height: [ 16, 3880 ]
+              framerate: [ 0/1, 120/1 ]
+      video/x-bayer
+                 format: { (string)bggr, (string)rggb, (string)gbrg, (string)grbg, (string)mono }
+                    bpp: { (string)8, (string)10, (string)12, (string)16 }
+                  width: [ 16, 5184 ]
+                 height: [ 16, 3880 ]
+              framerate: [ 0/1, 120/1 ]
+    Type: GstQmmfSrcVideoPad
+    Pad Properties:
+
+      crop                : Crop rectangle ('<X, Y, WIDTH, HEIGHT>'). Applicable only for JPEG and YUY2 formats
+                            flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                            Default: "<  >"
+                            GstValueArray of GValues of type "gint"
+
+      extra-buffers       : Number of additional buffers that will be allocated.
+                            flags: readable, writable, changeable only in NULL or READY state
+                            Unsigned Integer. Range: 0 - 4294967295 Default: 0
+
+      framerate           : Target framerate in frames per second for displaying
+                            flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                            Double. Range:               0 -              30 Default:              30
+
+      reprocess-enable    : Indicates realtime video pad which will be used as input for reprocess
+                            flags: readable, writable, changeable only in NULL or READY state
+                            Boolean. Default: false
+
+      rotate              : Set Orientation Angle for Video Stream
+                            flags: readable, writable
+                            Enum "GstRotate" Default: 0, "none"
+                               (0): none             - No Rotation
+                               (1): 90CCW            - Rotate 90 degrees counter-clockwise
+                               (2): 180CCW           - Rotate 180 degrees counter-clockwise
+                               (3): 270CCW           - Rotate 270 degrees counter-clockwise
+
+      source-index        : Index of the source video pad to which this pad will be linked
+                            flags: readable, writable, changeable only in NULL or READY state
+                            Integer. Range: -1 - 2147483647 Default: -1
+
+      super-buffer-mode   : Enable Super Buffer Mode for HFR mode, in this mode, each video padworks on super buffer mode, allowing one buffer to hold multiple framesof data. The number of frames in a single super buffer is determined bythe ratio of the framerate to the superframerate. The default superframerateis 60fps
+                            flags: readable, writable, changeable only in NULL or READY state
+                            Boolean. Default: false
+
+      type                : The type of the stream.
+                            flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                            Enum "GstQmmfSrcStreamType" Default: 0, "video"
+                               (0): video            - The stream will be configured with tunings and settings most fitted for directly encoding the buffers.
+                               (1): preview          - The stream will be configured with tunings and settings most fitted for directly visualizing the buffers.
+
+
+Element has no clocking capabilities.
+Element has no URI handling capabilities.
+
+Pads:
+  none
+
+Element Properties:
+
+  active-sensor-size  : The active pixel array of the camera sensor ('<X, Y, WIDTH, HEIGHT >') and it is filled only when the plugin is in READY or above state
+                        flags: readable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Default: "< (int)0, (int)0, (int)0, (int)0 >"
+                        GstValueArray of GValues of type "gint"
+
+  adrc                : Automatic Dynamic Range Compression
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Boolean. Default: false
+
+  antibanding         : Camera antibanding routine for the current illumination condition
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstAntibandingMode" Default: 3, "auto"
+                           (0): off              - The camera device will not adjust exposure duration to avoid banding problems.
+                           (1): 50hz             - The camera device will adjust exposure duration to avoid banding problems with 50Hz illumination sources.
+                           (2): 60hz             - The camera device will adjust exposure duration to avoid banding problems with 60Hz illumination sources.
+                           (3): auto             - The camera device will automatically adapt its antibanding routine to the current illumination condition.
+
+  camera              : Camera device ID to be used by video/image pads
+                        flags: readable, writable
+                        Unsigned Integer. Range: 0 - 32 Default: 0
+
+  contrast            : Image Contrast Strength
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Integer. Range: 1 - 10 Default: 5
+
+  control-mode        : Overall mode of 3A (auto-exposure, auto-white-balance, auto-focus) control routines. This is a top-level 3A control switch. When set to OFF, all 3A control by the camera device is disabled.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraControlMode" Default: 1, "auto"
+                           (0): off              - Full application control of pipeline.
+                           (1): auto             - Manual control of capture parameters is disabled.
+                           (2): use-scene-mode   - Use a specific scene mode.
+                           (3): off-keep-state   - Same as OFF mode, except that this capture will not be used by camera device background auto-exposure, auto-white balance and auto-focus algorithms (3A) to update their statistics.
+
+  custom-exposure-table: A GstStructure describing custom exposure table
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        String. Default: "org.codeaurora.qcamera3.exposuretable;"
+
+  defog-table         : A GstStructure describing defog table
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        String. Default: "org.quic.camera.defog;"
+
+  effect              : Effect applied on the camera frames
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraEffectMode" Default: 0, "off"
+                           (0): off              - No color effect will be applied.
+                           (1): mono             - A 'monocolor' effect where the image is mapped into a single color.
+                           (2): negative         - A 'photo-negative' effect where the image's colors are inverted.
+                           (3): solarize         - A 'solarisation' effect (Sabattier effect) where the image is wholly or partially reversed in tone.
+                           (4): sepia            - A 'sepia' effect where the image is mapped into warm gray, red, and brown tones.
+                           (5): posterize        - A 'posterization' effect where the image uses discrete regions of tone rather than a continuous gradient of tones.
+                           (6): whiteboard       - A 'whiteboard' effect where the image is typically displayed as regions of white, with black or grey details.
+                           (7): blackboard       - A 'blackboard' effect where the image is typically displayed as regions of black, with white or grey details.
+                           (8): aqua             - An 'aqua' effect where a blue hue is added to the image.
+
+  eis                 : Electronic Image Stabilization mode to reduce the effects of camera shake
+                        flags: readable, writable
+                        Enum "GstEisMode" Default: 0, "eis-off"
+                           (0): eis-off          - EIS is not applied.
+                           (1): eis-on-single-stream - EIS is applied on first (non-snapshot) stream. Maximum number of each of preview, video and snapshot streams can be one.
+                           (2): eis-on-dual-stream - EIS is applied on both preview and video streams. Maximum number of each of preview, video and snapshot streams can be one.
+
+  exposure-compensation: Adjust (Compensate) camera images target brightness. Adjustment is measured as a count of steps.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Integer. Range: -12 - 12 Default: 0
+
+  exposure-lock       : Locks current camera exposure routine values from changing.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Boolean. Default: false
+
+  exposure-metering   : The desired mode for the camera's exposure metering routine.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraExposureMetering" Default: 0, "average"
+                           (0): average          - The camera device's exposure metering is calculated as average from the whole frame.
+                           (1): center-weighted  - The camera device's exposure metering is calculated from the center region of the frame.
+                           (2): spot             - The camera device's exposure metering is calculated from a chosen spot.
+                           (6): custom           - The camera device's exposure metering is calculated from a custom metering table.
+
+  exposure-mode       : The desired mode for the camera's exposure routine.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraExposureMode" Default: 1, "auto"
+                           (0): off              - The auto exposure routine is disabled. Manual exposure time will be used set via the 'exposure-time' property
+                           (1): auto             - The auto exposure routine is active.
+
+  focus-mode          : Whether auto-focus is currently enabled, and in what mode it is.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraFocusMode" Default: 0, "off"
+                           (0): off              - The auto focus routine is disabled.
+                           (1): auto             - The auto focus routine is active.
+                           (2): macro            - In this mode, the auto focus algorithm is optimized for focusing on objects very close to the camera.
+                           (3): continuous       - In this mode, the AF algorithm modifies the lens position continually to attempt to provide a constantly-in-focus image stream.
+                           (4): edof             - The camera device will produce images with an extended depth of field automatically; no special focusing operations need to be done before taking a picture.
+
+  frc-mode            : Stream frame rate control mode.
+                        flags: readable, writable
+                        Enum "GstFrcMode" Default: 0, "frame-skip"
+                           (0): frame-skip       - Control stream frame rate by frame skip
+                           (1): capture-request  - Control stream frame rate by camera capture request
+
+  ife-direct-stream   : IFE direct stream support, with this param, ISP will generateoutput stream from IFE directly and skip others ISP moduleslike IPE
+                        flags: readable, writable
+                        Boolean. Default: false
+
+  image-metadata      : Settings and parameters used for submitting capture requests for high quality images via the capture-image signal in the form of CameraMetadata object. Caller is responsible for releasing the object.
+                        flags: readable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Pointer.
+
+  infrared-mode       : Infrared Mode
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraIRMode" Default: 0, "off"
+                           (0): off              - The infrared LED is OFF and cut filter is applied i.e. infrared light is blocked.
+                           (1): on               - The infrared LED is ON and cut filter is removed i.e. infrared light is allowed.
+                           (2): auto             - The infrared LED and cut filter are turned ON or OFF dependingon the conditions.
+                           (3): cut-filter-only  - The infrared LED is turned OFF and cut filter is applied i.e. IR light is blocked.
+                           (4): cut-filter-disable - Infrared cut filter is removed allowing IR light to pass. This mode is used for transitioning from 'cut-filter-only' mode i.e. disabling only the cut filter.
+
+  input-roi-enable    : Input ROI if enabled, Input ROI reprocess usecase will be selected
+                        flags: readable, writable
+                        Boolean. Default: false
+
+  input-roi-info      : Applicable only if input-roi-enable property is set.input-roi-info is array for each roi ('<X1, Y1, WIDTH1, HEIGHT1 X2, Y2, WIDTH2, HEIGHT2, ...>') it needs to be filled for the no. of Input ROI's in playing state
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Default: "<  >"
+                        GstValueArray of GValues of type "gint"
+
+  iso-mode            : ISO exposure mode
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraISOMode" Default: 0, "auto"
+                           (0): auto             - The ISO exposure mode will be chosen depending on the scene.
+                           (1): deblur           - The ISO exposure sensitivity set to prioritize motion deblur.
+                           (2): 100              - The ISO exposure sensitivity set to prioritize level 100.
+                           (3): 200              - The ISO exposure sensitivity set to prioritize level 200.
+                           (4): 400              - The ISO exposure sensitivity set to prioritize level 400.
+                           (5): 800              - The ISO exposure sensitivity set to prioritize level 800.
+                           (6): 1600             - The ISO exposure sensitivity set to prioritize level 1600.
+                           (7): 3200             - The ISO exposure sensitivity set to prioritize level 3200.
+                           (8): manual           - The ISO exposure value provided by manual-iso-value will be used.
+
+  lcac                : Lateral Chromatic Aberration Correction
+                        flags: readable, writable
+                        Boolean. Default: false
+
+  ldc                 : Lens Distortion Correction
+                        flags: readable, writable
+                        Boolean. Default: false
+
+  ltm-data            : A GstStructure describing local tone mapping data
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        String. Default: "org.quic.camera.ltmDynamicContrast;"
+
+  manual-exposure-time: Manual exposure time in nanoseconds. Used when the Exposure mode is set to 'off'.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Integer64. Range: 0 - 9223372036854775807 Default: 33333333
+
+  manual-iso-value    : Manual exposure ISO value. Used when the ISO mode is set to 'manual'
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Integer. Range: 100 - 3200 Default: 800
+
+  manual-wb-settings  : Manual White Balance settings such as color correction temperature and R/G/B gains. Used in manual white balance modes.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        String. Default: "org.codeaurora.qcamera3.manualWB;"
+
+  multicamera-hint    : multicamera-hint if enabled, this flag will make camera hardwares to work in offline which is useful when camera sensors are more then camera hardwares, it has impact on memory usage and latency.
+                        flags: readable, writable
+                        Boolean. Default: false
+
+  name                : The name of the object
+                        flags: readable, writable
+                        String. Default: "qmmfsrc0"
+
+  noise-reduction     : Noise reduction filter mode
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraNoiseReduction" Default: 1, "fast"
+                           (0): off              - No noise reduction filter is applied.
+                           (1): fast             - TNR (Temoral Noise Reduction) Fast Mode.
+                           (2): hq               - TNR (Temoral Noise Reduction) High Quality Mode.
+
+  noise-reduction-tuning: A GstStructure describing noise reduction tuning
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        String. Default: "org.quic.camera.anr_tuning;"
+
+  op-mode             : provide camera operation mode to support specified camera function support mode : none, frameselection and fastswitchby default camera operation mode is none.
+                        flags: readable, writable
+                        Flags "GstFrameSelection" Default: 0x00000001, "none"
+                           (0x00000001): none             - Normal Camera Operation Mode
+                           (0x00000002): frameselection   - Camera Operation Mode Frame Selection
+                           (0x00000004): fastswitch       - Camera Operation Mode Fast Switch
+
+  parent              : The parent of the object
+                        flags: readable, writable
+                        Object of type "GstObject"
+
+  saturation          : Image Saturation Strength
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Integer. Range: 0 - 10 Default: 5
+
+  scene               : Camera optimizations depending on the scene
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraSceneMode" Default: 1, "face-priority"
+                           (0): disabled         - Indicates that no scene modes are set.
+                           (1): face-priority    - Optimized for photos of with priority of people faces.
+                           (2): action           - Optimized for photos of quickly moving objects.
+                           (3): portrait         - Optimized for still photos of people.
+                           (4): landscape        - Optimized for photos of distant macroscopic objects.
+                           (5): night            - Optimized for low-light settings.
+                           (6): night-portrait   - Optimized for still photos of people in low-light settings.
+                           (7): theatre          - Optimized for dim, indoor settings where flash must remain off.
+                           (8): beach            - Optimized for bright, outdoor beach settings.
+                           (9): snow             - Optimized for bright, outdoor settings containing snow.
+                           (10): sunset           - Optimized for scenes of the setting sun.
+                           (11): steady-photo     - Optimized to avoid blurry photos due to small amounts of device motion (for example: due to hand shake).
+                           (12): fireworks        - Optimized for nighttime photos of fireworks.
+                           (13): sports           - Optimized for photos of quickly moving people.
+                           (14): party            - Optimized for dim, indoor settings with multiple moving people.
+                           (15): candlelight      - Optimized for dim settings where the main light source is a candle.
+                           (16): hdr              - Turn on a device-specific high dynamic range (HDR) mode.
+
+  sensor-mode         : Force set Sensor Mode index (0-15). -1 for Auto selection
+                        flags: readable, writable
+                        Integer. Range: -1 - 15 Default: -1
+
+  session-metadata    : Settings parameters used for configure stream as CameraMetadata object. Caller is responsible for releasing the object.
+                        flags: writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Pointer. Write only
+
+  sharpness           : Image Sharpness Strength
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Integer. Range: 0 - 6 Default: 2
+
+  slave               : Set camera as slave device
+                        flags: readable, writable
+                        Boolean. Default: false
+
+  static-metadata     : Supported camera capabilities as CameraMetadata object. Caller is responsible for releasing the object.
+                        flags: readable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Pointer.
+
+  static-metas        : It contains the map of each connected camera and its metadata
+                        flags: readable
+                        Boxed pointer of type "GHashTable"
+
+  vhdr                : Video High Dynamic Range Imaging Modes
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstSHDRMode" Default: 0, "off"
+                           (0): off              - VHDR is disabled.
+                           (1): shdr-raw         - Raw SHDR line interleaved mode with 2 frame. Use this mode for better performance on supporting sensor.
+                           (2): shdr-yuv         - YUV SHDR virtual channel mode with 2 frames. Use this mode for better quality on supporting sensor. This mode may result in reduced framerate.
+                           (3): raw-shdr-switch  - Enable Raw SHDR switch. Use this mode for enabling shdr switch in camera backend based on lux value. The switch is between linear and Raw SHDR based on support in camera.
+                           (4): yuv-shdr-switch  - Enable YUV SHDR switch. Use this mode for enabling shdr switch in camera backend based on lux value. The switch is between linear and YUV SHDR based on support in camera.
+                           (5): qbc-hdr-video    - Enable in-sensor HDR for video stream. This mode is applicable for sensor that support this feature only.
+                           (6): qbc-hdr-snapshot - Enable in-sensor HDR for snapshot. When enabled camera backend decides to enable in-sensor hdr for snapshot based on the scene. This mode is applicable for sensor that support this feature only.
+
+  video-metadata      : Settings and parameters used for submitting capture requests for video streams in the form of CameraMetadata object. Caller is responsible for releasing the object.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Pointer.
+
+  video-pads-activation-mode: set video pad activation mode, by default is normal, use "signal" to control video pad activation by plugin signal "video-pads-activation" together with gst_pad_set_active()
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstPadActivationMode" Default: 0, "normal"
+                           (0): normal           - Pad activation normal mode
+                           (1): signal           - Pad activation by signal
+
+  white-balance-lock  : Locks current White Balance values from changing. Affects only non-manual white balance modes.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Boolean. Default: false
+
+  white-balance-mode  : The desired mode for the camera's white balance routine.
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Enum "GstCameraWiteBalanceMode" Default: 3, "auto"
+                           (0): off              - Both auto and manual white balance routines are disabled.
+                           (1): manual-cc-temp   - The auto-white balance routine is inactive and manual color correction temperature is used which is set via the 'manual-wb-settings' property.
+                           (2): manual-rgb-gains - The auto-white balance routine is inactive and manual R/G/B gains are used which are set via the 'manual-wb-settings' property.
+                           (3): auto             - The auto-white balance routine is active.
+                           (4): shade            - The camera device uses shade light as the assumed scene illumination for white balance correction.
+                           (5): incandescent     - The camera device uses incandescent light as the assumed scene illumination for white balance correction.
+                           (6): fluorescent      - The camera device uses fluorescent light as the assumed scene illumination for white balance correction.
+                           (7): warm-fluorescent - The camera device uses warm fluorescent light as the assumed scene illumination for white balance correction.
+                           (8): daylight         - The camera device uses daylight light as the assumed scene illumination for white balance correction.
+                           (9): cloudy-daylight  - The camera device uses cloudy daylight light as the assumed scene illumination for white balance correction.
+                           (10): twilight         - The camera device uses twilight light as the assumed scene illumination for white balance correction.
+
+  zoom                : Camera zoom rectangle ('<X, Y, WIDTH, HEIGHT >') in sensor active pixel array coordinates. Defaults to active-sensor-size values for 1x or no zoom
+                        flags: readable, writable, changeable in NULL, READY, PAUSED or PLAYING state
+                        Default: "< (int)0, (int)0, (int)0, (int)0 >"
+                        GstValueArray of GValues of type "gint"
+
+
+Element Signals:
+
+  "result-metadata" :  void user_function (GstElement * object,
+                                           gpointer arg0,
+                                           gpointer user_data);
+
+  "urgent-metadata" :  void user_function (GstElement * object,
+                                           gpointer arg0,
+                                           gpointer user_data);
+
+
+Element Actions:
+
+  "capture-image" -> gboolean  :  g_signal_emit_by_name (element, "capture-image",
+                                                         GstImageCaptureMode arg0,
+                                                         guint arg1,
+                                                         GPtrArray * arg2,
+                                                         gboolean * p_return_value);
+
+  "cancel-capture" -> gboolean  :  g_signal_emit_by_name (element, "cancel-capture",
+                                                          gboolean * p_return_value);
+
+  "video-pads-activation" -> gboolean  :  g_signal_emit_by_name (element, "video-pads-activation",
+                                                                 gboolean arg0,
+                                                                 GPtrArray * arg1,
+                                                                 gboolean * p_return_value);

@@ -2381,7 +2381,64 @@ Freeing pipeline ...
                 'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
                 'tee name=t ' +
                     't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
-                    't. ! queue ! videocrop left=180 right=180 top=0 bottom=0 ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
+                    't. ! queue ! videocrop left=180 right=180 top=0 bottom=0 ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
+            );
+        });
+
+        it("w/ inference dims #1 + profiling info", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                profiling: true,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: 'pylonsrc',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1440,
+                    type: "pylonsrc",
+                }],
+                videoSource: 'pylonsrc',
+            }, { width: 1440, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'fit-shortest',
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.pipeline,
+                '-m pylonsrc ! video/x-raw,width=1440,height=1080 ! identity name=frame_ready silent=false ! videoconvert ! ' +
+                'tee name=t ' +
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! videocrop left=180 right=180 top=0 bottom=0 ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! identity name=resize_done silent=false ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! identity name=jpegenc_done silent=false ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
             );
         });
 
@@ -2431,7 +2488,10 @@ Freeing pipeline ...
                 'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
                 'tee name=t ' +
                     't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
-                    't. ! queue ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
             );
         });
 
@@ -2527,7 +2587,262 @@ Freeing pipeline ...
                 'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
                 'tee name=t ' +
                     't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
-                    't. ! queue ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
+            );
+        });
+
+        it("w/ inference dims #5 (image/jpeg)", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: '/dev/video0',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1920,
+                    type: "image/jpeg",
+                }],
+                videoSource: 'uvch264src',
+            }, { width: 1920, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'fit-shortest',
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.pipeline,
+                'uvch264src device=/dev/video0 ! image/jpeg,width=1920,height=1080 ! ' +
+                'tee name=t ' +
+                    't. ! queue ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! jpegdec ! videoconvert ! videocrop left=420 right=420 top=0 bottom=0 ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
+            );
+        });
+
+        it("w/ inference dims #6 (image/jpeg, fit-long)", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: '/dev/video0',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1920,
+                    type: "image/jpeg",
+                }],
+                videoSource: 'uvch264src',
+            }, { width: 1920, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'fit-longest',
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.pipeline,
+                'uvch264src device=/dev/video0 ! image/jpeg,width=1920,height=1080 ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
+            );
+        });
+
+        it("w/ inference dims #7 (image/jpeg, fit-long, profiling)", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                profiling: true,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: '/dev/video0',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1920,
+                    type: "image/jpeg",
+                }],
+                videoSource: 'uvch264src',
+            }, { width: 1920, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'fit-longest',
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.pipeline,
+                '-m uvch264src device=/dev/video0 ! image/jpeg,width=1920,height=1080 ! identity name=frame_ready silent=false ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
+            );
+        });
+
+        it("w/ inference dims #8 (pylonsrc, squash, no rgb buffers)", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                dontOutputRgbBuffers: true,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: 'pylonsrc',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1440,
+                    type: "pylonsrc",
+                }],
+                videoSource: 'pylonsrc',
+            }, { width: 1440, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'squash',
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.pipeline,
+                'pylonsrc ! video/x-raw,width=1440,height=1080 ! videoconvert ! ' +
+                'tee name=t ' +
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! ' +
+                        'jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
+            );
+        });
+
+        it("w/ inference dims #9 (image/jpeg, dont output rgb buffers)", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                dontOutputRgbBuffers: true,
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: '/dev/video0',
+                name: 'Basler camera',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1920,
+                    type: "image/jpeg",
+                }],
+                videoSource: 'uvch264src',
+            }, { width: 1920, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'fit-shortest',
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.pipeline,
+                'uvch264src device=/dev/video0 ! image/jpeg,width=1920,height=1080 ! ' +
+                'tee name=t ' +
+                    't. ! queue ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! jpegdec ! videoconvert ! videocrop left=420 right=420 top=0 bottom=0 ! videoscale method=lanczos ! video/x-raw,width=320,height=320 ! ' +
+                        'jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false'
             );
         });
 
@@ -2662,6 +2977,144 @@ Freeing pipeline ...
             assert.equal(launchResp.pipeline,
                 'libcamerasrc camera-name="/base/soc/i2c0mux/i2c@1/imx708@1a" ! video/x-raw,width=1920,height=1080 ! videoconvert ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false');
         });
+
+        it('rb3 gen2 vision kit (built-in camera #1), no inference dims', async () => {
+            const gstMonitorOutput = await fs.readFile('./test/qualcomm-rb3-gen-2-ubuntu-no-external-camera-monitor.txt', { encoding: 'utf-8' });
+            const gstInspectOutput = await fs.readFile('./test/qualcomm-rb3-gen-2-ubuntu-no-external-camera-inspect.txt', { encoding: 'utf-8' });
+            const gstInspectOutputQti = await fs.readFile('./test/qualcomm-rb3-gen-2-ubuntu-no-external-camera-inspect-qtiqmmfsrc.txt', { encoding: 'utf-8' });
+
+            const devices = await testGetDevices({
+                gstDeviceMonitor: () => gstMonitorOutput,
+                gstInspect: (args: string[]) => {
+                    if (args.length === 0) {
+                        return gstInspectOutput;
+                    }
+                    else if (args[0] === 'qtiqmmfsrc') {
+                        return gstInspectOutputQti;
+                    }
+                    else {
+                        throw new Error('Cannot handle gstInspect command: ' + JSON.stringify(args));
+                    }
+                },
+                modeOverride: 'qualcomm-rb3gen2',
+            });
+
+            assert.equal(devices.length, 2, `Expected 2 devices (${JSON.stringify(devices)})`);
+
+            const device = devices.find(d => d.name === 'Camera 0 (High-resolution, fisheye, IMX577) (0)');
+            assert(device, `Expected device with name "Camera 0 (High-resolution, fisheye, IMX577) (0)" (${JSON.stringify(devices)})`);
+
+            const spawnHelper: SpawnHelperType = async (command: string, args: string[]) => {
+                if (command === 'which') {
+                    return  '';
+                }
+                else if (command === 'gst-inspect-1.0') {
+                    if (args.length === 0) {
+                        return gstInspectOutput;
+                    }
+                    else if (args[0] === 'qtiqmmfsrc') {
+                        return gstInspectOutputQti;
+                    }
+                    else {
+                        throw new Error('Cannot handle gstInspect command: ' + JSON.stringify(args));
+                    }
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                modeOverride: 'qualcomm-rb3gen2',
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand(
+                device,
+                { width: 1920, height: 1080 },
+                undefined);
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+
+            // NV12 here is important!
+            assert.equal(launchResp.pipeline,
+                'qtiqmmfsrc name=camsrc camera=0 ! video/x-raw,width=1920,height=1080,format=NV12 ! videoconvert ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false');
+        });
+
+        it('rb3 gen2 vision kit (built-in camera #1), w/ inference dims (squash)', async () => {
+            const gstMonitorOutput = await fs.readFile('./test/qualcomm-rb3-gen-2-ubuntu-no-external-camera-monitor.txt', { encoding: 'utf-8' });
+            const gstInspectOutput = await fs.readFile('./test/qualcomm-rb3-gen-2-ubuntu-no-external-camera-inspect.txt', { encoding: 'utf-8' });
+            const gstInspectOutputQti = await fs.readFile('./test/qualcomm-rb3-gen-2-ubuntu-no-external-camera-inspect-qtiqmmfsrc.txt', { encoding: 'utf-8' });
+
+            const devices = await testGetDevices({
+                gstDeviceMonitor: () => gstMonitorOutput,
+                gstInspect: (args: string[]) => {
+                    if (args.length === 0) {
+                        return gstInspectOutput;
+                    }
+                    else if (args[0] === 'qtiqmmfsrc') {
+                        return gstInspectOutputQti;
+                    }
+                    else {
+                        throw new Error('Cannot handle gstInspect command: ' + JSON.stringify(args));
+                    }
+                },
+                modeOverride: 'qualcomm-rb3gen2',
+            });
+
+            assert.equal(devices.length, 2, `Expected 2 devices (${JSON.stringify(devices)})`);
+
+            const device = devices.find(d => d.name === 'Camera 0 (High-resolution, fisheye, IMX577) (0)');
+            assert(device, `Expected device with name "Camera 0 (High-resolution, fisheye, IMX577) (0)" (${JSON.stringify(devices)})`);
+
+            const spawnHelper: SpawnHelperType = async (command: string, args: string[]) => {
+                if (command === 'which') {
+                    return  '';
+                }
+                else if (command === 'gst-inspect-1.0') {
+                    if (args.length === 0) {
+                        return gstInspectOutput;
+                    }
+                    else if (args[0] === 'qtiqmmfsrc') {
+                        return gstInspectOutputQti;
+                    }
+                    else {
+                        throw new Error('Cannot handle gstInspect command: ' + JSON.stringify(args));
+                    }
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                modeOverride: 'qualcomm-rb3gen2',
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand(device, { width: 1920, height: 1080 }, {
+                width: 320, height: 320, resizeMode: 'squash'
+            });
+
+            // console.log('launchResp', launchResp);
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+
+            // NV12 here is important!
+            assert.equal(launchResp.pipeline,
+                'qtiqmmfsrc name=camsrc camera=0 ! video/x-raw,width=1920,height=1080,format=NV12 ! videoconvert ! ' +
+                'tee name=t ' +
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
+            );
+        });
     });
 });
 
@@ -2680,8 +3133,6 @@ async function testGetDevices(output: {
         } = {
             ignoreErrors: false
         }) => {
-
-        // console.log('testGetDevices', 'command', command, 'args', args);
 
         if (command === 'which') {
             return typeof output.which === 'function' ?

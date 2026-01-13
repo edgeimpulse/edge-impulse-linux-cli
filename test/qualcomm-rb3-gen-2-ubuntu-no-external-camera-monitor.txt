@@ -1,0 +1,159 @@
+Probing devices...
+
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.375: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.375: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.375: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.375: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.375: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.375: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.375: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.375: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.375: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+
+(gst-device-monitor-1.0:27876): GStreamer-CRITICAL **: 11:43:12.376: gst_element_message_full_with_details: assertion 'GST_IS_ELEMENT (element)' failed
+Unknown struct with type 0x2f provided to vkCreateInstance
+Unknown struct with type 0x2f provided to vkCreateInstance
+Unknown struct with type 0x2f provided to vkCreateInstance
+Unknown struct with type 0x2f provided to vkCreateInstance
+
+Device found:
+
+	name  : Built-in Audio internal Mic
+	class : Audio/Source
+	caps  : audio/x-raw, layout=interleaved, format=S16LE, rate=48000, channels=2
+	properties:
+		alsa.card = 0
+		alsa.card_name = qcm6490-rb3-vision-snd-card
+		alsa.class = generic
+		alsa.device = 1
+		alsa.driver_name = snd_soc_qcm6490
+		alsa.id = qcm6490rb3visio
+		alsa.long_card_name = qcm6490-rb3-vision-snd-card
+		alsa.mixer_device = _ucm0001.hw:qcm6490rb3visio
+		alsa.name =
+		alsa.resolution_bits = 16
+		alsa.subclass = generic-mix
+		alsa.subdevice = 0
+		alsa.subdevice_name = subdevice #0
+		api.alsa.card.longname = qcm6490-rb3-vision-snd-card
+		api.alsa.card.name = qcm6490-rb3-vision-snd-card
+		api.alsa.open.ucm = true
+		api.alsa.path = hw:qcm6490rb3visio,1
+		api.alsa.pcm.card = 0
+		api.alsa.pcm.stream = capture
+		audio.channels = 2
+		audio.position = FL,FR
+		card.profile.device = 1
+		device.api = alsa
+		device.class = sound
+		device.id = 44
+		device.profile.description = internal Mic
+		device.profile.name = HiFi: hw:qcm6490rb3visio,1: source
+		device.routes = 1
+		factory.name = api.alsa.pcm.source
+		media.class = Audio/Source
+		node.description = Built-in Audio internal Mic
+		node.name = alsa_input.platform-sound.HiFi__hw_qcm6490rb3visio_1__source
+		node.nick = internal Mic
+		node.pause-on-idle = false
+		object.path = alsa:pcm:0:hw:qcm6490rb3visio,1:capture
+		priority.driver = 1728
+		priority.session = 1728
+		factory.id = 18
+		clock.quantum-limit = 8192
+		client.id = 35
+		node.driver = true
+		factory.mode = split
+		audio.adapt.follower =
+		library.name = audioconvert/libspa-audioconvert
+		object.id = 50
+		object.serial = 50
+	gst-launch-1.0 pipewiresrc target-object=50 ! ...
+
+
+Device found:
+
+	name  : Built-in Audio Speaker playback
+	class : Audio/Sink
+	caps  : audio/x-raw, layout=interleaved, format=S16LE, rate=48000, channels=2
+	properties:
+		alsa.card = 0
+		alsa.card_name = qcm6490-rb3-vision-snd-card
+		alsa.class = generic
+		alsa.device = 0
+		alsa.driver_name = snd_soc_qcm6490
+		alsa.id = qcm6490rb3visio
+		alsa.long_card_name = qcm6490-rb3-vision-snd-card
+		alsa.mixer_device = _ucm0001.default:qcm6490rb3visio
+		alsa.name =
+		alsa.resolution_bits = 16
+		alsa.subclass = generic-mix
+		alsa.subdevice = 0
+		alsa.subdevice_name = subdevice #0
+		api.alsa.card.longname = qcm6490-rb3-vision-snd-card
+		api.alsa.card.name = qcm6490-rb3-vision-snd-card
+		api.alsa.open.ucm = true
+		api.alsa.path = hw:qcm6490rb3visio,0
+		api.alsa.pcm.card = 0
+		api.alsa.pcm.stream = playback
+		audio.channels = 2
+		audio.position = FL,FR
+		card.profile.device = 0
+		device.api = alsa
+		device.class = sound
+		device.id = 44
+		device.profile.description = Speaker playback
+		device.profile.name = HiFi: hw:qcm6490rb3visio,0: sink
+		device.routes = 1
+		factory.name = api.alsa.pcm.sink
+		media.class = Audio/Sink
+		node.description = Built-in Audio Speaker playback
+		node.name = alsa_output.platform-sound.HiFi__hw_qcm6490rb3visio_0__sink
+		node.nick = Speaker playback
+		node.pause-on-idle = false
+		object.path = alsa:pcm:0:hw:qcm6490rb3visio,0:playback
+		priority.driver = 1000
+		priority.session = 1000
+		factory.id = 18
+		clock.quantum-limit = 8192
+		client.id = 35
+		node.driver = true
+		factory.mode = merge
+		audio.adapt.follower =
+		library.name = audioconvert/libspa-audioconvert
+		object.id = 49
+		object.serial = 49
+	gst-launch-1.0 ... ! pipewiresink target-object=49

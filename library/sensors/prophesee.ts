@@ -4,7 +4,7 @@ import fs from 'fs';
 import Path from 'path';
 import os from 'os';
 import { spawnHelper } from './spawn-helper';
-import { ICamera, ICameraProfilingInfoEvent, ICameraStartOptions } from './icamera';
+import { ICamera, ICameraProfilingInfoEvent, ICameraSnapshotForInferenceEvent, ICameraStartOptions } from './icamera';
 import crypto from 'crypto';
 import util from 'util';
 
@@ -12,7 +12,7 @@ const PREFIX = '\x1b[34m[PRO]\x1b[0m';
 
 export class Prophesee extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
-    snapshotForInference: (buffer: Buffer, filename: string) => void,
+    snapshotForInference: (ev: ICameraSnapshotForInferenceEvent) => void,
     error: (message: string) => void,
     profilingInfo: (ev: ICameraProfilingInfoEvent) => void,
 }> implements ICamera {
@@ -121,7 +121,12 @@ export class Prophesee extends EventEmitter<{
                     let hash = crypto.createHash('sha256').update(data).digest('hex');
                     if (hash !== this._lastHash) {
                         this.emit('snapshot', data, Path.basename(fileName));
-                        this.emit('snapshotForInference', data, Path.basename(fileName));
+                        this.emit('snapshotForInference', {
+                            imageForInferenceJpg: data,
+                            filename: Path.basename(fileName),
+                            imageFromCameraJpg: data,
+                            imageForInferenceRgb: undefined,
+                        });
 
                         lastPhoto = Date.now();
                     }

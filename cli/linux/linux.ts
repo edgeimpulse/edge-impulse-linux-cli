@@ -195,6 +195,7 @@ let isExiting = false;
                 cameraColorFormat: cameraColorFormatArgv,
                 inferenceDimensions: undefined,
                 profiling: false,
+                dontOutputRgbBuffers: true,
             });
             camera = await initedCamera.start();
             const cameraOpts = camera.getLastOptions();

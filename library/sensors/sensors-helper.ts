@@ -20,6 +20,7 @@ export async function initCamera(opts: {
     inferenceDimensions: ICameraInferenceDimensions | undefined,
     gstLaunchArgs: string | undefined,
     cameraColorFormat: string | undefined,
+    dontOutputRgbBuffers: boolean,
     verboseOutput: boolean,
     profiling: boolean,
 }) {
@@ -39,6 +40,7 @@ export async function initCamera(opts: {
             customLaunchCommand: gstLaunchArgs,
             profiling: opts.profiling,
             colorFormat: cameraColorFormat,
+            dontOutputRgbBuffers: opts.dontOutputRgbBuffers,
         });
     }
     else {
@@ -107,10 +109,8 @@ export async function initCamera(opts: {
         cameraDevice = <string>inqRes.camera;
     }
 
-    // TODO: move this message out of the camera init function
-    // console.log(RUNNER_PREFIX, 'Using camera', cameraDevice, 'starting...');
-
     return {
+        cameraDevice: cameraDevice,
         start: async () => {
             await camera.start({
                 device: <string>cameraDevice,

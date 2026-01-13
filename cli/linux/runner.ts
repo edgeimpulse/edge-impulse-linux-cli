@@ -98,6 +98,8 @@ program
         `If set to 'always' will only use shm to communicate (errors out if not available), if set to 'never' will always use JSON over TCP socket.`)
     .option('--camera-color-format <format>', 'Set camera color format according to GStreamer caps format, e.g. "RGB", "BGR", "GRAY8", "NV12", "I420"' +
         ' Applicable only on Raspberry Pi 5 with GStreamer libcamera backend. Default format on RPi 5 is "YUY2".')
+    .option('--dont-output-rgb-buffers', `(Only for GStreamer) We write both JPG and RGB output buffers, but this might cause issues with some targets; that ` +
+        `advertise RGB capabilities on the video source, but don't actually support this. Set this flag to skip creating RGB buffers.`)
     .option('--profiling', `If set, prints profiling info`)
     .option('--verbose', 'Enable debug logs')
     .allowUnknownOption(true)
@@ -109,6 +111,7 @@ const silentArgv: boolean = !!program.silent;
 const quantizedArgv: boolean = !!program.quantized;
 const enableCameraArgv: boolean = !!program.enableCamera;
 const verboseArgv: boolean = !!program.verbose;
+const dontOutputRgbBuffersArgv: boolean = !!program.dontOutputRgbBuffers;
 const apiKeyArgv = <string | undefined>program.apiKey;
 const greengrassArgv: boolean = !!program.greengrass;
 const modelFileArgv = <string | undefined>program.modelFile;
@@ -843,7 +846,7 @@ process.on('SIGINT', onSignal);
             audioClassifierHelloMsg(model);
 
             if (enableCameraArgv) {
-                const camera = await initCamera({
+                const cameraInit = await initCamera({
                     cameraType: cameraType,
                     cameraDeviceNameInConfig: cleanArgv ? undefined : await configFactory.getCamera(),
                     cameraNameArgv: cameraArgv,
@@ -853,8 +856,14 @@ process.on('SIGINT', onSignal);
                     inferenceDimensions: undefined,
                     profiling: profilingArgv,
                     cameraColorFormat: cameraColorFormatArgv,
+                    dontOutputRgbBuffers: dontOutputRgbBuffersArgv,
                 });
-                await camera.start();
+
+                console.log(RUNNER_PREFIX, `Using camera "${cameraInit.cameraDevice}" (because --enable-camera, run with --clean to select another one)`);
+
+                await cameraInit.start();
+
+                await configFactory.storeCamera(cameraInit.cameraDevice);
             }
 
             let audioDeviceName = '';
@@ -1009,7 +1018,10 @@ process.on('SIGINT', onSignal);
                 },
                 profiling: profilingArgv,
                 cameraColorFormat: cameraColorFormatArgv,
+                dontOutputRgbBuffers: dontOutputRgbBuffersArgv,
             });
+
+            await configFactory.storeCamera(cameraInit.cameraDevice);
 
             imageClassifier = new ImageClassifier(runner, cameraInit.camera, {
                 verbose: verboseArgv,
@@ -1051,7 +1063,7 @@ process.on('SIGINT', onSignal);
             if (!opts) {
                 throw new Error('Could not get selected camera details');
             }
-            console.log(RUNNER_PREFIX, 'Connected to camera ' + opts.device);
+            console.log(RUNNER_PREFIX, `Connected to camera "${opts.device}" (run with --clean to select another one)`);
 
             await imageClassifier.start();
 
@@ -1245,7 +1257,9 @@ process.on('SIGINT', onSignal);
             console.log('');
         }
         else if (verboseArgv) {
-            console.log(ex);
+            if (ex.stack) {
+                console.log(ex.stack);
+            }
         }
 
         if (audioClassifier) {
