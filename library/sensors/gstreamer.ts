@@ -61,6 +61,7 @@ export class GStreamer extends EventEmitter<{
     private _spawnHelper: SpawnHelperType;
     private _customLaunchCommand: string | undefined;
     private _profiling: boolean;
+    private _preferCapType: 'image/jpeg' | 'video/x-raw';
     private _emitsOriginalSizeImages = false;
     private _emitsRgbBuffers = false;
     private _overrideColorFormat: string | undefined;
@@ -77,6 +78,9 @@ export class GStreamer extends EventEmitter<{
         dontRunCleanupLoop?: boolean,
         colorFormat?: string,
         dontOutputRgbBuffers?: boolean,
+        // Defaults to video/x-raw. The prefered cap type if both video/x-raw and image/jpeg caps
+        // are available for a camera.
+        preferCapType?: 'image/jpeg' | 'video/x-raw',
     }) {
         super();
 
@@ -89,6 +93,7 @@ export class GStreamer extends EventEmitter<{
         this._outputRgbBuffers = options?.dontOutputRgbBuffers === true ?
             false :
             true;
+        this._preferCapType = options?.preferCapType || 'video/x-raw';
         if (options?.dontRunCleanupLoop === true) {
             // skip cleanup loop
         }
@@ -664,10 +669,28 @@ export class GStreamer extends EventEmitter<{
             return diffA - diffB;
         });
 
-        // if the device supports video/x-raw, only list those types
-        const videoCaps = caps.filter(x => x.type === 'video/x-raw');
-        if (videoCaps.length > 0) {
-            caps = videoCaps;
+        const jpegCaps = caps.filter(x => x.type === 'image/jpeg');
+        const rawVideoCaps = caps.filter(x => x.type === 'video/x-raw');
+
+        if (this._preferCapType === 'image/jpeg') {
+            // prefer jpg
+            if (jpegCaps.length > 0) {
+                caps = jpegCaps;
+            }
+            // no jpg caps -> take video/x-raw
+            else if (rawVideoCaps.length > 0) {
+                caps = rawVideoCaps;
+            }
+        }
+        else {
+            // prefer video/x-raw
+            if (rawVideoCaps.length > 0) {
+                caps = rawVideoCaps;
+            }
+            // if no video caps -> prefer jpeg
+            else if (jpegCaps.length > 0) {
+                caps = jpegCaps;
+            }
         }
 
         // choose the top of the list

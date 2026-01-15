@@ -23,6 +23,7 @@ export async function initCamera(opts: {
     dontOutputRgbBuffers: boolean,
     verboseOutput: boolean,
     profiling: boolean,
+    preferJpegCaps: boolean,
 }) {
     const { cameraType, cameraDeviceNameInConfig, dimensions, inferenceDimensions,
         gstLaunchArgs, verboseOutput, cameraColorFormat } = opts;
@@ -41,6 +42,7 @@ export async function initCamera(opts: {
             profiling: opts.profiling,
             colorFormat: cameraColorFormat,
             dontOutputRgbBuffers: opts.dontOutputRgbBuffers,
+            preferCapType: opts.preferJpegCaps ? 'image/jpeg' : 'video/x-raw',
         });
     }
     else {

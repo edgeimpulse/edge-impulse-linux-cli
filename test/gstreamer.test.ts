@@ -3115,6 +3115,126 @@ Freeing pipeline ...
                             'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
             );
         });
+
+        it('camera with both video/x-raw and image/jpeg, preferCapType=video/x-raw', async () => {
+            const gstMonitorOutput = await fs.readFile('./test/rpi4-trixie-csi-gst-device-monitor.txt', { encoding: 'utf-8' });
+            const gstInspectOutput = await fs.readFile('./test/rpi4-trixie-csi-gst-inspect.txt', { encoding: 'utf-8' });
+
+            const devices = await testGetDevices({
+                gstDeviceMonitor: () => gstMonitorOutput,
+                gstInspect: (args: string[]) => {
+                    if (args.length === 0) {
+                        return gstInspectOutput;
+                    }
+                    else {
+                        throw new Error('Cannot handle gstInspect command: ' + JSON.stringify(args));
+                    }
+                },
+            });
+
+            const device = devices.find(d => d.name === 'UvcH264 C922 Pro Stream Webcam (/dev/video2)');
+            assert(device, `Expected device with name "UvcH264 C922 Pro Stream Webcam (/dev/video2)" (${JSON.stringify(devices)})`);
+
+            const spawnHelper: SpawnHelperType = async (command: string, args: string[]) => {
+                if (command === 'which') {
+                    return  '';
+                }
+                else if (command === 'gst-inspect-1.0') {
+                    if (args.length === 0) {
+                        return gstInspectOutput;
+                    }
+                    else {
+                        throw new Error('Cannot handle gstInspect command: ' + JSON.stringify(args));
+                    }
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                preferCapType: 'video/x-raw',
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand(device, { width: 1920, height: 1080 }, {
+                width: 320, height: 320, resizeMode: 'squash'
+            });
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+
+            // Should use video/x-raw caps
+            assert.equal(launchResp.pipeline,
+                'uvch264src device=/dev/video2 ! video/x-raw,width=1920,height=1080 ! videoconvert ! ' +
+                'tee name=t ' +
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
+            );
+        });
+
+        it('camera with both video/x-raw and image/jpeg, preferCapType=image/jpeg', async () => {
+            const gstMonitorOutput = await fs.readFile('./test/rpi4-trixie-csi-gst-device-monitor.txt', { encoding: 'utf-8' });
+            const gstInspectOutput = await fs.readFile('./test/rpi4-trixie-csi-gst-inspect.txt', { encoding: 'utf-8' });
+
+            const devices = await testGetDevices({
+                gstDeviceMonitor: () => gstMonitorOutput,
+                gstInspect: (args: string[]) => {
+                    if (args.length === 0) {
+                        return gstInspectOutput;
+                    }
+                    else {
+                        throw new Error('Cannot handle gstInspect command: ' + JSON.stringify(args));
+                    }
+                },
+            });
+
+            const device = devices.find(d => d.name === 'UvcH264 C922 Pro Stream Webcam (/dev/video2)');
+            assert(device, `Expected device with name "UvcH264 C922 Pro Stream Webcam (/dev/video2)" (${JSON.stringify(devices)})`);
+
+            const spawnHelper: SpawnHelperType = async (command: string, args: string[]) => {
+                if (command === 'which') {
+                    return  '';
+                }
+                else if (command === 'gst-inspect-1.0') {
+                    if (args.length === 0) {
+                        return gstInspectOutput;
+                    }
+                    else {
+                        throw new Error('Cannot handle gstInspect command: ' + JSON.stringify(args));
+                    }
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                preferCapType: 'image/jpeg',
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand(device, { width: 1920, height: 1080 }, {
+                width: 320, height: 320, resizeMode: 'squash'
+            });
+
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+
+            // Should use image/jpeg caps here now
+            assert.equal(launchResp.pipeline,
+                'uvch264src device=/dev/video2 ! image/jpeg,width=1920,height=1080 ! ' +
+                'tee name=t ' +
+                    't. ! queue ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! jpegdec ! videoconvert ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
+            );
+        });
     });
 });
 

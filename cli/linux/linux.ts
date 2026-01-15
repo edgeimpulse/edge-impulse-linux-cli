@@ -196,6 +196,7 @@ let isExiting = false;
                 inferenceDimensions: undefined,
                 profiling: false,
                 dontOutputRgbBuffers: true,
+                preferJpegCaps: false,
             });
             camera = await initedCamera.start();
             const cameraOpts = camera.getLastOptions();

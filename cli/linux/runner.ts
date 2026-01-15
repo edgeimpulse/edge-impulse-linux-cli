@@ -100,6 +100,7 @@ program
         ' Applicable only on Raspberry Pi 5 with GStreamer libcamera backend. Default format on RPi 5 is "YUY2".')
     .option('--dont-output-rgb-buffers', `(Only for GStreamer) We write both JPG and RGB output buffers, but this might cause issues with some targets; that ` +
         `advertise RGB capabilities on the video source, but don't actually support this. Set this flag to skip creating RGB buffers.`)
+    .option('--experimental-gst-prefer-jpeg', `(Only for GStreamer) Use image/jpeg caps rather than video/x-raw caps to get images from webcam (experimental flag)`)
     .option('--profiling', `If set, prints profiling info`)
     .option('--verbose', 'Enable debug logs')
     .allowUnknownOption(true)
@@ -158,6 +159,7 @@ const profilingArgv: boolean = !!program.profiling;
 const cameraArgv = <string | undefined>program.camera;
 const microphoneArgv = <string | undefined>program.microphone;
 const cameraColorFormatArgv = <string | undefined>program.cameraColorFormat;
+const experimentalGstPreferJpegArgv = !!program.experimentalGstPreferJpeg;
 let modeArgv = <'streaming' | 'http-server' | undefined>program.mode;
 
 if (modeArgv === 'http-server' && typeof runHttpServerPort === 'undefined') {
@@ -857,6 +859,7 @@ process.on('SIGINT', onSignal);
                     profiling: profilingArgv,
                     cameraColorFormat: cameraColorFormatArgv,
                     dontOutputRgbBuffers: dontOutputRgbBuffersArgv,
+                    preferJpegCaps: experimentalGstPreferJpegArgv,
                 });
 
                 console.log(RUNNER_PREFIX, `Using camera "${cameraInit.cameraDevice}" (because --enable-camera, run with --clean to select another one)`);
@@ -1019,6 +1022,7 @@ process.on('SIGINT', onSignal);
                 profiling: profilingArgv,
                 cameraColorFormat: cameraColorFormatArgv,
                 dontOutputRgbBuffers: dontOutputRgbBuffersArgv,
+                preferJpegCaps: experimentalGstPreferJpegArgv,
             });
 
             await configFactory.storeCamera(cameraInit.cameraDevice);
