@@ -6,7 +6,7 @@ import multer from 'multer';
 import sharp, { FitEnum } from 'sharp';
 import { Server as SocketIoServer } from 'socket.io';
 import type { EdgeImpulseApi } from '../../sdk/studio/api';
-import { type LinuxImpulseRunner, type ModelInformation, RunnerBlockThreshold, RunnerHelloHasAnomaly } from '../../library/classifier/linux-impulse-runner';
+import { type LinuxImpulseRunner, type ModelInformation, RunnerBlockThreshold, RunnerHelloHasAnomaly, SetRunnerBlockThreshold, RunnerHelloInferencingEngine } from '../../library/classifier/linux-impulse-runner';
 import { type InferenceServerModelViewModel, renderInferenceServerView } from './webserver/views/inference-server-view';
 import { asyncMiddleware } from './webserver/middleware/asyncMiddleware';
 import { ImageClassifier, FitMethodMap, FitMethodStudioMap } from '../../library/classifier/image-classifier';
@@ -17,6 +17,8 @@ import Url from 'url';
 import { renderIndexView } from './webserver/views';
 import { mapPredictionToOriginalImage, } from '../../shared/views/project/bounding-box-scaling';
 import { AudioClassifier } from '../../library';
+import { spawn, ChildProcess } from 'child_process';
+import http from 'http';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
@@ -54,10 +56,16 @@ export function imageClassifierHelloMsg(model: ModelInformation) {
 
     console.log(RUNNER_PREFIX, 'Starting the image classifier for',
         model.project.owner + ' / ' + model.project.name, '(v' + model.project.deploy_version + ')');
-    console.log(RUNNER_PREFIX, 'Parameters',
-        'image size', param.image_input_width + 'x' + param.image_input_height + ' px (' +
-            param.image_channel_count + ' channels)',
-        'classes', labels);
+    console.log(RUNNER_PREFIX, 'Parameters');
+    if (model.modelParameters.inferencing_engine === RunnerHelloInferencingEngine.VlmConnector) {
+        console.log(RUNNER_PREFIX, 'VLM inference engine enabled, dynamic image size handling');
+    }
+    else {
+        console.log(RUNNER_PREFIX, 'image size', param.image_input_width + 'x' + param.image_input_height + ' px (' +
+                param.image_channel_count + ' channels)');
+    };
+    console.log(RUNNER_PREFIX, 'classes', labels);
+
     printThresholds(model);
 }
 
@@ -253,6 +261,17 @@ export function startApiServer(opts: {
             }
 
             resized = (await ImageClassifier.resizeImage(model, file.buffer));
+            if (model.modelParameters.image_resize_mode === 'none') {
+                // set image parameters to original size
+                let params = {
+                    image_width: resized.originalWidth,
+                    image_height: resized.originalHeight,
+                    image_channels: model.modelParameters.image_channel_count,
+                };
+                runner.setParameter(params);
+                resized.newHeight = resized.originalHeight;
+                resized.newWidth = resized.originalWidth;
+            }
         }
         catch (ex2) {
             const ex = <Error>ex2;
@@ -556,20 +575,19 @@ export function startWebServer(opts: ({
                     throw new Error(`Threshold key "${ev.key}" not found (valid keys: [ ${thresholdKeys.map(x => `"${x}"`).join(', ')} ])`);
                 }
 
-                let obj: { [k: string]: string | number } = {
+                let obj: SetRunnerBlockThreshold = {
                     id: ev.id,
                 };
-                obj.type = thresholdObj.type;
                 obj[ev.key] = ev.value;
 
                 if (opts.type === 'camera') {
-                    await opts.imgClassifier.getRunner().setLearnBlockThreshold(<any>obj);
+                    await opts.imgClassifier.getRunner().setLearnBlockThreshold(obj);
                 }
                 else if (opts.type === 'audio') {
-                    await opts.audioClassifier.getRunner().setLearnBlockThreshold(<any>obj);
+                    await opts.audioClassifier.getRunner().setLearnBlockThreshold(obj);
                 }
 
-                (<any>thresholdObj)[ev.key] = ev.value;
+                thresholdObj[ev.key] = ev.value;
 
                 console.log(`OK`);
             }
@@ -774,5 +792,107 @@ function filterClassificationResultsOnMinScore(
         // similar to Studio
         classifications[key] = 0;
        }
+    }
+}
+
+/**
+ * Check if the VLM server is running.
+ * @param serverAddress The address of the VLM server.
+ * @param serverPort The port of the VLM server.
+ * @returns True if the server is running, false otherwise.
+ */
+export async function isVlmServerRunning(serverAddress: string, serverPort: number): Promise<boolean> {
+    console.log(`Checking if VLM server is running at ${serverAddress}:${serverPort}...`);
+    // send a sample request to the server to check if it's running
+    return new Promise((resolve) => {
+        const options = {
+            hostname: serverAddress,
+            port: serverPort,
+            path: '/v1/models', // if we can get the model list, the server is running
+            method: 'GET',
+        };
+
+        const req = http.request(options, (res) => {
+            if (res.statusCode === 200) {
+                console.log('VLM server is running.');
+                resolve(true);
+            }
+            else {
+                console.log(`VLM server responded with status code: ${res.statusCode}`);
+                resolve(false);
+            }
+        });
+
+        req.on('error', (err) => {
+            console.error('Error connecting to VLM server:', err.message);
+            resolve(false);
+        });
+
+        req.end();
+    });
+}
+
+/**
+ * Start the VLM server.
+ * @param serverPath Path to the VLM server binary.
+ * @param modelPath Path to the VLM model file.
+ * @param serverAddress The address to bind the VLM server.
+ * @param serverPort The port to bind the VLM server.
+ * @returns The spawned VLM server process.
+ */
+export function startVlmServer(serverPath: string, serverArgs: string[]
+): Promise<ChildProcess> {
+
+    // Add server binary folder to LD_LIBRARY_PATH
+    let serverDir = Path.dirname(serverPath);
+
+    return new Promise((resolve, reject) => {
+        const vlmServerProcess = spawn(serverPath, serverArgs, {
+            cwd: serverDir,
+            detached: false,
+            stdio: 'pipe'
+        });
+
+        vlmServerProcess.stdout.on('data', (data) => {
+            const message = data.toString();
+            console.log(`[VLM Server]: ${message}`);
+            if (message.includes('main: server is listening')) {
+                resolve(vlmServerProcess);
+            }
+        });
+
+        vlmServerProcess.stderr.on('data', (data) => {
+            const message = data.toString();
+            console.log(`[VLM Server]: ${message}`);
+            if (message.includes('main: server is listening')) {
+                resolve(vlmServerProcess);
+            }
+        });
+
+        vlmServerProcess.on('error', (err) => {
+            console.error('Failed to start VLM server:', err);
+            reject(err);
+        });
+
+        vlmServerProcess.on('exit', (code, signal) => {
+            console.log(`VLM server exited with code ${code}, signal ${signal}`);
+            if (code !== 0) {
+                reject(new Error(`VLM server exited with code ${code}`));
+            }
+        });
+    });
+}
+
+/**
+ * Stop the VLM server.
+ * @param vlmServerProcess The VLM server process to stop.
+ */
+export function stopVlmServer(vlmServerProcess: ChildProcess): void {
+    if (vlmServerProcess) {
+        console.log('Stopping VLM server...');
+        vlmServerProcess.kill('SIGTERM'); // Gracefully terminate the process
+    }
+    else {
+        console.log('VLM server is not running.');
     }
 }

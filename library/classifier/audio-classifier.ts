@@ -114,9 +114,10 @@ export class AudioClassifier extends EventEmitter<{
                     classifyRes = await this._runner.classify(values);
                 }
 
-                let timeSpent = Date.now() - now;
-
-                let timingMs = classifyRes.timing.dsp + classifyRes.timing.classification + classifyRes.timing.anomaly;
+                let timingMs = classifyRes.timing.dsp +
+                    classifyRes.timing.classification +
+                    (classifyRes.timing.postprocessing || 0) +
+                    classifyRes.timing.anomaly;
                 if (timingMs === 0) {
                     timingMs = 1;
                 }

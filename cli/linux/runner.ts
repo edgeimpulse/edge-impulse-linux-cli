@@ -2,12 +2,12 @@
 
 import fs from 'node:fs';
 import Path from 'node:path';
-import { LinuxImpulseRunner, ModelInformation, RunnerHelloResponseModelParameters } from '../../library/classifier/linux-impulse-runner';
+import { LinuxImpulseRunner, ModelInformation, RunnerHelloInferencingEngine, RunnerBlockThreshold, RunnerHelloResponseModelParameters, SetRunnerBlockThreshold } from '../../library/classifier/linux-impulse-runner';
 import { AudioClassifier } from '../../library/classifier/audio-classifier';
 import { ImageClassifier } from '../../library/classifier/image-classifier';
 import inquirer from 'inquirer';
 import { initCliApp, setupCliApp } from "../../cli-common/init-cli-app";
-import { RunnerDownloader, RunnerModelPath, downloadModel } from './runner-downloader';
+import { RunnerDownloader, RunnerModelPath, displayDownloadTip, downloadModel } from './runner-downloader';
 import program from 'commander';
 import { ips } from '../../cli-common/get-ips';
 import { RemoteMgmt } from '../../cli-common/remote-mgmt-service';
@@ -21,7 +21,10 @@ import {
     imageClassifierHelloMsg,
     startApiServer,
     startWebServer,
-    printThresholds
+    printThresholds,
+    isVlmServerRunning,
+    startVlmServer,
+    stopVlmServer
 } from './runner-utils';
 import { initCamera, initMicrophone, getCameraType } from '../../library/sensors/sensors-helper';
 import { AWSSecretsManagerUtils } from "../../cli-common/aws-sm-utils";
@@ -29,15 +32,19 @@ import { AWSIoTCoreConnector, Payload, AwsResult, AwsResultKey } from "../../cli
 import { v4 as uuidv4 } from 'uuid';
 import * as models from '../../sdk/studio/sdk/model/models';
 import { RunnerProfiling } from './runner-profiling';
+import os from 'os';
+import { ChildProcess } from 'node:child_process';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
-const CLASSIFIER_THRESHOLD: { id: number, type: 'classification', min_score: number } =
+const CLASSIFIER_THRESHOLD: RunnerBlockThreshold =
                             { id: 42, type: 'classification', min_score: 0.001 };
 
 let audioClassifier: AudioClassifier | undefined;
 let imageClassifier: ImageClassifier | undefined;
 let modelMonitor: ModelMonitor | undefined;
 let configFactory: Config | undefined;
+
+let vlmServerProcess: ChildProcess | null = null;
 
 type ImagePayload = {
     image?: string;
@@ -150,7 +157,7 @@ if (program.previewHost) {
 else if (process.env.HOST) {
     previewHostArgv = process.env.HOST;
 }
-const previewOriginalResolutionArgv: boolean = !!program.previewOriginalResolution;
+let previewOriginalResolutionArgv: boolean = !!program.previewOriginalResolution;
 const enableVideo = (process.env.PROPHESEE_CAM === '1') || (process.env.ENABLE_VIDEO === '1');
 const dontPrintPredictionsArgv: boolean = !!program.dontPrintPredictions;
 const thresholdsArgv = <string | undefined>program.thresholds;
@@ -229,6 +236,9 @@ const onSignal = async () => {
             if (profiling) {
                 profiling.printSummary();
             }
+            if (vlmServerProcess) {
+                await stopVlmServer(vlmServerProcess);
+            }
             process.exit(0);
         }
         catch (ex2) {
@@ -241,6 +251,65 @@ const onSignal = async () => {
 
 process.on('SIGHUP', onSignal);
 process.on('SIGINT', onSignal);
+
+async function ensureVlmServer(opts: { serverPath: string,
+                                       modelFolder: string,
+                                       modelName: string,
+                                       serverDownloadUrl: string,
+                                       modelDownloadUrl: string,
+                                       serverAddress: string,
+                                       serverPort: number }) {
+    const { serverPath, modelFolder, modelName, serverDownloadUrl, modelDownloadUrl, serverAddress, serverPort } = opts;
+    const serverExists = fs.existsSync(serverPath);
+    let modelPath = Path.join(modelFolder, modelName + '.gguf');
+    let mmProjPath = Path.join("/");
+    if (modelName.indexOf('clip') === -1) {
+        mmProjPath = Path.join(modelFolder, modelName + '-mmproj.gguf');
+    }
+    const modelExists = fs.existsSync(modelPath) && fs.existsSync(mmProjPath);
+
+    // Check if the server binary exists
+    if (!serverExists) {
+        console.log("Expected location of VLM server binary:", serverPath);
+        // console.log('VLM server binary not found. Downloading...');
+        await displayDownloadTip(serverDownloadUrl, serverPath);
+        // console.log('VLM server binary downloaded.');
+    }
+
+    // Check if the model file exists
+    if (!modelExists) {
+        console.log("Expected location of VLM model file:", modelPath);
+        if (modelName.indexOf('clip') === -1) {
+            console.log("Expected location of VLM mmproj file:", mmProjPath);
+        }
+        // console.log('VLM model files are not found. Downloading...');
+        await displayDownloadTip(modelDownloadUrl, modelPath);
+        // console.log('VLM model file downloaded.');
+    }
+
+    // Start the VLM server if it's not already running
+    if (!await isVlmServerRunning(serverAddress, serverPort)) {
+        console.log('Starting VLM server...');
+        let serverArgs = [ '--model', modelPath,
+                           '--host', serverAddress,
+                           '--port', serverPort.toString() ];
+        if (modelName.indexOf('clip') === -1) {
+            serverArgs.push('--mmproj', mmProjPath);
+            serverArgs.push('--no-warmup');
+            serverArgs.push('-b', '128');
+            serverArgs.push('-c', '2048');
+            serverArgs.push('-s', '11');
+            serverArgs.push('-n', '128');
+
+        }
+        console.log(`Starting VLM server with binary at ${serverPath}, model at ${modelPath}, on ${serverAddress}:${serverPort}...`);
+        vlmServerProcess = await startVlmServer(serverPath, serverArgs);
+        console.log('VLM server started.');
+    }
+    else {
+        console.log('VLM server is already running.');
+    }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
@@ -614,6 +683,51 @@ process.on('SIGINT', onSignal);
             shmBehavior: shmBehaviorArgv,
         });
         model = await runner.init();
+
+        // Check if the model requires the VLM server
+        if (model.modelParameters.inferencing_engine === RunnerHelloInferencingEngine.VlmConnector) {
+            console.log('This model requires the VLM server. Ensuring the server is running...');
+            let systemArch = process.arch;
+            let validArchs = [ 'x64', 'arm64' ];
+            if (!validArchs.includes(systemArch)) {
+                throw new Error(`VLM server is not supported on architecture: ${systemArch}. Supported architectures are: ${validArchs.join(', ')}`);
+            }
+            let systemOS = os.platform();
+            let validOS = [ 'linux' ];
+            if (!validOS.includes(systemOS)) {
+                throw new Error(`VLM server is not supported on OS: ${systemOS}. Supported OS are: ${validOS.join(', ')}`);
+            }
+            let modelName = model.modelParameters.vlm_model_download_url?.split('/').pop() || '';
+            let serverPath = modelName.includes('clip-') ?
+                Path.join("/", "app",
+                '.ei-linux-runner', 'bin', 'clip-server-' + systemOS + '-' + systemArch, 'clip-server') :
+                Path.join("/", "app",
+                '.ei-linux-runner', 'bin', 'llama-server-' + systemOS + '-' + systemArch, 'llama-server');
+            let serverDownloadUrl = modelName.includes('clip-') ?
+                'https:://github.com/edge-impulse/vlm-server/releases/download/v0.1.0/clip-server-' + systemOS + '-' + systemArch :
+                'https:://github.com/edge-impulse/vlm-server/releases/download/v0.1.0/llama-server-' + systemOS + '-' + systemArch;
+            let modelFolder = Path.join("/", "app", '.ei-linux-runner', 'models', modelName);
+            // log details
+            console.log(`System architecture: ${systemArch}`);
+            console.log(`System OS: ${systemOS}`);
+            console.log(`VLM Server binary: ${serverPath}`);
+            console.log(`VLM Model folder: ${modelFolder}`);
+            // console.log(`VLM Server download URL: ${serverDownloadUrl}`);
+            // console.log(`VLM Model download URL: ${model.modelParameters.vlm_model_download_url}`);
+            const vlmOpts = {
+                serverPath: serverPath,
+                modelFolder: modelFolder,
+                modelName: modelName,
+                serverDownloadUrl: serverDownloadUrl,
+                modelDownloadUrl: model.modelParameters.vlm_model_download_url || '',
+                serverAddress: '0.0.0.0',
+                serverPort: 8080,
+            };
+            await ensureVlmServer(vlmOpts);
+
+            model.modelParameters.image_resize_mode = "none";
+            previewOriginalResolutionArgv = true;
+        }
 
         if (model.modelParameters.model_type === 'classification' &&
             model.modelParameters.sensorType === 'camera') {
@@ -1302,9 +1416,9 @@ async function setThresholdsFromArgv(runner: LinuxImpulseRunner, model: ModelInf
         let id = Number(matches[1]);
         let key = matches[2];
         let valueStr = matches[3];
-        let value: number | boolean;
+        let value: number;
         if (valueStr === 'true' || valueStr === 'false') {
-            value = valueStr === 'true';
+            value = valueStr === 'true' ? 1 : 0;
         }
         else {
             value = Number(matches[3]);
@@ -1312,15 +1426,14 @@ async function setThresholdsFromArgv(runner: LinuxImpulseRunner, model: ModelInf
 
         let thresholdObj = (model.modelParameters.thresholds || []).find(x => x.id === id);
         if (thresholdObj) {
-            let obj: { [k: string]: string | number | boolean } = {
+            let obj: SetRunnerBlockThreshold = {
                 id: id,
             };
-            obj.type = thresholdObj.type;
             obj[key] = value;
 
-            await runner.setLearnBlockThreshold(<any>obj);
+            await runner.setLearnBlockThreshold(obj);
 
-            (<any>thresholdObj)[key] = value;
+            thresholdObj[key] = value;
         }
         else {
             console.log(RUNNER_PREFIX, `Invalid threshold "${opt}", could not find block with ID ${id} ` +

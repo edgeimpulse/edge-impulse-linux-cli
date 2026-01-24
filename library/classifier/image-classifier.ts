@@ -75,6 +75,22 @@ export class ImageClassifier extends EventEmitter<{
 
         this._stopped = false;
 
+        // if resize mode is 'none', we need to get the image size from the first snapshot
+        if (this._model.modelParameters.image_resize_mode === 'none') {
+            this._camera.once('snapshotForInference', async (ev) => {
+
+            let imgSharpMetadata: sharp.Metadata | undefined;
+                imgSharpMetadata = await sharp(ev.imageForInferenceJpg).metadata();
+
+                this.setImageParameters({
+                    image_width: imgSharpMetadata.width,
+                    image_height: imgSharpMetadata.height,
+                    image_channels: imgSharpMetadata.channels || 3,
+                });
+            });
+        }
+
+        // this._camera.on('snapshotForInference', async (data, filename) => {
         this._camera.on('snapshotForInference', async (ev) => {
             try {
                 const filename = ev.filename;
@@ -137,6 +153,10 @@ export class ImageClassifier extends EventEmitter<{
                         }
                         this.emit('profileFeaturesBegin', filename);
                         imgSharpMetadata = await sharp(data).metadata();
+                        if (model.modelParameters.image_resize_mode === 'none') {
+                            model.modelParameters.image_input_width = imgSharpMetadata.width!;
+                            model.modelParameters.image_input_height = imgSharpMetadata.height!;
+                        }
                         let resized = await ImageClassifier.resizeImage(model, data, imgSharpMetadata);
                         this.emit('profileFeaturesEnd', filename);
 
@@ -208,6 +228,16 @@ export class ImageClassifier extends EventEmitter<{
         ]);
     }
 
+    async setImageParameters(params: {
+        image_width?: number,
+        image_height?: number,
+        image_channels?: number}) {
+
+        await this._runner.setParameter(params);
+        // reload the model info
+        // this._model = this._runner.getModel();
+    }
+
     getRunner() {
         return this._runner;
     }
@@ -224,14 +254,16 @@ export class ImageClassifier extends EventEmitter<{
         // resize image and add to frameQueue
         const fitMethod: keyof FitEnum = FitMethodMap[model.modelParameters.image_resize_mode || 'none'];
         let img = sharp(data);
-        if (metadata.width !== model.modelParameters.image_input_width ||
-            metadata.height !== model.modelParameters.image_input_height) {
-            img = img.resize({
-                height: model.modelParameters.image_input_height,
-                width: model.modelParameters.image_input_width,
-                fit: fitMethod,
-                fastShrinkOnLoad: false
-            });
+        if (model.modelParameters.image_resize_mode !== 'none') {
+            if (metadata.width !== model.modelParameters.image_input_width ||
+                metadata.height !== model.modelParameters.image_input_height) {
+                img = img.resize({
+                    height: model.modelParameters.image_input_height,
+                    width: model.modelParameters.image_input_width,
+                    fit: fitMethod,
+                    fastShrinkOnLoad: false
+                });
+            }
         }
 
         let features: number[] = [];
@@ -299,6 +331,7 @@ export class ImageClassifier extends EventEmitter<{
         const classifyRes = await this._runner.classify(values);
 
         let timingMs = classifyRes.timing.dsp + classifyRes.timing.classification +
+            (classifyRes.timing.postprocessing || 0) +
             classifyRes.timing.anomaly;
         if (timingMs === 0) {
             timingMs = 1;

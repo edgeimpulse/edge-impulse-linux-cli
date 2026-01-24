@@ -10,7 +10,8 @@ import koffi from 'koffi';
 import { EimRunnerClassifyResponseSuccess, ModelInformation, RunnerBlockThreshold, RunnerClassifyContinuousRequest,
     RunnerClassifyRequest, RunnerClassifyResponseSuccess, RunnerErrorResponse, RunnerHelloInferencingEngine,
     RunnerHelloRequest, RunnerHelloResponse, RunnerHelloResponseModelParameters, RunnerSetThresholdRequest,
-    RunnerSetThresholdResponse } from './linux-impulse-runner-types';
+    RunnerSetThresholdResponse,
+    SetRunnerBlockThreshold} from './linux-impulse-runner-types';
 import { VALGRIND_SUPPRESSION_FILE } from './valgrind-suppression';
 
 const PREFIX = '\x1b[33m[RUN]\x1b[0m';
@@ -402,44 +403,24 @@ export class LinuxImpulseRunner {
         return this.mapClassifyResponseSuccess(resp);
     }
 
-    async setLearnBlockThreshold(obj: RunnerBlockThreshold) {
-        let resp: RunnerSetThresholdResponse;
-        if (obj.type === 'anomaly_gmm') {
-            resp = await this.send<RunnerSetThresholdRequest, RunnerSetThresholdResponse>({
-                set_threshold: {
-                    id: obj.id,
-                    min_anomaly_score: obj.min_anomaly_score,
-                }
-            });
-        }
-        else if (obj.type === 'object_detection') {
-            resp = await this.send<RunnerSetThresholdRequest, RunnerSetThresholdResponse>({
-                set_threshold: {
-                    id: obj.id,
-                    min_score: obj.min_score,
-                }
-            });
-        }
-        else if (obj.type === 'object_tracking') {
-            resp = await this.send<RunnerSetThresholdRequest, RunnerSetThresholdResponse>({
-                set_threshold: {
-                    id: obj.id,
-                    keep_grace: obj.keep_grace,
-                    max_observations: obj.max_observations,
-                    threshold: obj.threshold,
-                }
-            });
-        }
-        else if (obj.type === 'classification') {
-            resp = await this.send<RunnerSetThresholdRequest, RunnerSetThresholdResponse>({
-                set_threshold: {
-                    id: obj.id,
-                    min_score: obj.min_score,
-                }
-            });
-        }
-        else {
-            throw new Error(`runner::setLearnBlockThreshold invalid value for type (was "${(<{ type: string }>obj).type}")`);
+    async setLearnBlockThreshold(obj: SetRunnerBlockThreshold) {
+        return await this.send<RunnerSetThresholdRequest, RunnerSetThresholdResponse>({
+            set_threshold: obj,
+        });
+    }
+
+    /**
+     * Set a parameter for the model
+     * @param parameters An object containing the parameters to set
+     */
+    async setParameter(parameters: { [key: string]: number | string | boolean }) {
+        const resp = await this.send<{ set_parameter: typeof parameters }, RunnerSetThresholdResponse>({
+            set_parameter: parameters
+        });
+        console.log(PREFIX, 'Sending parameters: ', parameters);
+        console.log(PREFIX, 'Set parameter response', resp);
+        if (!resp.success) {
+            throw new Error(resp.error);
         }
     }
 
@@ -565,8 +546,8 @@ export class LinuxImpulseRunner {
 
         return new Promise<U>((resolve, reject) => {
             const defaultTimeout = this._valgrind ?
-                120_000 : // valgrind takes its time (esp on x86)
-                30_000;
+                300_000 : // valgrind takes its time (esp on x86)
+                60_000;
 
             let timeout = typeof timeoutArg === 'number' ? timeoutArg : defaultTimeout;
 
