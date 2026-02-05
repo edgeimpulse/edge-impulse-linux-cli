@@ -24,9 +24,10 @@ export async function initCamera(opts: {
     verboseOutput: boolean,
     profiling: boolean,
     preferJpegCaps: boolean,
+    gstSource: string | undefined,
 }) {
     const { cameraType, cameraDeviceNameInConfig, dimensions, inferenceDimensions,
-        gstLaunchArgs, verboseOutput, cameraColorFormat } = opts;
+        gstLaunchArgs, verboseOutput, cameraColorFormat, gstSource } = opts;
     let { cameraNameArgv } = opts;
 
     let camera: ICamera;
@@ -43,6 +44,7 @@ export async function initCamera(opts: {
             colorFormat: cameraColorFormat,
             dontOutputRgbBuffers: opts.dontOutputRgbBuffers,
             preferCapType: opts.preferJpegCaps ? 'image/jpeg' : 'video/x-raw',
+            customGstSource: gstSource,
         });
     }
     else {

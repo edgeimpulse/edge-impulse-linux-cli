@@ -38,6 +38,7 @@ program
         ' Used only on Raspberry Pi 5 with GStreamer libcamera backend. Default format on RPi 5 is "YUY2".')
     .option('--verbose', 'Enable debug logs')
     .option('--greengrass', 'Enable AWS IoT greengrass integration mode')
+    .option('--gst-source <args>', 'Defines the gstreamer source. E.g --gst-source \"tcpserversrc host=0.0.0.0 port=5050 ! jpegdec\"')
     .allowUnknownOption(true)
     .parse(process.argv);
 
@@ -58,6 +59,7 @@ const heightArgv = <string | undefined>program.height;
 const cameraArgv = <string | undefined>program.camera;
 const microphoneArgv = <string | undefined>program.microphone;
 const cameraColorFormatArgv = <string | undefined>program.cameraColorFormat;
+const gstSourceArgv = <string | undefined>program.gstSource;
 
 if ((program.width && !program.height) || (!program.width && program.height)) {
     console.error('--width and --height need to either be both specified or both omitted');
@@ -197,6 +199,7 @@ let isExiting = false;
                 profiling: false,
                 dontOutputRgbBuffers: true,
                 preferJpegCaps: false,
+                gstSource: gstSourceArgv,
             });
             camera = await initedCamera.start();
             const cameraOpts = camera.getLastOptions();

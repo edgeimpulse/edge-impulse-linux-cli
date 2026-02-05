@@ -3235,6 +3235,120 @@ Freeing pipeline ...
                             'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
             );
         });
+
+        it("tcp server streaming mode - MJPEG", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const tcpServerConfig = {
+              host: "0.0.0.0",
+              port: 1234
+            };
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                customGstSource: `tcpserversrc host=${tcpServerConfig.host} port=${tcpServerConfig.port} ! jpegenc`
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: 'streaming-tcp-server',
+                name: 'streaming-tcp-server',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1440,
+                    type: "video/x-raw",
+                }],
+                videoSource: "tcpserversrc",
+            }, { width: 1440, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'squash',
+            });
+
+            // console.log('launchResp', launchResp);
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.pipeline,
+              `tcpserversrc host=${tcpServerConfig.host} port=${tcpServerConfig.port} ! jpegenc ! video/x-raw ! videoconvert ! ` +
+                'tee name=t ' +
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
+            );
+        });
+
+        it("tcp server streaming mode - Video, Gstreamer Data Protocol ", async () => {
+            const spawnHelper: SpawnHelperType = async (command: string,
+                args: string[],
+                opts: {
+                    ignoreErrors: boolean,
+                    cwd ? : string
+                } = {
+                    ignoreErrors: false
+                }) => {
+
+                if (command === 'which') {
+                    return  '';
+                }
+                else {
+                    throw new Error('spawnHelper failed on ' + command + ' ' + args.join(' '));
+                }
+            };
+
+            const tcpServerConfig = {
+              host: "localhost",
+              port: 5050
+            };
+            const gstreamer = new GStreamer(false, {
+                spawnHelperOverride: spawnHelper,
+                dontRunCleanupLoop: true,
+                customGstSource: `tcpserversrc host=${tcpServerConfig.host} port=${tcpServerConfig.port} ! gdpdepay ! decodebin`
+            });
+            await gstreamer.init();
+            const launchResp = await gstreamer.getGstreamerLaunchCommand({
+                id: 'streaming-tcp-server',
+                name: 'streaming-tcp-server',
+                caps: [{
+                    framerate: 60,
+                    height: 1080,
+                    width: 1440,
+                    type: "video/x-raw",
+                }],
+                videoSource: "tcpserversrc",
+            }, { width: 1440, height: 1080 }, {
+                width: 320,
+                height: 320,
+                resizeMode: 'squash',
+            });
+
+            // console.log('launchResp', launchResp);
+            assert.equal(launchResp.command, 'gst-launch-1.0');
+            assert.equal(launchResp.pipeline,
+              `tcpserversrc host=${tcpServerConfig.host} port=${tcpServerConfig.port} ! gdpdepay ! decodebin ! video/x-raw ! videoconvert ! ` +
+                'tee name=t ' +
+                    't. ! queue ! jpegenc ! multifilesink location=original%05d.jpg post-messages=true sync=false ' +
+                    't. ! queue ! videoscale method=lanczos ! video/x-raw,format=RGB,width=320,height=320 ! ' +
+                        'tee name=u ' +
+                            'u. ! queue ! jpegenc ! multifilesink location=resized%05d.jpg post-messages=true sync=false ' +
+                            'u. ! queue ! multifilesink location=resized%05d.rgb post-messages=true sync=false'
+            );
+        });
     });
 });
 

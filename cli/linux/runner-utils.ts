@@ -417,14 +417,17 @@ export function startWebServer(opts: ({
             processingFrame = true;
 
             try {
-                if (!cameraResolution) {
-                    let img = sharp(data);
-                    const metadata = await img.metadata();
-                    cameraResolution = {
-                        width: metadata.width || 0,
-                        height: metadata.height || 0,
-                    };
-                }
+                // Normally it's not expected that the camera resolution changes
+                // (after the gstreamer pipeline is created), however in TCP
+                // streaming server mode, the client can re-connect with a
+                // different resolution. So we grab the (new) camera resolution
+                // from the image. Profiling shows that latency is not affected
+                // significantly.
+                const metadata = await sharp(data).metadata();
+                cameraResolution = {
+                    width: metadata.width || 0,
+                    height: metadata.height || 0,
+                };
 
                 let imgBase64: string;
 

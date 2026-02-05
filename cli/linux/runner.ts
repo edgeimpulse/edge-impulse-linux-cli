@@ -26,7 +26,7 @@ import {
     startVlmServer,
     stopVlmServer
 } from './runner-utils';
-import { initCamera, initMicrophone, getCameraType } from '../../library/sensors/sensors-helper';
+import { initCamera, initMicrophone, getCameraType, CameraType } from '../../library/sensors/sensors-helper';
 import { AWSSecretsManagerUtils } from "../../cli-common/aws-sm-utils";
 import { AWSIoTCoreConnector, Payload, AwsResult, AwsResultKey } from "../../cli-common/aws-iotcore-connector";
 import { v4 as uuidv4 } from 'uuid';
@@ -94,8 +94,8 @@ program
     .option('--dont-print-predictions', 'If set, suppresses the printing of predictions')
     .option('--thresholds <values>', 'Override model thresholds. E.g. --thresholds 4.min_anomaly_score=35 overrides the min. anomaly score for block ID 4 to 35.' +
         'The current thresholds are printed on startup.')
-    .option('--mode <mode>', 'Either: "streaming" (runs on a camera/audio stream and outputs a live inference server) or "http-server" (opens an HTTP server for inference on-demand). ' +
-        'When passing --run-http-server XXX in, the mode will always default to "http-server", in all other cases the mode defaults to "streaming".')
+    .option('--mode <mode>', '(default: "streaming") Either: "streaming" (runs on a camera/audio stream and outputs a live inference server) or "http-server" (opens an HTTP server for inference on-demand).' +
+        'When passing --run-http-server XXX in, the mode will always default to "http-server"')
     .option('--camera <camera>', 'Which camera to use (either the name, or the device address - e.g. /dev/video0). ' +
         'If this argument is omitted, and multiple cameras are found, a CLI selector is shown.')
     .option('--microphone <microphone>', 'Which microphone to use (either the name, or the device address). ' +
@@ -109,6 +109,11 @@ program
         `advertise RGB capabilities on the video source, but don't actually support this. Set this flag to skip creating RGB buffers.`)
     .option('--experimental-gst-prefer-jpeg', `(Only for GStreamer) Use image/jpeg caps rather than video/x-raw caps to get images from webcam (experimental flag)`)
     .option('--profiling', `If set, prints profiling info`)
+    .option('--gst-source <args>', `Defines a custom GStreamer source. Example, you can set up a TCP server with: ` +
+        `'--gst-source "tcpserversrc host=0.0.0.0 port=5050 ! jpegdec"'. ` +
+        `Then you write to the server from another GStreamer pipeline via: ` +
+        `"gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,width=640,height=480 ! jpegenc ! tcpclientsink host=localhost port=5050". ` +
+        `Only "tcpserversrc" elements are currently supported.`)
     .option('--verbose', 'Enable debug logs')
     .allowUnknownOption(true)
     .parse(process.argv);
@@ -157,6 +162,9 @@ if (program.previewHost) {
 else if (process.env.HOST) {
     previewHostArgv = process.env.HOST;
 }
+
+const gstSourceArgv = <string | undefined>program.gstSource;
+
 let previewOriginalResolutionArgv: boolean = !!program.previewOriginalResolution;
 const enableVideo = (process.env.PROPHESEE_CAM === '1') || (process.env.ENABLE_VIDEO === '1');
 const dontPrintPredictionsArgv: boolean = !!program.dontPrintPredictions;
@@ -319,9 +327,10 @@ async function ensureVlmServer(opts: { serverPath: string,
         let modelPath: RunnerModelPath | undefined;
         let projectStudioUrl: string | undefined;
         let config: EdgeImpulseConfig | undefined;
-        // projectId keeps the Studio project ID, not the EIM/model project ID
-        // currently they can differ, as user can use EIM form the other project than the projct
-        // the user selected during the login
+        // projectId keeps the Studio project ID, not the EIM/model's project ID.
+        // Currently they can differ, as a user can use the EIM from another
+        // project other than the project the user selected during the login
+        // step.
         let projectId: number | undefined;
         let devKeys: { apiKey: string, hmacKey: string };
         let runner: LinuxImpulseRunner;
@@ -386,6 +395,15 @@ async function ensureVlmServer(opts: { serverPath: string,
 
         if (modeArgv === 'streaming' && typeof runHttpServerPort === 'number') {
             throw new Error('Cannot combine "--mode streaming" with --run-http-server');
+        }
+
+        if (gstSourceArgv && gstLaunchArgsArgv) {
+            throw new Error('Cannot combine "--gst-source" with --gst-launch-args');
+        }
+
+        if (cameraType !== CameraType.GStreamerCamera && gstSourceArgv) {
+                throw new Error(`"--gst-source only supported with ${CameraType.GStreamerCamera} ` +
+                    `but ${cameraType} detected.`);
         }
 
         // any of this arguments implies online mode, so we need to login to the studio or get the API key
@@ -974,6 +992,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                     cameraColorFormat: cameraColorFormatArgv,
                     dontOutputRgbBuffers: dontOutputRgbBuffersArgv,
                     preferJpegCaps: experimentalGstPreferJpegArgv,
+                    gstSource: gstSourceArgv,
                 });
 
                 console.log(RUNNER_PREFIX, `Using camera "${cameraInit.cameraDevice}" (because --enable-camera, run with --clean to select another one)`);
@@ -1137,6 +1156,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                 cameraColorFormat: cameraColorFormatArgv,
                 dontOutputRgbBuffers: dontOutputRgbBuffersArgv,
                 preferJpegCaps: experimentalGstPreferJpegArgv,
+                gstSource: gstSourceArgv,
             });
 
             await configFactory.storeCamera(cameraInit.cameraDevice);

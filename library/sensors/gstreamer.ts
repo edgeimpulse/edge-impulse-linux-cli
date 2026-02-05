@@ -34,6 +34,8 @@ export type GStreamerMode = 'default' | 'rpi' | 'rpi5' | 'qualcomm-rb3gen2' | 'q
 
 const CUSTOM_GST_LAUNCH_COMMAND = 'custom-gst-launch-command';
 const DEFAULT_GST_VIDEO_SOURCE = 'v4l2src';
+const STREAMING_TCP_SERVER_COMMAND = 'streaming-tcp-server';
+const TCP_SERVER_GST_VIDEO_SOURCE = 'tcpserversrc';
 
 export class GStreamer extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
@@ -45,7 +47,7 @@ export class GStreamer extends EventEmitter<{
     private _tempDir?: string;
     private _watcher?: fs.FSWatcher;
     private _originalAndRgbFilesSeen = new Set<string>();
-    private _handledFiles: { [k: string]: true } = { };
+    private _handledFiles: { [k: string]: boolean } = { };
     private _verbose: boolean;
     private _lastFile: {
         hash: string,
@@ -69,6 +71,12 @@ export class GStreamer extends EventEmitter<{
     private _outputRgbBuffers: boolean;
     private _imagesReceived = 0;
     private _offset = 0;
+    private _customGstSource: {
+        mode: 'tcp-server',
+        host: string,
+        port: number,
+        gstElement: string,
+    } | undefined;
 
     constructor(verbose: boolean, options?: {
         spawnHelperOverride?: SpawnHelperType,
@@ -81,6 +89,7 @@ export class GStreamer extends EventEmitter<{
         // Defaults to video/x-raw. The prefered cap type if both video/x-raw and image/jpeg caps
         // are available for a camera.
         preferCapType?: 'image/jpeg' | 'video/x-raw',
+        customGstSource?: string,
     }) {
         super();
 
@@ -94,6 +103,45 @@ export class GStreamer extends EventEmitter<{
             false :
             true;
         this._preferCapType = options?.preferCapType || 'video/x-raw';
+
+        // handle custom gstreamer source
+        if (options?.customGstSource) {
+            // For now we only accept `tcpserversrc ... [! ...]
+
+            const element = argvSplit(options.customGstSource)[0];
+
+            switch (element) {
+                case TCP_SERVER_GST_VIDEO_SOURCE: {
+                    let host = (options.customGstSource.match(/host=([^ ]+)/) || [])[1];
+                    let port = (options.customGstSource.match(/port=(\d+)/) || [])[1];
+                    if (!host) {
+                        throw new Error(`Invalid value for customGstSource (probably passed in via --gst-source), ` +
+                            `missing property "host" (e.g. "tcpserversrc host=0.0.0.0 port=5050")`);
+                    }
+                    if (!port) {
+                        throw new Error(`Invalid value for customGstSource (probably passed in via --gst-source), ` +
+                            `missing property "port" (e.g. "tcpserversrc host=0.0.0.0 port=5050")`);
+                    }
+                    if (isNaN(Number(port))) {
+                        throw new Error(`Invalid value for customGstSource (probably passed in via --gst-source), ` +
+                            `property "port" is not numeric (e.g. "tcpserversrc host=0.0.0.0 port=5050")`);
+                    }
+
+                    this._customGstSource = {
+                        mode: 'tcp-server',
+                        host: host,
+                        port: Number(port),
+                        gstElement: options.customGstSource,
+                    };
+                    break;
+                }
+                default: {
+                    throw new Error(`Invalid value for customGstSource (probably passed in via --gst-source) ("${element}"). ` +
+                        `Only ${TCP_SERVER_GST_VIDEO_SOURCE} is supported.`);
+                }
+            }
+        }
+
         if (options?.dontRunCleanupLoop === true) {
             // skip cleanup loop
         }
@@ -168,6 +216,10 @@ export class GStreamer extends EventEmitter<{
     async listDevices(): Promise<string[]> {
         if (this._customLaunchCommand) {
             return [ CUSTOM_GST_LAUNCH_COMMAND ];
+        }
+
+        if (this._customGstSource?.mode === 'tcp-server') {
+          return  [ STREAMING_TCP_SERVER_COMMAND ];
         }
 
         let devices = await this.getAllDevices();
@@ -362,7 +414,7 @@ export class GStreamer extends EventEmitter<{
                 return;
             }
             if (!this._tempDir) return;
-            if (this._handledFiles[fileName]) return;
+            if (this._handledFiles[fileName] === true) return;
 
             this._imagesReceived++;
 
@@ -476,10 +528,13 @@ export class GStreamer extends EventEmitter<{
                         if (this._keepAliveTimeout) {
                             clearTimeout(this._keepAliveTimeout);
                         }
-                        this._keepAliveTimeout = setTimeout(() => {
-                            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                            this.timeoutCallback();
-                        }, 2000);
+
+                        if (this._customGstSource?.mode !== 'tcp-server') {
+                            this._keepAliveTimeout = setTimeout(() => {
+                                // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                                this.timeoutCallback();
+                            }, 2000);
+                        }
                     }
                     else if (this._verbose) {
                         console.log(PREFIX, 'Discarding', fileName, 'hash does not differ');
@@ -528,6 +583,8 @@ export class GStreamer extends EventEmitter<{
                             clearTimeout(this._keepAliveTimeout);
                         }
 
+                        let error: string | undefined;
+
                         if (typeof code === 'number') {
                             // if code is 255 and device id is qtiqmmfsrc, it means the camera is not available
                             // try restart on first close only
@@ -549,6 +606,14 @@ export class GStreamer extends EventEmitter<{
                                 this._captureProcess.on('close', onCaptureProcessClose);
                                 return;
                             }
+                            else if (code === 0 && this._customGstSource?.mode === 'tcp-server') {
+
+                                console.log(PREFIX, 'Restarting streaming tcp server mode...');
+                                this._captureProcess = undefined;
+                                this.restart();
+                                console.log(PREFIX, 'Restarting streaming tcp server mode OK');
+                                return;
+                            }
                             else {
                                 const errMsg = `GStreamer (gst-launch-1.0) stopped before emitting any images. This most likely ` +
                                     `means that the launch command is incorrect or that your camera is unresponsive. Here is the launch command:\n\n` +
@@ -568,23 +633,25 @@ export class GStreamer extends EventEmitter<{
                                     `* The output of 'gst-inspect-1.0'`;
 
                                 if (this._imagesReceived === 0 && this._lastGstLaunchCommand) {
-                                    reject(`Capture process failed with code ${code}\n\n` +
-                                        `${errMsg}`);
+                                    error = `Capture process failed with code ${code}\n\n` +
+                                        `${errMsg}`;
                                 }
                                 else {
-                                    reject('Capture process failed with code ' + code);
+                                    error = 'Capture process failed with code ' + code;
                                 }
                             }
                         }
                         else {
-                            reject('Failed to start capture process, but no exit code. ' +
+                            error = 'Failed to start capture process, but no exit code. ' +
                                 'This might be a permissions issue. ' +
-                                'Are you running this command from a simulated shell (like in Visual Studio Code)?');
+                                'Are you running this command from a simulated shell (like in Visual Studio Code)?';
                         }
+
+                        reject(error);
 
                         // already started and we're the active process?
                         if (this._isStarted && cp === this._captureProcess && !this._isRestarting) {
-                            this.emit('error', 'gstreamer process was killed with code (' + code + ')');
+                            this.emit('error', error);
                         }
 
                         this._captureProcess = undefined;
@@ -613,13 +680,28 @@ export class GStreamer extends EventEmitter<{
                     watcher.close();
                 });
 
-                setTimeout(async () => {
-                    if (this._keepAliveTimeout) {
-                        clearTimeout(this._keepAliveTimeout);
-                    }
+                if (this._customGstSource?.mode === 'tcp-server') {
+                    console.log(PREFIX, `In tcp server mode (experimental), waiting on ${this._customGstSource.host}:${this._customGstSource.port} for a connection...`);
+                    console.log(PREFIX, 'Connect for example as follows:');
+                    console.log(PREFIX, ``);
+                    console.log(PREFIX, `    gst-launch-1.0 v4l2src device=/dev/video0 ! image/jpeg ! gdppay ! tcpclientsink host=${this._customGstSource.host} port=${this._customGstSource.port}`);
+                    console.log(PREFIX, `    gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw ! gdppay ! tcpclientsink host=${this._customGstSource.host} port=${this._customGstSource.port}`);
+                    console.log(PREFIX, `    gst-launch-1.0 v4l2src device=/dev/video0 ! image/jpeg,width=1280,height=720 ! tcpclientsink host=${this._customGstSource.host} port=${this._customGstSource.port}`);
+                    console.log(PREFIX, ``);
+                    console.log(PREFIX, ` or to connect to an inference container:`);
+                    console.log(PREFIX, `    gst-launch-1.0 v4l2src device=/dev/video0 ! image/jpeg ! gdppay ! tcpclientsink host=host.docker.internal port=${this._customGstSource.port}`);
+                    console.log(PREFIX, `    gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,width=640,heigh=480 ! gdppay ! tcpclientsink host=host.docker.internal port=${this._customGstSource.port}`);
+                    console.log(PREFIX, `    gst-launch-1.0 v4l2src device=/dev/video0 ! image/jpeg ! tcpclientsink host=host.docker.internal port=${this._customGstSource.port}`);
+                }
+                else {
+                    setTimeout(async () => {
+                        if (this._keepAliveTimeout) {
+                            clearTimeout(this._keepAliveTimeout);
+                        }
 
-                    return reject('First photo was not created within 20 seconds');
-                }, 20000);
+                        return reject('First photo was not created within 20 seconds');
+                    }, 20000);
+                }
             })();
         });
 
@@ -756,6 +838,11 @@ export class GStreamer extends EventEmitter<{
             ];
         }
 
+        // set up the video source in the case of a custom gstreamer source
+        if (this._customGstSource?.mode === 'tcp-server') {
+            videoSource = argvSplit(this._customGstSource.gstElement);
+        }
+
         const frameReadyArgs = this._profiling ? [ `!`, `identity name=frame_ready silent=false` ] : [];
         const jpgencDoneArgs = this._profiling ? [ `!`, `identity name=jpegenc_done silent=false` ] : [];
         const resizeDoneArgs = this._profiling ? [ `!`, `identity name=resize_done silent=false` ] : [];
@@ -832,6 +919,14 @@ export class GStreamer extends EventEmitter<{
                 videoSource = videoSource.concat([
                     `!`,
                     `video/x-raw,width=${cap.width},height=${cap.height},format=${colorFormat}`
+                ]);
+            }
+            else if (this._customGstSource?.mode === 'tcp-server') {
+                // in tcp server mode we don't add the width and height so
+                // that the client has more flexibility.
+                videoSource = videoSource.concat([
+                    `!`,
+                    `video/x-raw`
                 ]);
             }
             else {
@@ -1011,6 +1106,21 @@ export class GStreamer extends EventEmitter<{
                     height: height,
                 }],
                 videoSource: DEFAULT_GST_VIDEO_SOURCE,
+            }];
+        }
+
+        if (this._customGstSource?.mode === 'tcp-server') {
+            return [{
+                id: STREAMING_TCP_SERVER_COMMAND,
+                name: STREAMING_TCP_SERVER_COMMAND,
+                // dummy caps, won't be used downstream
+                caps: [{
+                    type: 'video/x-raw',
+                    framerate: 60,
+                    width: 640,
+                    height: 480,
+                }],
+                videoSource: TCP_SERVER_GST_VIDEO_SOURCE,
             }];
         }
 
@@ -1677,13 +1787,10 @@ export class GStreamer extends EventEmitter<{
         return exists;
     }
 
-    private async timeoutCallback() {
+    private async restart() {
         try {
             this._isRestarting = true;
 
-            if (this._verbose) {
-                console.log(PREFIX, 'No images received for 2 seconds, restarting...');
-            }
             await this.stop();
             if (this._verbose) {
                 console.log(PREFIX, 'Stopped');
@@ -1709,6 +1816,13 @@ export class GStreamer extends EventEmitter<{
         finally {
             this._isRestarting = false;
         }
+    }
+
+    private async timeoutCallback() {
+        if (this._verbose) {
+            console.log(PREFIX, 'No images received for 2 seconds, restarting...');
+        }
+        await this.restart();
     }
 
     /**
@@ -1795,6 +1909,9 @@ export class GStreamer extends EventEmitter<{
                     filesToUnlink.push(originalFileName);
                 }
 
+                if (filesToUnlink.length <= 0) {
+                    continue;
+                }
 
                 if (this._verbose) {
                     console.log(PREFIX, `Unlinking ${filesToUnlink.length} original / RGB files...`);
