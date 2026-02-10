@@ -702,6 +702,12 @@ async function ensureVlmServer(opts: { serverPath: string,
         });
         model = await runner.init();
 
+        // treat the user provided resize arguments as-if from the model
+        if (forceResizeModeArgv) {
+            const resizeParam = model.modelParameters.image_resize_mode;
+            model.modelParameters.image_resize_mode = forceResizeModeArgv || resizeParam || 'none';
+        }
+
         // Check if the model requires the VLM server
         if (model.modelParameters.inferencing_engine === RunnerHelloInferencingEngine.VlmConnector) {
             console.log('This model requires the VLM server. Ensuring the server is running...');
