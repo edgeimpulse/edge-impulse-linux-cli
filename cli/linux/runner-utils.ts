@@ -519,7 +519,7 @@ export function startWebServer(opts: ({
             for (const client of wss.clients) {
                 client.send(JSON.stringify({
                     type: 'classification',
-                    result: result.result,
+                    result: resultsMapped,
                     timeMs: timeMs,
                     additionalInfo: result.info,
                 }));
@@ -542,7 +542,7 @@ export function startWebServer(opts: ({
             for (const client of wss.clients) {
                 client.send(JSON.stringify({
                     type: 'classification',
-                    result: result.result,
+                    result: resultsMapped,
                     timeMs: timeMs,
                     additionalInfo: result.info,
                 }));

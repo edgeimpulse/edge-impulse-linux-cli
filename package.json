@@ -1,6 +1,6 @@
 {
   "name": "edge-impulse-linux",
-  "version": "1.24.1",
+  "version": "1.24.2",
   "description": "Node.js SDK and tools for Edge Impulse for Linux",
   "directories": {
     "example": "examples"
