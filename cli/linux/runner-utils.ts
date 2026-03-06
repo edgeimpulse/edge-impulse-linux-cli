@@ -867,6 +867,9 @@ export function startVlmServer(serverPath: string, serverArgs: string[]
         vlmServerProcess.stderr.on('data', (data) => {
             const message = data.toString();
             console.log(`[VLM Server]: ${message}`);
+            if (message.includes('warning: no usable GPU found' ) && serverArgs.includes('-ngl all')) {
+                reject(new Error('Failed to start VLM server: asked to use GPU but no usable GPU found.'));
+            }
             if (message.includes('main: server is listening')) {
                 resolve(vlmServerProcess);
             }

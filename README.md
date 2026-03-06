@@ -47,7 +47,7 @@ You can pass in options to the CLI. Here are the key ones:
 
 #### Greengrass Integration Note
 
-edge-impulse-linux and edge-impulse-linux-runner can be run as a service via a custom AWS IoT Greengrass component(s). When provided with the "--greengrass" option, both services will utilize the AWS IoT Greengrass authentication context (ONLY present when launched as a AWS IoT Greengrass custom component) as well as AWS Secrets Manager to extract the api key to be used to authenticate to a new project. If the authentication context is abscent and/or incorrect, both services will simply ignore the "--greengrass" option that was provided and continue with any of the other provided options normally. 
+edge-impulse-linux and edge-impulse-linux-runner can be run as a service via a custom AWS IoT Greengrass component(s). When provided with the "--greengrass" option, both services will utilize the AWS IoT Greengrass authentication context (ONLY present when launched as a AWS IoT Greengrass custom component) as well as AWS Secrets Manager to extract the api key to be used to authenticate to a new project. If the authentication context is abscent and/or incorrect, both services will simply ignore the "--greengrass" option that was provided and continue with any of the other provided options normally.
 
 ## Classifying data
 
@@ -67,6 +67,8 @@ To classify data (whether this is from the camera, the microphone, or a custom s
     ```
 
     This downloads the file into `modelfile.eim`. (Want to switch projects? Add `--clean`)
+
+For VLM models on certain Qualcomm targets (RB3 Gen 2, IQ-9), you can enable GPU acceleration by passing `--enable-gpu` to `edge-impulse-linux-runner`. OpenCL drivers should be configured for this to work.
 
 Then you can start classifying realtime sensor data. We have examples for:
 

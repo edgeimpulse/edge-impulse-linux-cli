@@ -5,6 +5,7 @@ import fs from 'fs';
 import * as models from '../../sdk/studio';
 import Path from 'path';
 import os from 'os';
+import tar from "tar";
 
 const BUILD_PREFIX = '\x1b[32m[BLD]\x1b[0m';
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
@@ -321,12 +322,6 @@ export async function downloadModel(opts: {
     return { modelFile, modelPath };
 }
 
-export async function displayDownloadTip(url: string, outputPath: string) {
-    await console.log(RUNNER_PREFIX, `File ${outputPath} is not found, not downloading...`);
-    await console.log(RUNNER_PREFIX, `Consult documentation on how to download the required file.`);
-    return;
-}
-
 export async function downloadFile(url: string, outputPath: string, maxRedirects = 5) {
     console.log(RUNNER_PREFIX, `Downloading from ${url} to ${outputPath}...`);
     const https = await import('https');
@@ -362,7 +357,7 @@ export async function downloadFile(url: string, outputPath: string, maxRedirects
                         downloadedBytes += chunk.length;
                         if (totalBytes && totalBytes > 0) {
                             const progress = ((downloadedBytes / totalBytes) * 100).toFixed(2);
-                            process.stdout.write(`\r${RUNNER_PREFIX} Download progress: ${progress}%`);
+                            // process.stdout.write(`\r${RUNNER_PREFIX} Download progress: ${progress}%`);
                         }
                         else {
                             process.stdout.write(`\r${RUNNER_PREFIX} Downloaded ${downloadedBytes} bytes`);
@@ -390,5 +385,12 @@ export async function downloadFile(url: string, outputPath: string, maxRedirects
         // Start the download process
         download(url, 0);
     });
+}
+
+export async function untarFile(tarPath: string, outDir: string): Promise<void> {
+  await tar.x({
+    file: tarPath,
+    cwd: outDir,
+  });
 }
 

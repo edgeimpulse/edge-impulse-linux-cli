@@ -7,7 +7,7 @@ import { AudioClassifier } from '../../library/classifier/audio-classifier';
 import { ImageClassifier } from '../../library/classifier/image-classifier';
 import inquirer from 'inquirer';
 import { initCliApp, setupCliApp } from "../../cli-common/init-cli-app";
-import { RunnerDownloader, RunnerModelPath, displayDownloadTip, downloadModel } from './runner-downloader';
+import { RunnerDownloader, RunnerModelPath, downloadFile, downloadModel, untarFile } from './runner-downloader';
 import program from 'commander';
 import { ips } from '../../cli-common/get-ips';
 import { RemoteMgmt } from '../../cli-common/remote-mgmt-service';
@@ -114,6 +114,7 @@ program
         `Then you write to the server from another GStreamer pipeline via: ` +
         `"gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,width=640,height=480 ! jpegenc ! tcpclientsink host=localhost port=5050". ` +
         `Only "tcpserversrc" elements are currently supported.`)
+    .option('--enable-gpu', 'Enable GPU acceleration for VLM models (removes CPU-only mode) on certain Qualcomm targets (RB3 Gen 2, IQ-9)')
     .option('--verbose', 'Enable debug logs')
     .allowUnknownOption(true)
     .parse(process.argv);
@@ -125,6 +126,7 @@ const quantizedArgv: boolean = !!program.quantized;
 const enableCameraArgv: boolean = !!program.enableCamera;
 const verboseArgv: boolean = !!program.verbose;
 const dontOutputRgbBuffersArgv: boolean = !!program.dontOutputRgbBuffers;
+const enableGpuArgv: boolean = !!program.enableGpu;
 const apiKeyArgv = <string | undefined>program.apiKey;
 const greengrassArgv: boolean = !!program.greengrass;
 const modelFileArgv = <string | undefined>program.modelFile;
@@ -266,13 +268,16 @@ async function ensureVlmServer(opts: { serverPath: string,
                                        serverDownloadUrl: string,
                                        modelDownloadUrl: string,
                                        serverAddress: string,
-                                       serverPort: number }) {
-    const { serverPath, modelFolder, modelName, serverDownloadUrl, modelDownloadUrl, serverAddress, serverPort } = opts;
+                                       serverPort: number,
+                                       enableGpu: boolean }) {
+    const { serverPath, modelFolder, modelName,
+            serverDownloadUrl, modelDownloadUrl, serverAddress,
+            serverPort, enableGpu } = opts;
     const serverExists = fs.existsSync(serverPath);
-    let modelPath = Path.join(modelFolder, modelName + '.gguf');
+    let modelPath = Path.join(modelFolder, modelName);
     let mmProjPath = Path.join("/");
     if (modelName.indexOf('clip') === -1) {
-        mmProjPath = Path.join(modelFolder, modelName + '-mmproj.gguf');
+        mmProjPath = Path.join(modelFolder, 'mmproj-' + modelName);
     }
     const modelExists = fs.existsSync(modelPath) && fs.existsSync(mmProjPath);
 
@@ -280,8 +285,12 @@ async function ensureVlmServer(opts: { serverPath: string,
     if (!serverExists) {
         console.log("Expected location of VLM server binary:", serverPath);
         // console.log('VLM server binary not found. Downloading...');
-        await displayDownloadTip(serverDownloadUrl, serverPath);
-        // console.log('VLM server binary downloaded.');
+        await fs.promises.mkdir(Path.dirname(serverPath), { recursive: true });
+        let archiveServerPath = serverPath + '.tar.gz';
+        await downloadFile(serverDownloadUrl, archiveServerPath);
+        // console.log('VLM server archive downloaded.');
+        await untarFile(archiveServerPath, Path.dirname(serverPath));
+        await fs.promises.chmod(serverPath, 0o755);
     }
 
     // Check if the model file exists
@@ -291,32 +300,37 @@ async function ensureVlmServer(opts: { serverPath: string,
             console.log("Expected location of VLM mmproj file:", mmProjPath);
         }
         // console.log('VLM model files are not found. Downloading...');
-        await displayDownloadTip(modelDownloadUrl, modelPath);
-        // console.log('VLM model file downloaded.');
-    }
-
-    // Start the VLM server if it's not already running
-    if (!await isVlmServerRunning(serverAddress, serverPort)) {
-        console.log('Starting VLM server...');
-        let serverArgs = [ '--model', modelPath,
-                           '--host', serverAddress,
-                           '--port', serverPort.toString() ];
+        await fs.promises.mkdir(Path.dirname(modelPath), { recursive: true });
+        await downloadFile(modelDownloadUrl, modelPath);
         if (modelName.indexOf('clip') === -1) {
-            serverArgs.push('--mmproj', mmProjPath);
-            serverArgs.push('--no-warmup');
-            serverArgs.push('-b', '128');
-            serverArgs.push('-c', '2048');
-            serverArgs.push('-s', '11');
-            serverArgs.push('-n', '128');
-
+            let mmprojModelDownloadUrl = modelDownloadUrl.split('/').slice(0, -1).concat('mmproj-' + modelName).join('/');
+            await downloadFile(mmprojModelDownloadUrl, mmProjPath);
         }
-        console.log(`Starting VLM server with binary at ${serverPath}, model at ${modelPath}, on ${serverAddress}:${serverPort}...`);
-        vlmServerProcess = await startVlmServer(serverPath, serverArgs);
-        console.log('VLM server started.');
+        console.log('VLM model file downloaded.');
     }
-    else {
-        console.log('VLM server is already running.');
+
+    // Start the VLM server
+    console.log('Starting VLM server...');
+    let serverArgs = [ '--model', modelPath,
+                        '--host', serverAddress,
+                        '--port', serverPort.toString() ];
+    if (modelName.indexOf('clip') === -1) {
+        serverArgs.push('--mmproj', mmProjPath);
+        serverArgs.push('--no-mmproj-offload');
+        serverArgs.push('-b', '128');
+        serverArgs.push('-c', '2048');
+        serverArgs.push('-s', '11');
+        serverArgs.push('-n', '128');
+        if (enableGpu) {
+            serverArgs.push('-ngl', 'all');
+        }
+        else {
+            serverArgs.push('-ngl', '0');
+        }
     }
+    console.log(`Starting VLM server with binary at ${serverPath}, model at ${modelPath}, on ${serverAddress}:${serverPort}...`);
+    vlmServerProcess = await startVlmServer(serverPath, serverArgs);
+    console.log('VLM server started.');
 }
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -708,46 +722,60 @@ async function ensureVlmServer(opts: { serverPath: string,
             model.modelParameters.image_resize_mode = forceResizeModeArgv || resizeParam || 'none';
         }
 
+        if (enableGpuArgv && model.modelParameters.inferencing_engine !== RunnerHelloInferencingEngine.VlmConnector) {
+            throw new Error('Cannot use --enable-gpu without a VLM model');
+        }
+
         // Check if the model requires the VLM server
         if (model.modelParameters.inferencing_engine === RunnerHelloInferencingEngine.VlmConnector) {
             console.log('This model requires the VLM server. Ensuring the server is running...');
-            let systemArch = process.arch;
-            let validArchs = [ 'x64', 'arm64' ];
-            if (!validArchs.includes(systemArch)) {
-                throw new Error(`VLM server is not supported on architecture: ${systemArch}. Supported architectures are: ${validArchs.join(', ')}`);
+            let serverAddress = '0.0.0.0';
+            let serverPort = 8080;
+
+            if (!await isVlmServerRunning(serverAddress, serverPort)) {
+                let systemArch = process.arch;
+                let systemOS = os.platform();
+
+                let validOS = [ 'linux' ];
+                if (!validOS.includes(systemOS)) {
+                    throw new Error(`VLM server is not supported on OS: ${systemOS}. Supported OS are: ${validOS.join(', ')}`);
+                }
+                let validArchs = [ 'x64', 'arm64' ];
+                if (!validArchs.includes(systemArch)) {
+                    throw new Error(`VLM server is not supported on architecture: ${systemArch}. Supported architectures are: ${validArchs.join(', ')}`);
+                }
+                let modelName = model.modelParameters.vlm_model_download_url?.split('/').pop() || '';
+                let serverPath = modelName.includes('clip-') ?
+                    Path.join(os.homedir(),
+                    '.ei-linux-runner', 'bin', 'clip-server-' + systemOS + '-' + systemArch, 'clip-server') :
+                    Path.join(os.homedir(),
+                    '.ei-linux-runner', 'bin', 'llama-server-' + systemOS + '-' + systemArch, 'llama-server');
+                let serverDownloadUrl = modelName.includes('clip-') ?
+                    'https://cdn.edgeimpulse.com/build-system/vlm-binaries/clip-server-' + systemOS + '-' + systemArch + '.tar.gz' :
+                    'https://cdn.edgeimpulse.com/build-system/vlm-binaries/llama-server-' + systemOS + '-' + systemArch + '.tar.gz' ;
+                let modelFolder = Path.join(os.homedir(), '.ei-linux-runner', 'models', modelName.replaceAll('.', '-'));
+                // log details
+                console.log(`System architecture: ${systemArch}`);
+                console.log(`System OS: ${systemOS}`);
+                console.log(`VLM Server binary: ${serverPath}`);
+                console.log(`VLM Model folder: ${modelFolder}`);
+                // console.log(`VLM Server download URL: ${serverDownloadUrl}`);
+                // console.log(`VLM Model download URL: ${model.modelParameters.vlm_model_download_url}`);
+                const vlmOpts = {
+                    serverPath: serverPath,
+                    modelFolder: modelFolder,
+                    modelName: modelName,
+                    serverDownloadUrl: serverDownloadUrl,
+                    modelDownloadUrl: model.modelParameters.vlm_model_download_url || '',
+                    serverAddress: serverAddress,
+                    serverPort: serverPort,
+                    enableGpu: enableGpuArgv,
+                };
+                await ensureVlmServer(vlmOpts);
             }
-            let systemOS = os.platform();
-            let validOS = [ 'linux' ];
-            if (!validOS.includes(systemOS)) {
-                throw new Error(`VLM server is not supported on OS: ${systemOS}. Supported OS are: ${validOS.join(', ')}`);
+            else {
+                console.log('VLM server is already running.');
             }
-            let modelName = model.modelParameters.vlm_model_download_url?.split('/').pop() || '';
-            let serverPath = modelName.includes('clip-') ?
-                Path.join("/", "app",
-                '.ei-linux-runner', 'bin', 'clip-server-' + systemOS + '-' + systemArch, 'clip-server') :
-                Path.join("/", "app",
-                '.ei-linux-runner', 'bin', 'llama-server-' + systemOS + '-' + systemArch, 'llama-server');
-            let serverDownloadUrl = modelName.includes('clip-') ?
-                'https:://github.com/edge-impulse/vlm-server/releases/download/v0.1.0/clip-server-' + systemOS + '-' + systemArch :
-                'https:://github.com/edge-impulse/vlm-server/releases/download/v0.1.0/llama-server-' + systemOS + '-' + systemArch;
-            let modelFolder = Path.join("/", "app", '.ei-linux-runner', 'models', modelName);
-            // log details
-            console.log(`System architecture: ${systemArch}`);
-            console.log(`System OS: ${systemOS}`);
-            console.log(`VLM Server binary: ${serverPath}`);
-            console.log(`VLM Model folder: ${modelFolder}`);
-            // console.log(`VLM Server download URL: ${serverDownloadUrl}`);
-            // console.log(`VLM Model download URL: ${model.modelParameters.vlm_model_download_url}`);
-            const vlmOpts = {
-                serverPath: serverPath,
-                modelFolder: modelFolder,
-                modelName: modelName,
-                serverDownloadUrl: serverDownloadUrl,
-                modelDownloadUrl: model.modelParameters.vlm_model_download_url || '',
-                serverAddress: '0.0.0.0',
-                serverPort: 8080,
-            };
-            await ensureVlmServer(vlmOpts);
 
             model.modelParameters.image_resize_mode = "none";
             previewOriginalResolutionArgv = true;
@@ -1411,6 +1439,9 @@ async function ensureVlmServer(opts: { serverPath: string,
         }
         if (imageClassifier) {
             await imageClassifier.stop();
+        }
+        if (vlmServerProcess) {
+            await stopVlmServer(vlmServerProcess);
         }
         process.exit(1);
     }
