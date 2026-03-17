@@ -818,7 +818,7 @@ export class GStreamer extends EventEmitter<{
             // Some resolutions reported by camera causes the pipeline to hang. To fix that, it seems
             // we need to increase width and/or height by 8 pixels. This hack should be removed once
             // the hardware driver for ISP on QRB2210 is released.
-            if (this._mode === 'unoq') {
+            if (this._mode === 'unoq' && device.name.indexOf('/cci@') > -1) {
                 cap.width += 8;
             }
         }
