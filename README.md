@@ -27,11 +27,17 @@ For corporate-managed Windows devices where `npm install` is blocked (TLS interc
 
 * Windows 10/11 (`x64` or `arm64` artifact)
 * Administrator rights to install (writes to `Program Files` and system PATH)
-* No WSL required for installation
+* WSL is not required for installation, but recommended for full Linux CLI behavior
 
 ### Important runtime note
 
 This is still the Linux CLI package, packaged for Windows installation. Some commands or hardware flows that depend on Linux-specific behavior or drivers may still require Linux/WSL at runtime.
+
+For full functionality, install WSL first from an elevated Command Prompt:
+
+```
+wsl --install
+```
 
 ### Build and download installer artifacts
 
