@@ -16,6 +16,8 @@ SetCompressor /SOLID lzma
 !define UNINSTALL_KEY     "Software\Microsoft\Windows\CurrentVersion\Uninstall\EdgeImpulseLinuxCLI"
 !define STAGING_DIR       "staging"
 !define OUTPUT_DIR        "output"
+!define BRAND_HEADER_BMP  "branding\header.bmp"
+!define BRAND_WELCOME_BMP "branding\welcome.bmp"
 
 !include "MUI2.nsh"
 !include "x64.nsh"
@@ -23,6 +25,10 @@ SetCompressor /SOLID lzma
 !include "FileFunc.nsh"
 
 !define MUI_ABORTWARNING
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_RIGHT
+!define MUI_HEADERIMAGE_BITMAP "${BRAND_HEADER_BMP}"
+!define MUI_WELCOMEFINISHPAGE_BITMAP "${BRAND_WELCOME_BMP}"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${STAGING_DIR}\LICENSE.txt"
