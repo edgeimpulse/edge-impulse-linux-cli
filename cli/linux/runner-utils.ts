@@ -6,7 +6,7 @@ import multer from 'multer';
 import sharp, { FitEnum } from 'sharp';
 import { Server as SocketIoServer } from 'socket.io';
 import type { EdgeImpulseApi } from '../../sdk/studio/api';
-import { type LinuxImpulseRunner, type ModelInformation, RunnerBlockThreshold, RunnerHelloHasAnomaly, SetRunnerBlockThreshold, RunnerHelloInferencingEngine } from '../../library/classifier/linux-impulse-runner';
+import { type LinuxImpulseRunner, type ModelInformation, RunnerBlockThreshold, SetRunnerBlockThreshold, RunnerHelloInferencingEngine } from '../../library/classifier/linux-impulse-runner';
 import { type InferenceServerModelViewModel, renderInferenceServerView } from './webserver/views/inference-server-view';
 import { asyncMiddleware } from './webserver/middleware/asyncMiddleware';
 import { ImageClassifier, FitMethodMap, FitMethodStudioMap } from '../../library/classifier/image-classifier';
@@ -19,6 +19,7 @@ import { mapPredictionToOriginalImage, } from '../../shared/views/project/boundi
 import { AudioClassifier } from '../../library';
 import { spawn, ChildProcess } from 'child_process';
 import http from 'http';
+import { hasVisualAd } from '../../cli-common/model-monitor';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 
@@ -50,7 +51,7 @@ export function imageClassifierHelloMsg(model: ModelInformation) {
     let param = model.modelParameters;
     let labels = param.labels;
 
-    if (param.has_anomaly === RunnerHelloHasAnomaly.VisualGMM) {
+    if (hasVisualAd(model)) {
         labels.push('anomaly');
     }
 
@@ -138,7 +139,6 @@ export function startApiServer(opts: {
 
         const isObjectDetection = model.modelParameters.model_type === 'constrained_object_detection' ||
             model.modelParameters.model_type === 'object_detection';
-        const isVisualAd = model.modelParameters.has_anomaly === RunnerHelloHasAnomaly.VisualGMM;
 
         let modelVm: InferenceServerModelViewModel;
         if (model.modelParameters.sensorType === 'camera') {
@@ -147,7 +147,7 @@ export function startApiServer(opts: {
                 width: model.modelParameters.image_input_width,
                 height: model.modelParameters.image_input_height,
                 depth: model.modelParameters.image_channel_count === 3 ? 'RGB' : 'Grayscale',
-                showImagePreview: isObjectDetection || isVisualAd,
+                showImagePreview: isObjectDetection || hasVisualAd(model),
                 modelType: model.modelParameters.model_type,
             };
         }
@@ -177,7 +177,7 @@ export function startApiServer(opts: {
         res.header('Content-Type', 'application/json');
 
         let modelParametersCloned = Object.assign({
-            has_visual_anomaly_detection: model.modelParameters.has_anomaly === RunnerHelloHasAnomaly.VisualGMM,
+            has_visual_anomaly_detection: hasVisualAd(model),
         }, model.modelParameters);
 
         res.end(JSON.stringify({

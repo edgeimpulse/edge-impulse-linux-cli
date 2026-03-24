@@ -1,5 +1,4 @@
-import { ImageClassifier, LinuxImpulseRunner, ICamera, Imagesnap, GStreamer } from "../../library";
-import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-runner";
+import { ImageClassifier, LinuxImpulseRunner, ICamera, Imagesnap, GStreamer, RunnerHelloHasAnomaly } from "../../library";
 
 (async () => {
     try  {
@@ -31,8 +30,14 @@ import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-ru
         let runner = new LinuxImpulseRunner(argModelFile);
         let model = await runner.init();
 
+        const hasVisualAd = [
+            RunnerHelloHasAnomaly.VisualGMM,
+            RunnerHelloHasAnomaly.VisualPatchcore,
+            RunnerHelloHasAnomaly.VisualCustom
+        ].includes(model.modelParameters.has_anomaly);
+
         let labels = model.modelParameters.labels;
-        if (model.modelParameters.has_anomaly === RunnerHelloHasAnomaly.VisualGMM) {
+        if (hasVisualAd) {
             labels.push('anomaly');
         }
 

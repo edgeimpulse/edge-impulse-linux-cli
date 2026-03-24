@@ -30,8 +30,14 @@ const { ImageClassifier, LinuxImpulseRunner, Ffmpeg, Imagesnap, RunnerHelloHasAn
         let runner = new LinuxImpulseRunner(argModelFile);
         let model = await runner.init();
 
+        const hasVisualAd = [
+            RunnerHelloHasAnomaly.VisualGMM,
+            RunnerHelloHasAnomaly.VisualPatchcore,
+            RunnerHelloHasAnomaly.VisualCustom
+        ].includes(model.modelParameters.has_anomaly);
+
         let labels = model.modelParameters.labels;
-        if (model.modelParameters.has_anomaly === RunnerHelloHasAnomaly.VisualGMM) {
+        if (hasVisualAd) {
             labels.push('anomaly');
         }
 

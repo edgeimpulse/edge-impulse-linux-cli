@@ -1,11 +1,10 @@
-import { ImageClassifier, LinuxImpulseRunner, ICamera, Imagesnap, ModelInformation, GStreamer } from "../../library";
+import { ImageClassifier, LinuxImpulseRunner, ICamera, Imagesnap, ModelInformation, GStreamer, RunnerHelloHasAnomaly } from "../../library";
 import { ips } from "../../cli-common/get-ips";
 import sharp from 'sharp';
 import express = require('express');
 import { Server as SocketIoServer } from 'socket.io';
 import http from 'http';
 import Path from 'path';
-import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-runner";
 
 (async () => {
     try  {
@@ -40,8 +39,14 @@ import { RunnerHelloHasAnomaly } from "../../library/classifier/linux-impulse-ru
         let runner = new LinuxImpulseRunner(argModelFile);
         let model = await runner.init();
 
+        const hasVisualAd = [
+            RunnerHelloHasAnomaly.VisualGMM,
+            RunnerHelloHasAnomaly.VisualPatchcore,
+            RunnerHelloHasAnomaly.VisualCustom
+        ].includes(model.modelParameters.has_anomaly);
+
         let labels = model.modelParameters.labels;
-        if (model.modelParameters.has_anomaly === RunnerHelloHasAnomaly.VisualGMM) {
+        if (hasVisualAd) {
             labels.push('anomaly');
         }
 
