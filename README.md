@@ -91,6 +91,59 @@ You can pass in options to the CLI. Here are the key ones:
 
 edge-impulse-linux and edge-impulse-linux-runner can be run as a service via a custom AWS IoT Greengrass component(s). When provided with the "--greengrass" option, both services will utilize the AWS IoT Greengrass authentication context (ONLY present when launched as a AWS IoT Greengrass custom component) as well as AWS Secrets Manager to extract the api key to be used to authenticate to a new project. If the authentication context is abscent and/or incorrect, both services will simply ignore the "--greengrass" option that was provided and continue with any of the other provided options normally.
 
+### Snapdragon Hardware Acceleration (Windows ARM64)
+
+The Windows installer for ARM64 devices on Qualcomm Snapdragon platforms includes automatic detection and support for **QNN (Qualcomm Neural Network)** hardware acceleration.
+
+#### What this enables
+
+* Neural network inference via Snapdragon NPU (Neural Processing Unit)
+* Optimized DSP (Digital Signal Processing) for audio/signal preprocessing
+* Accelerated model compilation to ONNX and TensorFlow Lite formats
+* Automatic fallback to CPU mode if acceleration libraries unavailable
+
+#### Supported devices
+
+* Windows 11 ARM64 on Snapdragon processors (X SoC, Gen 3, etc.)
+* Qualcomm reference boards (RB3 Gen 2, IQ-9)
+
+#### Checking for Snapdragon acceleration
+
+After installation, run the included detection script to verify acceleration support:
+
+```powershell
+# From Command Prompt or PowerShell
+%PROGRAMFILES%\EdgeImpulse Linux CLI\bin\detect-snapdragon.ps1
+```
+
+Expected output for Snapdragon device:
+
+```
+✓ Snapdragon device detected: <processor-name>
+✓ QNN runtime available - hardware acceleration enabled
+```
+
+If QNN runtime is not detected:
+
+```
+ℹ Qualcomm Snapdragon detected: <processor-name>
+ℹ QNN runtime not detected - install Qualcomm AI Hub or Snapdragon SDK for acceleration
+```
+
+#### Installing QNN runtime
+
+To enable QNN hardware acceleration, install one of:
+
+1. **Qualcomm AI Hub** - Recommended for developers
+   - Download from https://qualcomm.ai/hub
+   - Includes QNN SDK and runtime libraries
+
+2. **Snapdragon SDK** - For Snapdragon platform development
+   - Available via Qualcomm Developer Network
+   - Includes TensorFlow Lite with QNN delegate support
+
+After installation, the CLI will automatically detect and use QNN for model execution. The system gracefully falls back to CPU inference if QNN libraries are unavailable.
+
 ## Classifying data
 
 To classify data (whether this is from the camera, the microphone, or a custom sensor) you'll need a model file. This model file contains all signal processing code, classical ML algorithms and neural networks - and typically contains hardware optimizations to run as fast as possible. To grab a model file:

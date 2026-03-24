@@ -66,6 +66,21 @@ if (-not (Test-Path $nmSrc)) { throw "node_modules/ not found. Run npm ci first.
 robocopy $nmSrc "$stagingDir\node_modules" /E /NFL /NDL /NJH /NJS | Out-Null
 if ($LASTEXITCODE -gt 7) { throw "robocopy node_modules failed with exit code $LASTEXITCODE" }
 
+# Detect Snapdragon hardware acceleration support (ARM64 only)
+Write-Host "`n--> Checking Snapdragon hardware acceleration support"
+if ($Arch -eq 'arm64') {
+    $detectScriptPath = Join-Path $PSScriptRoot "detect-snapdragon.ps1"
+    if (Test-Path $detectScriptPath) {
+        & $detectScriptPath
+    }
+    else {
+        Write-Host "   (Snapdragon detection script not found)"
+    }
+}
+else {
+    Write-Host "   Skipped (x64 architecture)"
+}
+
 Write-Host "`n--> Writing .cmd shims"
 $binEntries = @{
     'edge-impulse-linux' = 'build\cli\linux\linux.js'
@@ -81,6 +96,16 @@ foreach ($name in $binEntries.Keys) {
 "@
     Set-Content -Path $cmdPath -Value $content -Encoding ASCII
     Write-Host "   $name.cmd"
+}
+
+Write-Host "`n--> Copying Snapdragon detection helper"
+$detectScript = Join-Path $PSScriptRoot "detect-snapdragon.ps1"
+if (Test-Path $detectScript) {
+    Copy-Item -Path $detectScript -Destination "$stagingDir\bin\detect-snapdragon.ps1" -Force
+    Write-Host "   detect-snapdragon.ps1 (for ARM64 optimization)"
+}
+else {
+    Write-Host "   (Snapdragon detection script not found)"
 }
 
 Write-Host "`n--> Copying LICENSE"
