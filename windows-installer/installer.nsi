@@ -70,6 +70,7 @@ Section "Edge Impulse Linux CLI (required)" SecMain
   File "${STAGING_DIR}\bin\edge-impulse-linux.cmd"
   File "${STAGING_DIR}\bin\edge-impulse-linux-runner.cmd"
   File "${STAGING_DIR}\bin\edge-impulse-camera-debug.cmd"
+  File "${STAGING_DIR}\bin\detect-snapdragon.ps1"
 
   FileOpen  $R0 "$TEMP\_ei_addpath.ps1" w
   FileWrite $R0 "$$binDir = '$INSTDIR\bin'$\r$\n"
