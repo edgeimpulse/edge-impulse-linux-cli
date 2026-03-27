@@ -10,6 +10,48 @@ Add the library to your application via:
 $ npm install edge-impulse-linux
 ```
 
+## Windows offline installer (for locked-down environments)
+
+For corporate-managed Windows devices where `npm install` is blocked (TLS interception, no build tools, restricted package access), this repo also supports a prebuilt Windows installer artifact via GitHub Actions.
+
+### What this installer includes
+
+* Bundled `node.exe` runtime (no separate Node.js install required)
+* Prebuilt `node_modules` from CI (no local `node-gyp` / Python toolchain required)
+* Installed CLI shims in PATH:
+    * `edge-impulse-linux`
+    * `edge-impulse-linux-runner`
+    * `edge-impulse-camera-debug`
+
+### End-user requirements
+
+* Windows 10/11 (`x64` or `arm64` artifact)
+* Administrator rights to install (writes to `Program Files` and system PATH)
+* WSL is not required for installation, but recommended for full Linux CLI behavior
+
+### Important runtime note
+
+This is still the Linux CLI package, packaged for Windows installation. Some commands or hardware flows that depend on Linux-specific behavior or drivers may still require Linux/WSL at runtime.
+
+For full functionality, install WSL first from an elevated Command Prompt:
+
+```
+wsl --install
+```
+
+### Build and download installer artifacts
+
+Use the workflow in this repository:
+
+* **Actions** → **Build Windows Linux-CLI Installer**
+
+Artifacts produced:
+
+* `edge-impulse-linux-cli-windows-x64`
+* `edge-impulse-linux-cli-windows-arm64`
+
+Each artifact zip contains a `.exe` installer.
+
 ## Collecting data
 
 Before you can classify data you'll first need to collect it. If you want to collect data from the camera or microphone on your system you can use the Edge Impulse CLI, and if you want to collect data from different sensors (like accelerometers or proprietary control systems) you can do so in a few lines of code.
