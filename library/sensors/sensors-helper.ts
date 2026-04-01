@@ -4,11 +4,13 @@ import { Prophesee } from './prophesee';
 import { GStreamer } from './gstreamer';
 import { Imagesnap } from './imagesnap';
 import { AudioRecorder } from './recorder';
+import { FakeCamera } from './fake-camera';
 
 export enum CameraType {
     PropheseeCamera = 'prophesee',
     ImagesnapCamera = 'imagesnap',
     GStreamerCamera = 'gstreamer',
+    Fake = 'fake',
     UnknownCamera = 'unknown',
 }
 
@@ -25,13 +27,20 @@ export async function initCamera(opts: {
     profiling: boolean,
     preferJpegCaps: boolean,
     gstSource: string | undefined,
+    fakeImageCameraPath: string | undefined,
 }) {
     const { cameraType, cameraDeviceNameInConfig, dimensions, inferenceDimensions,
         gstLaunchArgs, verboseOutput, cameraColorFormat, gstSource } = opts;
     let { cameraNameArgv } = opts;
 
     let camera: ICamera;
-    if (cameraType === CameraType.PropheseeCamera) {
+    if (cameraType === CameraType.Fake) {
+        if (!opts.fakeImageCameraPath) {
+            throw new Error(`opts.fakeImageCameraPath is required for FakeCamera`);
+        }
+        camera = new FakeCamera({ imagePath: opts.fakeImageCameraPath });
+    }
+    else if (cameraType === CameraType.PropheseeCamera) {
         camera = new Prophesee(verboseOutput);
     }
     else if (cameraType === CameraType.ImagesnapCamera) {

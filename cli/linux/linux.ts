@@ -9,7 +9,7 @@ import program from 'commander';
 import Path from 'path';
 import fs from 'fs';
 import Websocket from 'ws';
-import { initCamera, initMicrophone, getCameraType } from '../../library/sensors/sensors-helper';
+import { initCamera, initMicrophone, getCameraType, CameraType } from '../../library/sensors/sensors-helper';
 import { LinuxDevice } from './linux-device';
 
 const packageVersion = (<{ version: string }>JSON.parse(fs.readFileSync(
@@ -39,6 +39,8 @@ program
     .option('--verbose', 'Enable debug logs')
     .option('--greengrass', 'Enable AWS IoT greengrass integration mode')
     .option('--gst-source <args>', 'Defines the gstreamer source. E.g --gst-source \"tcpserversrc host=0.0.0.0 port=5050 ! jpegdec\"')
+    .option('--fake-camera <path>', 'Create a fake camera instance')
+    .option('--dont-prompt-for-device-name', `Don't prompt for a device name`)
     .allowUnknownOption(true)
     .parse(process.argv);
 
@@ -60,6 +62,8 @@ const cameraArgv = <string | undefined>program.camera;
 const microphoneArgv = <string | undefined>program.microphone;
 const cameraColorFormatArgv = <string | undefined>program.cameraColorFormat;
 const gstSourceArgv = <string | undefined>program.gstSource;
+const fakeCameraArgv = <string | undefined>program.fakeCamera;
+const dontPromptForDeviceName = !!program.dontPromptForDeviceName;
 
 if ((program.width && !program.height) || (!program.width && program.height)) {
     console.error('--width and --height need to either be both specified or both omitted');
@@ -90,6 +94,7 @@ const cliOptions = {
     devArgv: devArgv,
     hmacKeyArgv: hmacKeyArgv,
     silentArgv: silentArgv,
+    verboseArgv: verboseArgv,
     connectProjectMsg: 'To which project do you want to connect this device?',
     getProjectFromConfig: async () => {
         let projectId = await configFactory.getLinuxProjectId();
@@ -107,7 +112,9 @@ let isExiting = false;
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
     try {
-        const cameraType = getCameraType();
+        const cameraType = fakeCameraArgv ?
+            CameraType.Fake :
+            getCameraType();
 
         const init = await initCliApp(cliOptions);
         const config = init.config;
@@ -128,6 +135,8 @@ let isExiting = false;
             undefined, // model monitoring object
             url => new Websocket(url),
             async (currName) => {
+                if (dontPromptForDeviceName) return currName;
+
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
                 let nameDevice = <{ nameDevice: string }>await inquirer.prompt([{
                     type: 'input',
@@ -200,6 +209,7 @@ let isExiting = false;
                 dontOutputRgbBuffers: true,
                 preferJpegCaps: false,
                 gstSource: gstSourceArgv,
+                fakeImageCameraPath: fakeCameraArgv,
             });
             camera = await initedCamera.start();
             const cameraOpts = camera.getLastOptions();

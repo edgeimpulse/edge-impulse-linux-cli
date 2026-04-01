@@ -114,6 +114,7 @@ program
         `Then you write to the server from another GStreamer pipeline via: ` +
         `"gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,width=640,height=480 ! jpegenc ! tcpclientsink host=localhost port=5050". ` +
         `Only "tcpserversrc" elements are currently supported.`)
+    .option('--fake-camera <path>', 'Create a fake camera instance')
     .option('--enable-gpu', 'Enable GPU acceleration for VLM models (removes CPU-only mode) on certain Qualcomm targets (RB3 Gen 2, IQ-9)')
     .option('--verbose', 'Enable debug logs')
     .allowUnknownOption(true)
@@ -178,6 +179,7 @@ const microphoneArgv = <string | undefined>program.microphone;
 const cameraColorFormatArgv = <string | undefined>program.cameraColorFormat;
 const experimentalGstPreferJpegArgv = !!program.experimentalGstPreferJpeg;
 let modeArgv = <'streaming' | 'http-server' | undefined>program.mode;
+const fakeCameraArgv = <string | undefined>program.fakeCamera;
 
 if (modeArgv === 'http-server' && typeof runHttpServerPort === 'undefined') {
     runHttpServerPort = 1337;
@@ -206,6 +208,7 @@ const cliOptions = {
     devArgv: devArgv,
     hmacKeyArgv: undefined,
     silentArgv: silentArgv,
+    verboseArgv: verboseArgv,
     connectProjectMsg: 'From which project do you want to load the model?',
     getProjectFromConfig: async () => {
         if (!configFactory) return undefined;
@@ -349,7 +352,9 @@ async function ensureVlmServer(opts: { serverPath: string,
         let devKeys: { apiKey: string, hmacKey: string };
         let runner: LinuxImpulseRunner;
         let model: ModelInformation;
-        const cameraType = getCameraType();
+        const cameraType = fakeCameraArgv ?
+            CameraType.Fake :
+            getCameraType();
 
         // AWS Support
         let awsSM: AWSSecretsManagerUtils | undefined;
@@ -1027,6 +1032,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                     dontOutputRgbBuffers: dontOutputRgbBuffersArgv,
                     preferJpegCaps: experimentalGstPreferJpegArgv,
                     gstSource: gstSourceArgv,
+                    fakeImageCameraPath: fakeCameraArgv,
                 });
 
                 console.log(RUNNER_PREFIX, `Using camera "${cameraInit.cameraDevice}" (because --enable-camera, run with --clean to select another one)`);
@@ -1191,6 +1197,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                 dontOutputRgbBuffers: dontOutputRgbBuffersArgv,
                 preferJpegCaps: experimentalGstPreferJpegArgv,
                 gstSource: gstSourceArgv,
+                fakeImageCameraPath: fakeCameraArgv,
             });
 
             await configFactory.storeCamera(cameraInit.cameraDevice);
