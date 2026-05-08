@@ -1,0 +1,103 @@
+name: Build Windows Linux-CLI Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_release:
+        description: 'Upload as a GitHub Release (requires a version tag)'
+        type: boolean
+        default: false
+  push:
+    branches:
+      - windows-offline-installer
+    tags:
+      - 'linux-cli-v*'
+
+jobs:
+  build:
+    name: Build installer (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+          - arch: arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.arch == 'arm64' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          architecture: ${{ matrix.arch }}
+
+      - name: Install dependencies and compile TypeScript
+        shell: pwsh
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage installer bundle
+        shell: pwsh
+        run: |
+          & windows-installer/stage.ps1 `
+            -Arch "${{ matrix.arch }}" `
+            -NodeVersion "22.15.1"
+          if ($LASTEXITCODE -gt 1) { exit $LASTEXITCODE }
+          exit 0
+
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis --no-progress -y
+
+      - name: Build NSIS installer
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          Set-Location windows-installer
+          New-Item -ItemType Directory -Force output | Out-Null
+
+          $makeNsis = $null
+          $candidates = @(
+            "$env:ChocolateyInstall\bin\makensis.exe",
+            "$env:ProgramData\chocolatey\bin\makensis.exe",
+            "$env:ProgramFiles\NSIS\makensis.exe",
+            "C:\Program Files (x86)\NSIS\makensis.exe"
+          )
+
+          foreach ($candidate in $candidates) {
+            if (Test-Path $candidate) {
+              $makeNsis = $candidate
+              break
+            }
+          }
+
+          if (-not $makeNsis) {
+            $cmd = Get-Command makensis -ErrorAction SilentlyContinue
+            if ($cmd) { $makeNsis = $cmd.Source }
+          }
+
+          if (-not $makeNsis) {
+            throw "makensis.exe not found after NSIS install"
+          }
+
+          & $makeNsis /DARCH=${{ matrix.arch }} /DPRODUCT_VERSION=$version installer.nsi
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-impulse-linux-cli-windows-${{ matrix.arch }}
+          path: windows-installer/output/edge-impulse-linux-cli-windows-${{ matrix.arch }}-setup.exe
+          if-no-files-found: error
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.upload_release)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: windows-installer/output/edge-impulse-linux-cli-windows-${{ matrix.arch }}-setup.exe
+          tag_name: ${{ github.ref_name }}

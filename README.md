@@ -10,6 +10,48 @@ Add the library to your application via:
 $ npm install edge-impulse-linux
 ```
 
+## Windows offline installer (for locked-down environments)
+
+For corporate-managed Windows devices where `npm install` is blocked (TLS interception, no build tools, restricted package access), this repo also supports a prebuilt Windows installer artifact via GitHub Actions.
+
+### What this installer includes
+
+* Bundled `node.exe` runtime (no separate Node.js install required)
+* Prebuilt `node_modules` from CI (no local `node-gyp` / Python toolchain required)
+* Installed CLI shims in PATH:
+    * `edge-impulse-linux`
+    * `edge-impulse-linux-runner`
+    * `edge-impulse-camera-debug`
+
+### End-user requirements
+
+* Windows 10/11 (`x64` or `arm64` artifact)
+* Administrator rights to install (writes to `Program Files` and system PATH)
+* WSL is not required for installation, but recommended for full Linux CLI behavior
+
+### Important runtime note
+
+This is still the Linux CLI package, packaged for Windows installation. Some commands or hardware flows that depend on Linux-specific behavior or drivers may still require Linux/WSL at runtime.
+
+For full functionality, install WSL first from an elevated Command Prompt:
+
+```
+wsl --install
+```
+
+### Build and download installer artifacts
+
+Use the workflow in this repository:
+
+* **Actions** → **Build Windows Linux-CLI Installer**
+
+Artifacts produced:
+
+* `edge-impulse-linux-cli-windows-x64`
+* `edge-impulse-linux-cli-windows-arm64`
+
+Each artifact zip contains a `.exe` installer.
+
 ## Collecting data
 
 Before you can classify data you'll first need to collect it. If you want to collect data from the camera or microphone on your system you can use the Edge Impulse CLI, and if you want to collect data from different sensors (like accelerometers or proprietary control systems) you can do so in a few lines of code.
@@ -48,6 +90,59 @@ You can pass in options to the CLI. Here are the key ones:
 #### Greengrass Integration Note
 
 edge-impulse-linux and edge-impulse-linux-runner can be run as a service via a custom AWS IoT Greengrass component(s). When provided with the "--greengrass" option, both services will utilize the AWS IoT Greengrass authentication context (ONLY present when launched as a AWS IoT Greengrass custom component) as well as AWS Secrets Manager to extract the api key to be used to authenticate to a new project. If the authentication context is abscent and/or incorrect, both services will simply ignore the "--greengrass" option that was provided and continue with any of the other provided options normally.
+
+### Snapdragon Hardware Acceleration (Windows ARM64)
+
+The Windows installer for ARM64 devices on Qualcomm Snapdragon platforms includes automatic detection and support for **QNN (Qualcomm Neural Network)** hardware acceleration.
+
+#### What this enables
+
+* Neural network inference via Snapdragon NPU (Neural Processing Unit)
+* Optimized DSP (Digital Signal Processing) for audio/signal preprocessing
+* Accelerated model compilation to ONNX and TensorFlow Lite formats
+* Automatic fallback to CPU mode if acceleration libraries unavailable
+
+#### Supported devices
+
+* Windows 11 ARM64 on Snapdragon processors (X SoC, Gen 3, etc.)
+* Qualcomm reference boards (RB3 Gen 2, IQ-9)
+
+#### Checking for Snapdragon acceleration
+
+After installation, run the included detection script to verify acceleration support:
+
+```powershell
+# From Command Prompt or PowerShell
+%PROGRAMFILES%\EdgeImpulse Linux CLI\bin\detect-snapdragon.ps1
+```
+
+Expected output for Snapdragon device:
+
+```
+✓ Snapdragon device detected: <processor-name>
+✓ QNN runtime available - hardware acceleration enabled
+```
+
+If QNN runtime is not detected:
+
+```
+ℹ Qualcomm Snapdragon detected: <processor-name>
+ℹ QNN runtime not detected - install Qualcomm AI Hub or Snapdragon SDK for acceleration
+```
+
+#### Installing QNN runtime
+
+To enable QNN hardware acceleration, install one of:
+
+1. **Qualcomm AI Hub** - Recommended for developers
+   - Download from https://qualcomm.ai/hub
+   - Includes QNN SDK and runtime libraries
+
+2. **Snapdragon SDK** - For Snapdragon platform development
+   - Available via Qualcomm Developer Network
+   - Includes TensorFlow Lite with QNN delegate support
+
+After installation, the CLI will automatically detect and use QNN for model execution. The system gracefully falls back to CPU inference if QNN libraries are unavailable.
 
 ## Classifying data
 
