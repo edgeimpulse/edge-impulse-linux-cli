@@ -5,7 +5,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path "$PSScriptRoot\.."
-$sourceImage = Join-Path $repoRoot "img\linux-collection.png"
+$sourceImage = Join-Path $repoRoot "img\edge-impulse-logo.png"
+# Fall back to the monorepo logo if running from within the edgeimpulse monorepo checkout
+if (-not (Test-Path $sourceImage)) {
+    $sourceImage = Join-Path $repoRoot "studio\public\themes\default\png\logo.png"
+}
 $brandingDir = Join-Path $PSScriptRoot "branding"
 $headerBmp = Join-Path $brandingDir "header.bmp"
 $welcomeBmp = Join-Path $brandingDir "welcome.bmp"
