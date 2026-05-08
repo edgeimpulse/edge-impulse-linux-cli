@@ -55,14 +55,6 @@ jobs:
         shell: pwsh
         run: choco install nsis --no-progress -y
 
-      - name: Install ImageMagick
-        shell: pwsh
-        run: choco install imagemagick --no-progress -y
-
-      - name: Generate installer branding assets
-        shell: pwsh
-        run: windows-installer/prepare-branding.ps1
-
       - name: Build NSIS installer
         shell: pwsh
         run: |

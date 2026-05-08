@@ -1,3 +1,4 @@
 staging/
 output/
-branding/
+# Only ignore generated sub-folder; header.bmp / welcome.bmp are pre-built and committed.
+branding/generated/
