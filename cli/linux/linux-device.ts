@@ -209,6 +209,7 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 addDateId: true,
                 projectId: this._projectId,
                 configFactory: this._configFactory,
+                attachments: undefined,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -264,6 +265,7 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 addDateId: true,
                 projectId: this._projectId,
                 configFactory: this._configFactory,
+                attachments: undefined,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
@@ -343,6 +345,7 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
                 addDateId: true,
                 projectId: this._projectId,
                 configFactory: this._configFactory,
+                attachments: undefined,
             });
 
             console.log(SERIAL_PREFIX, 'Sampling finished');
