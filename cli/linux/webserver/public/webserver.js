@@ -331,16 +331,17 @@ window.WebServer = async (vmStr) => {
             els.imageClassify.row.style.display = '';
 
             let conclusion = vm.hasPerformanceCalibration ? '...' : 'uncertain';
-            let highest = Math.max(...Object.values(result.classification));
 
-            for (let k of Object.keys(result.classification)) {
-                if (result.classification[k] >= 0.55) {
-                    if (vm.hasPerformanceCalibration) {
-                        conclusion = k;
-                    }
-                    else {
-                        conclusion = k + ' (' + result.classification[k].toFixed(2) + ')';
-                    }
+            const [ highestLabel, highestValue ] = Object.entries(result.classification).reduce(
+            (best, curr) => curr[1] > best[1] ? curr : best
+            );
+
+            if(highestValue >= 0.55) {
+                if(vm.hasPerformanceCalibration) {
+                    conclusion = highestLabel;
+                }
+                else {
+                    conclusion = highestLabel + ' (' + highestValue.toFixed(2) + ')';
                 }
             }
 
@@ -409,7 +410,7 @@ window.WebServer = async (vmStr) => {
                     let td = document.createElement('td');
                     td.classList.add('text-center');
                     td.textContent = result.classification[k].toFixed(2);
-                    if (result.classification[k] === highest && !isVisualAnomaly) {
+                    if (result.classification[k] === highestValue && !isVisualAnomaly) {
                         td.style.fontWeight = 600;
                     }
                     tr.appendChild(td);
