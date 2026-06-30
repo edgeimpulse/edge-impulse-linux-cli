@@ -1,3 +1,4 @@
+import { fetch, Agent } from 'undici';
 import { EdgeImpulseApi } from "../../sdk/studio/api";
 import { EventEmitter } from 'tsee';
 import { spawnHelper } from "../../library/sensors/spawn-helper";
@@ -322,69 +323,55 @@ export async function downloadModel(opts: {
     return { modelFile, modelPath };
 }
 
-export async function downloadFile(url: string, outputPath: string, maxRedirects = 5) {
+export async function downloadFile(url: string, outputPath: string) {
     console.log(RUNNER_PREFIX, `Downloading from ${url} to ${outputPath}...`);
-    const https = await import('https');
-    const urlModule = await import('url'); // To handle URL parsing
 
-    return new Promise<void>((resolve, reject) => {
-        const download = (currentUrl: string, redirectCount: number) => {
-            if (redirectCount > maxRedirects) {
-                return reject(new Error(`Too many redirects: ${redirectCount}`));
-            }
-
-            const file = fs.createWriteStream(outputPath);
-            https.get(currentUrl, response => {
-                if (response.statusCode && response.statusCode >= 300 &&
-                    response.statusCode < 400 && response.headers.location) {
-                    // Handle redirect
-                    const redirectUrl = urlModule.resolve(currentUrl, response.headers.location);
-                    console.log(RUNNER_PREFIX, `Redirecting to ${redirectUrl}...`);
-                    file.close(); // Close the file stream before retrying
-                    download(redirectUrl, redirectCount + 1);
-                }
-                else if (response.statusCode && response.statusCode >= 400) {
-                    // Handle HTTP errors
-                    return reject(new Error(`Failed to download file, status code: ${response.statusCode}`));
-                }
-                else {
-                    // Display download progress
-                    const contentLengthHeader = response.headers['content-length'];
-                    const totalBytes = contentLengthHeader ? Number(contentLengthHeader) : undefined;
-                    let downloadedBytes = 0;
-
-                    response.on('data', chunk => {
-                        downloadedBytes += chunk.length;
-                        if (totalBytes && totalBytes > 0) {
-                            const progress = ((downloadedBytes / totalBytes) * 100).toFixed(2);
-                            // process.stdout.write(`\r${RUNNER_PREFIX} Download progress: ${progress}%`);
-                        }
-                        else {
-                            process.stdout.write(`\r${RUNNER_PREFIX} Downloaded ${downloadedBytes} bytes`);
-                        }
-                    });
-
-                    response.on('end', () => {
-                        console.log(`\n${RUNNER_PREFIX} Download complete.`);
-                    });
-
-                    file.on('finish', () => {
-                        file.close();
-                        resolve();
-                    });
-
-                    // Pipe the response to the file
-                    response.pipe(file);
-
-                }
-            }).on('error', err => {
-                fs.unlink(outputPath, () => reject(err));
-            });
-        };
-
-        // Start the download process
-        download(url, 0);
+    const response = await fetch(url, {
+        method: 'GET',
+        dispatcher: new Agent({
+            headersTimeout: 20 * 60_000,
+            bodyTimeout: 20 * 60_000,
+        }),
     });
+
+    if (!response.ok) {
+        throw new Error(`Failed to download file, status code: ${response.status}`);
+    }
+    if (!response.body) {
+        throw new Error(`Response body is empty`);
+    }
+
+    let downloadedBytes = 0;
+
+    const totalBytes = response.headers.get('content-length')
+        ? Number(response.headers.get('content-length'))
+        : undefined;
+
+    const progressIv = setInterval(() => {
+        if (totalBytes && totalBytes > 0) {
+            const progress = ((downloadedBytes / totalBytes) * 100).toFixed(2);
+            console.log(`${RUNNER_PREFIX} Download progress: ${progress}% (${downloadedBytes}/${totalBytes} bytes)`);
+        }
+        else {
+            console.log(`${RUNNER_PREFIX} Downloaded ${downloadedBytes} bytes`);
+        }
+    }, 5_000);
+
+    try {
+        const file = fs.createWriteStream(outputPath);
+        for await (const chunk of response.body) {
+            downloadedBytes += chunk.length;
+            file.write(chunk);
+        }
+        await new Promise<void>((resolve, reject) => {
+            file.end((err: Error | null | undefined) => err ? reject(err) : resolve());
+        });
+    }
+    finally {
+        clearInterval(progressIv);
+    }
+
+    console.log(`\n${RUNNER_PREFIX} Download complete.`);
 }
 
 export async function untarFile(tarPath: string, outDir: string): Promise<void> {
