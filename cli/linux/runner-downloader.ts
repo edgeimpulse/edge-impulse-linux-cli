@@ -329,8 +329,12 @@ export async function downloadFile(url: string, outputPath: string) {
     const response = await fetch(url, {
         method: 'GET',
         dispatcher: new Agent({
-            headersTimeout: 20 * 60_000,
-            bodyTimeout: 20 * 60_000,
+            // The Qwen 3 weights file is 8.7GiB in size and the Hugging face server we download
+            // from is *very* slow, which explains why this timeout is so large. This is a short
+            // term solution until we figure out a better way.
+            // See https://github.com/edgeimpulse/edgeimpulse/issues/15661
+            headersTimeout: 100 * 60_000, // 100 minutes
+            bodyTimeout: 100 * 60_000, // 100 minutes
         }),
     });
 
