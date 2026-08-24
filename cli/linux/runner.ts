@@ -982,7 +982,8 @@ async function ensureVlmServer(opts: { serverPath: string,
             }
 
             if (!projectStudioUrl) {
-                projectStudioUrl = 'https://studio.edgeimpulse.com/studio/' + model.project.id;
+                const studioUrl = config ? config.endpoints.internal.api : 'https://studio.edgeimpulse.com';
+                projectStudioUrl = studioUrl.replace(/\/+$/, '') + '/studio/' + model.project.id;
             }
 
             try {
