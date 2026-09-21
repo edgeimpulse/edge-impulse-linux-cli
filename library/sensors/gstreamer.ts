@@ -174,6 +174,10 @@ export class GStreamer extends EventEmitter<{
             osRelease = '';
         }
 
+        if (this._verbose) {
+            console.log(PREFIX, 'OS Release:', JSON.stringify(osRelease, null, 2));
+        }
+
         let firmwareModel;
         // using /proc/device-tree as recommended in user space.
         if (await this.exists('/proc/device-tree/model')) {
@@ -183,8 +187,14 @@ export class GStreamer extends EventEmitter<{
             // so we don't need to check for undefined below
             firmwareModel = '';
         }
+        
+        if (this._verbose) {
+            console.log(PREFIX, 'Firmware Model:', JSON.stringify(firmwareModel, null, 2));
+        }
 
-        if (firmwareModel.indexOf('RB3gen2') > -1 && firmwareModel.indexOf('vision') > -1) {
+        // First condition for support QLI 1.x and second condition for support QLI 2.x 
+        if ((firmwareModel.indexOf('RB3gen2') > -1 && firmwareModel.indexOf('vision') > -1) ||
+            (firmwareModel.indexOf('RB3gen2') > -1 && osRelease.indexOf('ID=qcom-distro') > -1 && osRelease.indexOf('VERSION_ID=2.') > -1)) {
             this._mode = 'qualcomm-rb3gen2';
         }
         else if (firmwareModel.indexOf('Qualcomm') > -1 && firmwareModel.indexOf('Yupik') > -1) {
@@ -211,6 +221,9 @@ export class GStreamer extends EventEmitter<{
         }
 
         this._mode = (this._modeOverride) ? this._modeOverride : this._mode;
+        if (this._verbose) {
+            console.log(PREFIX, 'selected platform mode:', this._mode);
+        }
     }
 
     async listDevices(): Promise<string[]> {
