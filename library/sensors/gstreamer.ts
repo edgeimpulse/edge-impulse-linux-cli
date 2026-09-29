@@ -174,6 +174,10 @@ export class GStreamer extends EventEmitter<{
             osRelease = '';
         }
 
+        if (this._verbose) {
+            console.log(PREFIX, 'OS Release:', JSON.stringify(osRelease, null, 2));
+        }
+
         let firmwareModel;
         // using /proc/device-tree as recommended in user space.
         if (await this.exists('/proc/device-tree/model')) {
@@ -184,7 +188,12 @@ export class GStreamer extends EventEmitter<{
             firmwareModel = '';
         }
 
-        if (firmwareModel.indexOf('RB3gen2') > -1 && firmwareModel.indexOf('vision') > -1) {
+        if (this._verbose) {
+            console.log(PREFIX, 'Firmware Model:', JSON.stringify(firmwareModel, null, 2));
+        }
+
+        if ((firmwareModel.indexOf('RB3gen2') > -1 && firmwareModel.indexOf('vision') > -1) ||
+            (firmwareModel.indexOf('RB3gen2') > -1 && osRelease.indexOf('ID=qcom-distro') > -1 && osRelease.indexOf('VERSION_ID=2.') > -1)) {
             this._mode = 'qualcomm-rb3gen2';
         }
         else if (firmwareModel.indexOf('Qualcomm') > -1 && firmwareModel.indexOf('Yupik') > -1) {
