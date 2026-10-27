@@ -60,6 +60,7 @@ export class GStreamer extends EventEmitter<{
     private _keepAliveTimeout: NodeJS.Timeout | undefined;
     private _isStarted = false;
     private _isRestarting = false;
+    private _isIntentionalShutdown = false;
     private _spawnHelper: SpawnHelperType;
     private _customLaunchCommand: string | undefined;
     private _profiling: boolean;
@@ -294,10 +295,13 @@ export class GStreamer extends EventEmitter<{
         }
 
         let args: string[] = [];
+        // Ask gst-launch to send EOS before shutting down the pipeline. This
+        // gives camera sources a chance to finish their cleanup path.
+        args.push(`-e`);
         if (this._profiling) {
             args.push(`-v`);
         }
-        args.push(pipeline);
+        args.push(...argvSplit(pipeline));
 
         // for logging purposes
         this._lastGstLaunchCommand = `${command} ${args.join(' ')}`;
@@ -309,7 +313,7 @@ export class GStreamer extends EventEmitter<{
         this._captureProcess = spawn(command, args, {
             env: env,
             cwd: this._tempDir,
-            shell: true
+            shell: false
         });
 
         if (this._captureProcess && this._captureProcess.stdout && this._captureProcess.stderr) {
@@ -592,12 +596,21 @@ export class GStreamer extends EventEmitter<{
                             clearTimeout(this._keepAliveTimeout);
                         }
 
+                        // A close requested by stop() is expected and should not
+                        // be handled as a camera failure.
+                        if (this._isIntentionalShutdown) {
+                            if (cp === this._captureProcess) {
+                                this._captureProcess = undefined;
+                            }
+                            return;
+                        }
+
                         let error: string | undefined;
 
                         if (typeof code === 'number') {
-                            // if code is 255 and device id is qtiqmmfsrc, it means the camera is not available
+                            // if code is 255 and device videoSource is qtiqmmfsrc, it means the camera is not available
                             // try restart on first close only
-                            if (code === 255 && device.id.startsWith('qtiqmmfsrc') && onCaptureProcessCloseCount === 0) {
+                            if (code === 255 && device.videoSource.startsWith('qtiqmmfsrc') && onCaptureProcessCloseCount === 0) {
                                 // restart cam-server systemctl service
                                 console.log(PREFIX, 'Camera is not available, restarting cam-server service...');
 
@@ -609,7 +622,7 @@ export class GStreamer extends EventEmitter<{
                                     {
                                         env: env,
                                         cwd: this._tempDir,
-                                        shell: true
+                                        shell: false
                                     });
 
                                 this._captureProcess.on('close', onCaptureProcessClose);
@@ -663,7 +676,9 @@ export class GStreamer extends EventEmitter<{
                             this.emit('error', error);
                         }
 
-                        this._captureProcess = undefined;
+                        if (cp === this._captureProcess) {
+                            this._captureProcess = undefined;
+                        }
                     }
                     catch (ex2) {
                         const ex = <Error>ex2;
@@ -714,7 +729,9 @@ export class GStreamer extends EventEmitter<{
             })();
         });
 
-        p.catch(() => this.stop());
+        // Startup failure is not an intentional shutdown. Keep the failure
+        // handling path active while still cleaning up the process and files.
+        p.catch(() => this.stop(false));
 
         return p;
     }
@@ -1045,29 +1062,28 @@ export class GStreamer extends EventEmitter<{
         };
     }
 
-    async stop() {
+    async stop(isIntentionalShutdown = true) {
+        this._isIntentionalShutdown = isIntentionalShutdown;
+
         if (this._keepAliveTimeout) {
             clearTimeout(this._keepAliveTimeout);
         }
 
+        const captureProcess = this._captureProcess;
+
         let stopRes = new Promise<void>((resolve) => {
-            if (this._captureProcess) {
-                this._captureProcess.on('close', code => {
+            if (captureProcess) {
+                captureProcess.once('close', () => {
                     if (this._watcher) {
-                        this._watcher.on('close', async () => {
-                            try {
-                                await this.cleanupTempDirAsync();
-                            }
-                            catch (ex) { /* noop */ }
-                        });
                         this._watcher.close();
                     }
                     resolve();
                 });
-                this._captureProcess.kill('SIGINT');
+
+                captureProcess.kill('SIGINT');
                 setTimeout(() => {
-                    if (this._captureProcess) {
-                        this._captureProcess.kill('SIGHUP');
+                    if (this._captureProcess === captureProcess) {
+                        captureProcess.kill('SIGHUP');
                     }
                 }, 3000);
             }
@@ -1076,14 +1092,14 @@ export class GStreamer extends EventEmitter<{
             }
         });
 
-        // set isStarted to false
-        stopRes
-            .then(() => { this._isStarted = false; })
-            .catch(() => { this._isStarted = false; });
-
-        await this.cleanupTempDirAsync();
-
-        return stopRes;
+        try {
+            await stopRes;
+            await this.cleanupTempDirAsync();
+        }
+        finally {
+            this._isStarted = false;
+            this._isIntentionalShutdown = false;
+        }
     }
 
     async getAllDevices(): Promise<{
@@ -1135,7 +1151,7 @@ export class GStreamer extends EventEmitter<{
 
         let lines;
         try {
-            lines = (await this._spawnHelper('gst-device-monitor-1.0', []))
+            lines = (await this._spawnHelper('gst-device-monitor-1.0', [], { ignoreErrors: false, timeoutMs: 5000 }))
                 .split('\n').filter(x => !!x).map(x => x.trim());
         }
         catch (ex2) {
@@ -1148,7 +1164,8 @@ export class GStreamer extends EventEmitter<{
                     console.log(PREFIX, 'Failed to start gst-device-monitor-1.0, retrying with only video sources...');
                 }
                 lines = (await this._spawnHelper('gst-device-monitor-1.0',
-                        [ 'Video/Source', 'Source/Video', 'Video/CameraSource' ]))
+                        [ 'Video/Source', 'Source/Video', 'Video/CameraSource' ],
+                        { ignoreErrors: false, timeoutMs: 5000 }))
                     .split('\n').filter(x => !!x).map(x => x.trim());
             }
             else {
