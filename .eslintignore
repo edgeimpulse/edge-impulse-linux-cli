@@ -1,3 +1,5 @@
 build/**
 sdk/**
 cli/linux/webserver/public/assets/**/*.js
+# Generated AJV implementation; validated by the shared contracts tests.
+shared/device-protocol/validators-implementation.js

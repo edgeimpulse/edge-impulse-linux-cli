@@ -86,6 +86,8 @@
     "build/",
     "!build/test/",
     "!build/examples/",
+    "!build/cli-common/workload-contract.*",
+    "!build/shared/device-protocol/",
     "package*.json",
     "examples/",
     "test/",
