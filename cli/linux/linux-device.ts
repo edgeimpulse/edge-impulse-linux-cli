@@ -11,6 +11,7 @@ import { RemoteMgmtDevice, RemoteMgmtDeviceSampleEmitter } from "../../cli-commo
 import { Config, EdgeImpulseConfig } from "../../cli-common/config";
 import { ICamera } from "../../library/sensors/icamera";
 import fs from 'fs';
+import { buildMonoPcm16WavFile } from './audio-utils';
 
 const SERIAL_PREFIX = '\x1b[33m[SER]\x1b[0m';
 
@@ -325,7 +326,7 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
 
             ee.emit('processing');
 
-            let wavFile = this.buildWavFileBuffer(audioBuffer, data.interval);
+            const wavFile = buildMonoPcm16WavFile(audioBuffer, Math.round(1000 / data.interval));
 
             console.log(SERIAL_PREFIX, 'Uploading sample to',
                 this._config.endpoints.internal.ingestion + data.path + '...');
@@ -357,39 +358,6 @@ export class LinuxDevice extends (EventEmitter as new () => TypedEmitter<{
 
     setAudioDeviceName(deviceName: string) {
         this._audioDeviceName = deviceName;
-    }
-
-    private buildWavFileBuffer(data: Buffer, intervalMs: number) {
-        // let's build a WAV file!
-        let wavFreq = 1 / intervalMs * 1000;
-        let fileSize = 44 + (data.length);
-        let dataSize = (data.length);
-        let srBpsC8 = (wavFreq * 16 * 1) / 8;
-
-        let headerArr = new Uint8Array(44);
-        let h = [
-            0x52, 0x49, 0x46, 0x46, // RIFF
-            // eslint-disable-next-line no-bitwise
-            fileSize & 0xff, (fileSize >> 8) & 0xff, (fileSize >> 16) & 0xff, (fileSize >> 24) & 0xff,
-            0x57, 0x41, 0x56, 0x45, // WAVE
-            0x66, 0x6d, 0x74, 0x20, // fmt
-            0x10, 0x00, 0x00, 0x00, // length of format data
-            0x01, 0x00, // type of format (1=PCM)
-            0x01, 0x00, // number of channels
-            // eslint-disable-next-line no-bitwise
-            wavFreq & 0xff, (wavFreq >> 8) & 0xff, (wavFreq >> 16) & 0xff, (wavFreq >> 24) & 0xff,
-            // eslint-disable-next-line no-bitwise
-            srBpsC8 & 0xff, (srBpsC8 >> 8) & 0xff, (srBpsC8 >> 16) & 0xff, (srBpsC8 >> 24) & 0xff,
-            0x02, 0x00, 0x10, 0x00,
-            0x64, 0x61, 0x74, 0x61, // data
-            // eslint-disable-next-line no-bitwise
-            dataSize & 0xff, (dataSize >> 8) & 0xff, (dataSize >> 16) & 0xff, (dataSize >> 24) & 0xff,
-        ];
-        for (let hx = 0; hx < 44; hx++) {
-            headerArr[hx] = h[hx];
-        }
-
-        return Buffer.concat([ Buffer.from(headerArr), data ]);
     }
 
     private checkFileExists(file: string) {

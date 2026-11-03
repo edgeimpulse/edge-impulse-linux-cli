@@ -14,6 +14,30 @@ export enum CameraType {
     UnknownCamera = 'unknown',
 }
 
+/**
+ * Selects a device only when unattended execution has an explicit or unambiguous choice. The Linux
+ * runner uses this before entering agent-managed sensor mode so containers never wait for a prompt.
+ *
+ * @param devices Device identifiers discovered on the host.
+ * @param requested Device identifier supplied explicitly by configuration.
+ * @param option CLI option that selects this type of device.
+ * @param environment Agent-mode environment variable equivalent to the CLI option.
+ */
+export function selectNonInteractiveDevice(
+    devices: string[],
+    requested: string | undefined,
+    option: string,
+    environment: string
+): string {
+    if (requested && devices.includes(requested)) {
+        return requested;
+    }
+    if (devices.length === 1) {
+        return devices[0];
+    }
+    throw new Error(`Multiple devices found; set ${option} or ${environment} to select one`);
+}
+
 export async function initCamera(opts: {
     cameraType: CameraType,
     cameraDeviceNameInConfig: string | undefined,
@@ -28,6 +52,8 @@ export async function initCamera(opts: {
     preferJpegCaps: boolean,
     gstSource: string | undefined,
     fakeImageCameraPath: string | undefined,
+    // Fail on ambiguous device selection instead of prompting an unattended container.
+    skipPrompt?: boolean,
 }) {
     const { cameraType, cameraDeviceNameInConfig, dimensions, inferenceDimensions,
         gstLaunchArgs, verboseOutput, cameraColorFormat, gstSource } = opts;
@@ -105,7 +131,10 @@ export async function initCamera(opts: {
 
     const cameraDeviceName = cameraNameArgv || cameraDeviceNameInConfig;
 
-    if (cameraDeviceName && cameraDevices.find(d => d === cameraDeviceName)) {
+    if (opts.skipPrompt) {
+        cameraDevice = selectNonInteractiveDevice(cameraDevices, cameraDeviceName, '--camera', 'EI_CAMERA');
+    }
+    else if (cameraDeviceName && cameraDevices.find(d => d === cameraDeviceName)) {
         cameraDevice = cameraDeviceName;
     }
     else if (cameraDevices.length === 1) {
@@ -141,6 +170,8 @@ export async function initCamera(opts: {
 export async function initMicrophone(opts: {
     audioDeviceNameInConfig: string | undefined,
     audioNameArgv: string | undefined,
+    // Fail on ambiguous device selection instead of prompting an unattended container.
+    skipPrompt?: boolean,
 }) {
     const { audioDeviceNameInConfig, audioNameArgv } = opts;
 
@@ -162,7 +193,11 @@ export async function initMicrophone(opts: {
 
     const audioDeviceName = audioNameArgv || audioDeviceNameInConfig;
 
-    if (audioDeviceName && audioDevices.find(d => d.id === audioDeviceName)) {
+    if (opts.skipPrompt) {
+        audioDevice = selectNonInteractiveDevice(
+            audioDevices.map(device => device.id), audioDeviceName, '--microphone', 'EI_MICROPHONE');
+    }
+    else if (audioDeviceName && audioDevices.find(d => d.id === audioDeviceName)) {
         audioDevice = audioDeviceName;
     }
     else if (audioDevices.length === 1) {

@@ -6,7 +6,8 @@ import multer from 'multer';
 import sharp, { FitEnum } from 'sharp';
 import { Server as SocketIoServer } from 'socket.io';
 import type { EdgeImpulseApi } from '../../sdk/studio/api';
-import { type LinuxImpulseRunner, type ModelInformation, RunnerBlockThreshold, SetRunnerBlockThreshold, RunnerHelloInferencingEngine } from '../../library/classifier/linux-impulse-runner';
+import { type LinuxImpulseRunner, type ModelInformation, RunnerBlockThreshold, RunnerClassifyResponseSuccess, SetRunnerBlockThreshold, RunnerHelloInferencingEngine } from '../../library/classifier/linux-impulse-runner';
+import type { AgentInferenceInput } from '../../cli-common/agent-client';
 import { type InferenceServerModelViewModel, renderInferenceServerView } from './webserver/views/inference-server-view';
 import { asyncMiddleware } from './webserver/middleware/asyncMiddleware';
 import { ImageClassifier, FitMethodMap, FitMethodStudioMap } from '../../library/classifier/image-classifier';
@@ -99,9 +100,10 @@ export function startApiServer(opts: {
     runner: LinuxImpulseRunner,
     projectStudioUrl: string,
     port: number
-    printIncomingInferenceReqs: boolean
+    printIncomingInferenceReqs: boolean,
+    onInference?: (result: RunnerClassifyResponseSuccess, input?: AgentInferenceInput) => Promise<void>,
 }) {
-    const { model, runner, projectStudioUrl, port, printIncomingInferenceReqs } = opts;
+    const { model, runner, projectStudioUrl, port, printIncomingInferenceReqs, onInference } = opts;
 
     const app = express();
     app.disable('x-powered-by');
@@ -218,7 +220,11 @@ export function startApiServer(opts: {
             console.log(RUNNER_PREFIX, 'Incoming inference request (/api/features)');
         }
 
-        let response = await runner.classify(body.features);
+        const inferenceResponse = await runner.classify(body.features);
+        // Post the raw .eim result to the local agent without adding its acknowledgement round-trip
+        // to the inference HTTP response.
+        void onInference?.(inferenceResponse).catch(() => undefined);
+        const response = cloneInferenceResponse(inferenceResponse);
 
         filterClassificationResultsOnMinScore(
             response.result.classification || {},
@@ -230,6 +236,7 @@ export function startApiServer(opts: {
 
     app.post('/api/image', asyncMiddleware(async (req, res) => {
         let resized: {
+            img: sharp.Sharp,
             features: number[],
             originalWidth: number,
             originalHeight: number,
@@ -280,7 +287,15 @@ export function startApiServer(opts: {
             return res.end(ex.message || ex.toString() + '\n');
         }
 
-        let response = await runner.classify(resized.features);
+        const inferenceResponse = await runner.classify(resized.features);
+        if (onInference) {
+            // Encode the model input and post it with the raw .eim result in the background, so local
+            // monitoring cannot delay the inference HTTP response.
+            void resized.img.jpeg({ quality: 90 }).toBuffer()
+                .then(buffer => onInference(inferenceResponse, { type: 'jpg', buffer }))
+                .catch(() => undefined);
+        }
+        const response = cloneInferenceResponse(inferenceResponse);
 
         // Helper function to transform bounding box and anomaly grid coordinates
         const transformCoordinates = (bb: { x: number, y: number, width: number, height: number }) => {
@@ -796,6 +811,26 @@ function filterClassificationResultsOnMinScore(
         classifications[key] = 0;
        }
     }
+}
+
+/**
+ * Creates the mutable HTTP presentation copy of a raw `.eim` response. Agent reporting continues
+ * asynchronously with the original object, while the HTTP path filters classifications and remaps
+ * coordinates. Only those nested structures are copied; this avoids a JSON serialization round trip
+ * and retains Node 16 compatibility, where the global `structuredClone` API is unavailable.
+ *
+ * @param response Raw successful response returned by the active `.eim`.
+ */
+function cloneInferenceResponse(response: RunnerClassifyResponseSuccess): RunnerClassifyResponseSuccess {
+    return {
+        ...response,
+        result: {
+            ...response.result,
+            classification: response.result.classification ? { ...response.result.classification } : undefined,
+            bounding_boxes: response.result.bounding_boxes?.map(box => ({ ...box })),
+            visual_anomaly_grid: response.result.visual_anomaly_grid?.map(cell => ({ ...cell })),
+        },
+    };
 }
 
 /**

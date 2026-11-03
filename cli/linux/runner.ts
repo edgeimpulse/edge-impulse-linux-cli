@@ -2,7 +2,7 @@
 
 import fs from 'node:fs';
 import Path from 'node:path';
-import { LinuxImpulseRunner, ModelInformation, RunnerHelloInferencingEngine, RunnerBlockThreshold, RunnerHelloResponseModelParameters, SetRunnerBlockThreshold } from '../../library/classifier/linux-impulse-runner';
+import { LinuxImpulseRunner, ModelInformation, RunnerClassifyResponseSuccess, RunnerHelloInferencingEngine, RunnerBlockThreshold, RunnerHelloResponseModelParameters, SetRunnerBlockThreshold } from '../../library/classifier/linux-impulse-runner';
 import { AudioClassifier } from '../../library/classifier/audio-classifier';
 import { ImageClassifier } from '../../library/classifier/image-classifier';
 import inquirer from 'inquirer';
@@ -34,6 +34,10 @@ import * as models from '../../sdk/studio/sdk/model/models';
 import { RunnerProfiling } from './runner-profiling';
 import os from 'os';
 import { ChildProcess } from 'node:child_process';
+import type { AgentClient, AgentInferenceInput } from '../../cli-common/agent-client';
+import { CompletedInferenceEvent, InferenceRunnerRegistration, ModelRegistration } from '../../shared/device-protocol/workload-contract';
+import { agentEngineName, agentRunnerMode } from './agent-runner-metadata';
+import { buildMonoPcm16WavFile } from './audio-utils';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 const CLASSIFIER_THRESHOLD: RunnerBlockThreshold =
@@ -43,6 +47,7 @@ let audioClassifier: AudioClassifier | undefined;
 let imageClassifier: ImageClassifier | undefined;
 let modelMonitor: ModelMonitor | undefined;
 let configFactory: Config | undefined;
+let agentClient: AgentClient | undefined;
 
 let vlmServerProcess: ChildProcess | null = null;
 
@@ -61,8 +66,9 @@ program
     .description('Edge Impulse Linux runner ' + packageVersion)
     .version(packageVersion)
     .option('--model-file <file>', 'Specify model file (either path to .eim, or the socket on which the model is running), ' +
-        'if not provided the model will be fetched from Edge Impulse')
+        'if not provided the model will be fetched from Edge Impulse. Agent mode also reads EI_MODEL_FILE')
     .option('--api-key <key>', 'API key to authenticate with Edge Impulse (overrides current credentials)')
+    .option('--agent <socket>', 'Report to the Edge Impulse device agent over this Unix socket. Also reads EI_AGENT_SOCKET')
     .option('--download <file>', 'Just download the model and store it on the file system')
     .option('--list-targets', 'List all supported targets and inference engines')
     .option('--force-target <target>', 'Do not autodetect the target system, but set it by hand (e.g. "runner-linux-aarch64")')
@@ -70,8 +76,9 @@ program
     .option('--force-variant <variant>', 'Do not autodetect the model variant, but set it by hand (e.g. "int8")')
     .option('--force-resize-mode <mode>', 'Do not use the resize method from the impulse, but set it by hand (valid: "squash", "fit-shortest" or "fit-longest")')
     .option('--force-camera-resolution <width,height>', 'Do not auto-select camera resolution based on your impulse, but force a resolution (format: "1280,720" for w=1280, h=720)')
-    .option('--impulse-id <impulseId>', 'Select the impulse ID (if you have multiple impulses)')
-    .option('--run-http-server <port>', 'Do not run using a sensor, but instead expose an API server at the specified port')
+    .option('--impulse-id <impulseId>', 'Select the impulse ID (if you have multiple impulses). Agent mode also reads EI_IMPULSE_ID')
+    .option('--run-http-server <port>', 'Do not run using a sensor, but instead expose an API server at the specified port. ' +
+        'Agent mode also reads EI_RUNNER_HTTP_PORT')
     .option('--preview-port <port>', 'Port to use to render the preview HTTP interface (default: 4912) (ignored when running with --run-http-server). ' +
         'Alternatively you can use the PORT environmental variable. If both are set then `--preview-port` takes precedence.')
     .option('--preview-host <host>', 'Host to listen on for the preview HTTP interface (default: 0.0.0.0) (ignored when running with --run-http-server). ' +
@@ -95,11 +102,11 @@ program
     .option('--thresholds <values>', 'Override model thresholds. E.g. --thresholds 4.min_anomaly_score=35 overrides the min. anomaly score for block ID 4 to 35.' +
         'The current thresholds are printed on startup.')
     .option('--mode <mode>', '(default: "streaming") Either: "streaming" (runs on a camera/audio stream and outputs a live inference server) or "http-server" (opens an HTTP server for inference on-demand).' +
-        'When passing --run-http-server XXX in, the mode will always default to "http-server"')
+        'When passing --run-http-server XXX in, the mode will always default to "http-server". Agent mode also reads EI_RUNNER_MODE')
     .option('--camera <camera>', 'Which camera to use (either the name, or the device address - e.g. /dev/video0). ' +
-        'If this argument is omitted, and multiple cameras are found, a CLI selector is shown.')
+        'If this argument is omitted, and multiple cameras are found, a CLI selector is shown. Agent mode also reads EI_CAMERA')
     .option('--microphone <microphone>', 'Which microphone to use (either the name, or the device address). ' +
-        'If this argument is omitted, and multiple microphones are found, a CLI selector is shown.')
+        'If this argument is omitted, and multiple microphones are found, a CLI selector is shown. Agent mode also reads EI_MICROPHONE')
     .option('--shm-behavior <mode>', `Whether to use shared memory to communicate between .eim file and Linux runner (experimental feature), valid: "auto", "always", "never". ` +
         `If not set, defaults to 'auto' - which will use shm if available, and fall back to JSON over TCP otherwise. ` +
         `If set to 'always' will only use shm to communicate (errors out if not available), if set to 'never' will always use JSON over TCP socket.`)
@@ -129,15 +136,18 @@ const verboseArgv: boolean = !!program.verbose;
 const dontOutputRgbBuffersArgv: boolean = !!program.dontOutputRgbBuffers;
 const enableGpuArgv: boolean = !!program.enableGpu;
 const apiKeyArgv = <string | undefined>program.apiKey;
+const agentSocketArgv = <string | undefined>program.agent || process.env.EI_AGENT_SOCKET;
 const greengrassArgv: boolean = !!program.greengrass;
-const modelFileArgv = <string | undefined>program.modelFile;
+const modelFileArgv = <string | undefined>program.modelFile ||
+    (agentSocketArgv ? process.env.EI_MODEL_FILE : undefined);
 const downloadArgv = <string | undefined>program.download;
 const forceTargetArgv = <string | undefined>program.forceTarget;
 const forceEngineArgv = <string | undefined>program.forceEngine;
 const forceVariantArgv = <models.KerasModelVariantEnum | undefined>program.forceVariant;
 const forceResizeModeArgv = <RunnerHelloResponseModelParameters['image_resize_mode'] | undefined>program.forceResizeMode;
 const forceCameraResolutionArgv = <string | undefined>program.forceCameraResolution;
-const impulseIdArgvStr = <string | undefined>program.impulseId;
+const impulseIdArgvStr = <string | undefined>program.impulseId ||
+    (agentSocketArgv ? process.env.EI_IMPULSE_ID : undefined);
 const impulseIdArgv = impulseIdArgvStr && !isNaN(Number(impulseIdArgvStr)) ? Number(impulseIdArgvStr) : undefined;
 const monitorArgv: boolean = !!program.monitor;
 const monitorMaxStorageSizeStr = <string | undefined>program.monitorMaxStorageSize;
@@ -150,7 +160,9 @@ const monitorSummaryIntervalArgv = monitorSummaryIntervalStr && !isNaN(Number(mo
     : undefined;
 const listTargetsArgv: boolean = !!program.listTargets;
 const gstLaunchArgsArgv = <string | undefined>program.gstLaunchArgs;
-let runHttpServerPort = program.runHttpServer ? Number(program.runHttpServer) : undefined;
+const runHttpServerPortValue = <string | undefined>program.runHttpServer ||
+    (agentSocketArgv ? process.env.EI_RUNNER_HTTP_PORT : undefined);
+let runHttpServerPort = runHttpServerPortValue ? Number(runHttpServerPortValue) : undefined;
 let previewPortArgv = 4912;
 if (program.previewPort && !isNaN(Number(program.previewPort))) {
     previewPortArgv = Number(program.previewPort);
@@ -174,11 +186,13 @@ const dontPrintPredictionsArgv: boolean = !!program.dontPrintPredictions;
 const thresholdsArgv = <string | undefined>program.thresholds;
 const shmBehaviorArgv: 'auto' | 'always' | 'never' = <'auto' | 'always' | 'never'>((<string | undefined>program.shmBehavior) || 'auto');
 const profilingArgv: boolean = !!program.profiling;
-const cameraArgv = <string | undefined>program.camera;
-const microphoneArgv = <string | undefined>program.microphone;
+const cameraArgv = <string | undefined>program.camera || (agentSocketArgv ? process.env.EI_CAMERA : undefined);
+const microphoneArgv = <string | undefined>program.microphone ||
+    (agentSocketArgv ? process.env.EI_MICROPHONE : undefined);
 const cameraColorFormatArgv = <string | undefined>program.cameraColorFormat;
 const experimentalGstPreferJpegArgv = !!program.experimentalGstPreferJpeg;
-let modeArgv = <'streaming' | 'http-server' | undefined>program.mode;
+let modeArgv = <'streaming' | 'http-server' | undefined>(program.mode ||
+    (agentSocketArgv ? process.env.EI_RUNNER_MODE : undefined));
 const fakeCameraArgv = <string | undefined>program.fakeCamera;
 
 if (modeArgv === 'http-server' && typeof runHttpServerPort === 'undefined') {
@@ -252,6 +266,7 @@ const onSignal = async () => {
             if (vlmServerProcess) {
                 await stopVlmServer(vlmServerProcess);
             }
+            await agentClient?.close();
             process.exit(0);
         }
         catch (ex2) {
@@ -264,6 +279,7 @@ const onSignal = async () => {
 
 process.on('SIGHUP', onSignal);
 process.on('SIGINT', onSignal);
+process.on('SIGTERM', onSignal);
 
 async function ensureVlmServer(opts: { serverPath: string,
                                        modelFolder: string,
@@ -370,6 +386,34 @@ async function ensureVlmServer(opts: { serverPath: string,
             throw new Error('Cannot combine --model-file and --download');
         }
 
+        const invalidHttpPort = !Number.isInteger(runHttpServerPort) || !runHttpServerPort ||
+            runHttpServerPort < 1 || runHttpServerPort > 65535;
+        if (runHttpServerPortValue && invalidHttpPort) {
+            throw new Error(`Invalid HTTP server port "${runHttpServerPortValue}", expected an integer from 1 to 65535`);
+        }
+
+        if (modeArgv && modeArgv !== 'streaming' && modeArgv !== 'http-server') {
+            throw new Error(`Invalid runner mode "${modeArgv}", expected "streaming" or "http-server"`);
+        }
+
+        if (agentSocketArgv) {
+            if (apiKeyArgv) {
+                throw new Error('Cannot combine --agent and --api-key');
+            }
+            if (monitorArgv) {
+                throw new Error('Cannot combine --agent and --monitor');
+            }
+            if (greengrassArgv) {
+                throw new Error('Cannot combine --agent and --greengrass');
+            }
+            if (!modelFileArgv) {
+                throw new Error('--agent currently requires --model-file until inference bundle activation is implemented');
+            }
+            if (!impulseIdArgv) {
+                throw new Error('--agent with --model-file requires --impulse-id because the .eim does not report its impulse ID');
+            }
+        }
+
         if (forceVariantArgv && quantizedArgv) {
             throw new Error('Cannot combine --force-variant and --quantized');
         }
@@ -427,11 +471,13 @@ async function ensureVlmServer(opts: { serverPath: string,
 
         // any of this arguments implies online mode, so we need to login to the studio or get the API key
         const connectionRequired: boolean =
-            monitorArgv ||
-            modelFileArgv === undefined ||
-            downloadArgv !== undefined ||
-            listTargetsArgv ||
-            devArgv;
+            !agentSocketArgv && (
+                monitorArgv ||
+                modelFileArgv === undefined ||
+                downloadArgv !== undefined ||
+                listTargetsArgv ||
+                devArgv
+            );
 
         if (connectionRequired) {
             if (monitorArgv && modelFileArgv) {
@@ -514,6 +560,12 @@ async function ensureVlmServer(opts: { serverPath: string,
             console.log('You can force a target via ' +
                 '"edge-impulse-linux-runner --force-target <target> [--force-engine <engine>] [--force-variant <variant>]"');
             process.exit(0);
+        }
+
+        if (agentSocketArgv) {
+            const AgentClientConstructor = await loadAgentClient();
+            agentClient = new AgentClientConstructor(agentSocketArgv);
+            await agentClient.connect(createAgentRegistration(undefined, undefined));
         }
 
         let initializedProjectState: {
@@ -721,6 +773,12 @@ async function ensureVlmServer(opts: { serverPath: string,
         });
         model = await runner.init();
 
+        if (agentClient) {
+            // Register before applying runner-only threshold defaults or command-line overrides. The agent receives
+            // the model metadata exactly as the .eim reported it.
+            await agentClient.updateRegistration(createAgentRegistration(model, impulseIdArgv));
+        }
+
         // treat the user provided resize arguments as-if from the model
         if (forceResizeModeArgv) {
             const resizeParam = model.modelParameters.image_resize_mode;
@@ -808,7 +866,9 @@ async function ensureVlmServer(opts: { serverPath: string,
             }
         }
 
-        await configFactory.setDeploymentVersion(model.project.deploy_version);
+        if (!agentSocketArgv) {
+            await configFactory.setDeploymentVersion(model.project.deploy_version);
+        }
 
         let param = model.modelParameters;
         if (monitorArgv) {
@@ -993,6 +1053,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                     projectStudioUrl,
                     port: runHttpServerPort,
                     printIncomingInferenceReqs: dontPrintPredictionsArgv ? false : true,
+                    onInference: agentClient ? reportAgentInference : undefined,
                 });
             }
             catch (ex2) {
@@ -1022,7 +1083,8 @@ async function ensureVlmServer(opts: { serverPath: string,
             if (enableCameraArgv) {
                 const cameraInit = await initCamera({
                     cameraType: cameraType,
-                    cameraDeviceNameInConfig: cleanArgv ? undefined : await configFactory.getCamera(),
+                    cameraDeviceNameInConfig: agentSocketArgv || cleanArgv ?
+                        undefined : await configFactory.getCamera(),
                     cameraNameArgv: cameraArgv,
                     dimensions: forceCameraResolution,
                     gstLaunchArgs: gstLaunchArgsArgv,
@@ -1034,20 +1096,24 @@ async function ensureVlmServer(opts: { serverPath: string,
                     preferJpegCaps: experimentalGstPreferJpegArgv,
                     gstSource: gstSourceArgv,
                     fakeImageCameraPath: fakeCameraArgv,
+                    skipPrompt: !!agentSocketArgv,
                 });
 
                 console.log(RUNNER_PREFIX, `Using camera "${cameraInit.cameraDevice}" (because --enable-camera, run with --clean to select another one)`);
 
                 await cameraInit.start();
 
-                await configFactory.storeCamera(cameraInit.cameraDevice);
+                if (!agentSocketArgv) {
+                    await configFactory.storeCamera(cameraInit.cameraDevice);
+                }
             }
 
             let audioDeviceName = '';
             try {
                 audioDeviceName = await initMicrophone({
-                    audioDeviceNameInConfig: await configFactory.getAudio(),
+                    audioDeviceNameInConfig: agentSocketArgv ? undefined : await configFactory.getAudio(),
                     audioNameArgv: microphoneArgv,
+                    skipPrompt: !!agentSocketArgv,
                 });
             }
             catch (ex2) {
@@ -1055,7 +1121,9 @@ async function ensureVlmServer(opts: { serverPath: string,
                 console.warn(RUNNER_PREFIX, (ex.message || ex.toString()));
                 process.exit(1);
             }
-            await configFactory.storeAudio(audioDeviceName);
+            if (!agentSocketArgv) {
+                await configFactory.storeAudio(audioDeviceName);
+            }
 
             console.log(RUNNER_PREFIX, 'Using microphone ' + audioDeviceName);
 
@@ -1113,6 +1181,12 @@ async function ensureVlmServer(opts: { serverPath: string,
 
             audioClassifier.on('result', async (ev, timeMs, audioAsPcm) => {
                 let count = 0;
+
+                // Agent reporting owns its error handling and must not delay local result processing.
+                void reportAgentInference(ev, {
+                    type: 'wav',
+                    buffer: buildMonoPcm16WavFile(audioAsPcm, model.modelParameters.frequency),
+                });
 
                 if (!ev.result.classification) return;
 
@@ -1183,7 +1257,8 @@ async function ensureVlmServer(opts: { serverPath: string,
 
             const cameraInit = await initCamera({
                 cameraType: cameraType,
-                cameraDeviceNameInConfig: cleanArgv ? undefined : await configFactory.getCamera(),
+                cameraDeviceNameInConfig: agentSocketArgv || cleanArgv ?
+                    undefined : await configFactory.getCamera(),
                 cameraNameArgv: cameraArgv,
                 dimensions: forceCameraResolution,
                 gstLaunchArgs: gstLaunchArgsArgv,
@@ -1199,9 +1274,12 @@ async function ensureVlmServer(opts: { serverPath: string,
                 preferJpegCaps: experimentalGstPreferJpegArgv,
                 gstSource: gstSourceArgv,
                 fakeImageCameraPath: fakeCameraArgv,
+                skipPrompt: !!agentSocketArgv,
             });
 
-            await configFactory.storeCamera(cameraInit.cameraDevice);
+            if (!agentSocketArgv) {
+                await configFactory.storeCamera(cameraInit.cameraDevice);
+            }
 
             imageClassifier = new ImageClassifier(runner, cameraInit.camera, {
                 verbose: verboseArgv,
@@ -1287,6 +1365,9 @@ async function ensureVlmServer(opts: { serverPath: string,
                 let awsResult: AwsResult | undefined;
                 let awsResultKey: AwsResultKey | undefined;
                 let count = 0;
+
+                // Agent reporting owns its error handling and must not delay local result processing.
+                void reportAgentInference(ev, { type: 'jpg', buffer: imgAsJpg });
 
                 if (ev.result.classification) {
                     // print the raw predicted values for this frame
@@ -1428,6 +1509,10 @@ async function ensureVlmServer(opts: { serverPath: string,
         }
     }
     catch (ex2) {
+        // The signal handler owns cleanup and the successful exit code once shutdown has started.
+        if (isExiting) {
+            return;
+        }
         let ex = <Error>ex2;
         console.warn(RUNNER_PREFIX, 'Failed to run impulse', ex.message || ex.toString());
 
@@ -1454,6 +1539,112 @@ async function ensureVlmServer(opts: { serverPath: string,
         process.exit(1);
     }
 })();
+
+/**
+ * Loads the experimental workload API client only after agent-managed mode is selected, so ordinary
+ * runner modes do not depend on a module that is intentionally absent from some builds.
+ */
+async function loadAgentClient(): Promise<new(socketPath: string) => AgentClient> {
+    try {
+        return (await import('../../cli-common/agent-client')).AgentClient;
+    }
+    catch (ex2) {
+        const ex = <NodeJS.ErrnoException>ex2;
+        if (ex.code === 'MODULE_NOT_FOUND') {
+            throw new Error(
+                '--agent requires the device protocol validators, which are not included in this build');
+        }
+        throw ex;
+    }
+}
+
+/**
+ * Builds the runner state sent to the device agent. The runner first calls this without a model so
+ * the agent knows the workload is alive, then calls it again with the metadata reported by the
+ * loaded `.eim` so the agent knows which model this runner currently serves.
+ *
+ * @param model Metadata reported by the loaded `.eim`, or undefined for the initial registration.
+ * @param impulseId Studio impulse ID supplied separately because the `.eim` does not report it.
+ */
+function createAgentRegistration(
+    model: ModelInformation | undefined,
+    impulseId: number | undefined
+): InferenceRunnerRegistration {
+    const imageReference = process.env.EI_RUNNER_IMAGE || `edge-impulse-linux-runner:${packageVersion}`;
+    const imageDigest = process.env.EI_RUNNER_IMAGE_DIGEST;
+    const mode = agentRunnerMode(runHttpServerPort, cameraArgv, microphoneArgv, model);
+
+    let modelRegistrations: ModelRegistration[] = [];
+    if (model) {
+        if (!impulseId) {
+            throw new Error('Cannot register a loaded model with the agent without an impulse ID');
+        }
+        const engine = model.modelParameters.inferencing_engine;
+        modelRegistrations = [{
+            // TODO(closed-loop-demo#67): Use the bundle-local model ID from manifest.json.
+            id: `impulse-${impulseId}`,
+            projectId: model.project.id,
+            projectName: model.project.name,
+            projectOwner: model.project.owner,
+            impulseId,
+            deploymentVersion: model.project.deploy_version,
+            engine: typeof engine === 'number' ? agentEngineName(engine) : 'unknown',
+            modelType: model.modelParameters.model_type,
+            labels: model.modelParameters.labels,
+            thresholds: model.modelParameters.thresholds,
+        }];
+    }
+
+    return {
+        kind: 'inference_runner',
+        version: packageVersion,
+        contractVersion: 1,
+        capabilities: [ 'inputPolicy' ],
+        artifact: {
+            kind: 'containerImage',
+            reference: imageReference,
+            ...(imageDigest ? { digest: imageDigest } : {}),
+        },
+        ...(mode ? { mode } : {}),
+        models: modelRegistrations,
+    };
+}
+
+/**
+ * Converts one successful `.eim` response into the event schema and sends it through the local
+ * agent. Reporting failures are logged without stopping inference, because the model remains useful
+ * while the agent reconnects or restarts.
+ *
+ * @param result Successful response returned by the active `.eim`.
+ * @param input Input consumed by the model, when the current inference mode exposes it.
+ */
+async function reportAgentInference(
+    result: RunnerClassifyResponseSuccess,
+    input?: AgentInferenceInput
+) {
+    if (!agentClient || !impulseIdArgv) {
+        return;
+    }
+
+    const event: CompletedInferenceEvent = {
+        id: uuidv4(),
+        inferenceTimestamp: Date.now(),
+        results: [{
+            // TODO(closed-loop-demo#67): Use the same bundle-local model ID as registration.
+            modelId: `impulse-${impulseIdArgv}`,
+            result: result.result,
+            timing: result.timing,
+            ...(result.info ? { info: result.info } : {}),
+        }],
+    };
+    try {
+        await agentClient.postInference(event, input);
+    }
+    catch (ex2) {
+        const ex = <Error>ex2;
+        console.warn(RUNNER_PREFIX, `Failed to report inference to the device agent: ${ex.message || ex.toString()}`);
+    }
+}
 
 function getFriendlyModelTypeName(modelType: models.KerasModelVariantEnum) {
     switch (modelType) {

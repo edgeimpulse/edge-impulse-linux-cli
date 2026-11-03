@@ -1,7 +1,3 @@
-/**
- * Wire codecs for the runner's agent-mode client. Its lifecycle and transport are tracked at
- * https://github.com/edgeimpulse/closed-loop-demo/issues/12.
- */
 import {
     Command, CommandResult, EventBatch, EventBatchResponse, RegisterRequest, RegisterResponse
 } from '../shared/device-protocol/workload-contract';
