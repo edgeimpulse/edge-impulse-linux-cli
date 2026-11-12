@@ -6,10 +6,12 @@ export type MonitoringEventEvaluationConfig = {
     */
     percentageChange?: number;
     /**
-    * Evaluation window length for this event subscription.
+    * Evaluation window length for this event subscription (default 2 minutes). One- and two-minute windows are
+    * evaluated every 10 seconds, comparing the most recent 20 and 30 seconds respectively against the preceding
+    * baseline. They require at least two summaries in each part of the window.
     */
     evaluationLength?: MonitoringEventEvaluationConfigEvaluationLengthEnum;
 };
 
-export type MonitoringEventEvaluationConfigEvaluationLengthEnum = '5 minutes' | '10 minutes' | '15 minutes' | '30 minutes' | '1 hour' | '2 hours' | '4 hours' | '1 day';
-export const MonitoringEventEvaluationConfigEvaluationLengthEnumValues: string[] = [ '5 minutes', '10 minutes', '15 minutes', '30 minutes', '1 hour', '2 hours', '4 hours', '1 day' ];
+export type MonitoringEventEvaluationConfigEvaluationLengthEnum = '1 minute' | '2 minutes' | '5 minutes' | '10 minutes' | '15 minutes' | '30 minutes' | '1 hour' | '2 hours' | '4 hours' | '1 day';
+export const MonitoringEventEvaluationConfigEvaluationLengthEnumValues: string[] = [ '1 minute', '2 minutes', '5 minutes', '10 minutes', '15 minutes', '30 minutes', '1 hour', '2 hours', '4 hours', '1 day' ];

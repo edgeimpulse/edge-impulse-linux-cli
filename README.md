@@ -137,6 +137,16 @@ let res = await runner.classify(features);
 let filteredRes = movingAverageFilter.run(res);
 ```
 
+### Model monitoring summaries
+
+Run `edge-impulse-linux-runner --monitor` to enable Model Monitoring. The CLI receives
+its summary interval from Remote Management based on the project's active alert rules.
+
+`--monitor-summary-interval-ms <ms>` saves a preferred interval (minimum `5000`). Active
+rules may require faster reporting; the CLI shows the effective interval and keeps the saved
+preference. Summaries are produced as inference results arrive, so slow or paused inference
+can delay reporting and alerts.
+
 ## Development tips
 
 ### Auto-reload the runner

@@ -31,7 +31,8 @@ export type DeviceToServer =
     | ImpulseRecord
     | ImpulseRecordsResponse
     | NewModelUpdated
-    | Telemetry;
+    | Telemetry
+    | MonitoringSummaryPolicyRequest;
 /**
  * The device's identity, sensors and mode.
  */
@@ -63,6 +64,11 @@ export type HelloInference = HelloV4Common & {
      * Always `inference`.
      */
     mode: 'inference';
+    /**
+     * Whether this inference client supports receiving and refreshing Remote Management's summary interval
+     * policy. Clients that omit this field keep their existing reporting cadence.
+     */
+    supportsMonitoringSummaryPolicy?: boolean;
 };
 /**
  * What the model produces.
@@ -112,7 +118,8 @@ export type ServerToDevice =
     | ImpulseRecordsRequest
     | NewModelAvailable
     | DeployModel
-    | RollbackModel;
+    | RollbackModel
+    | MonitoringSummaryPolicyResponse;
 /**
  * Server to device. The answer to Hello: accepted with the server's clock, or refused with a reason.
  * The two differ by a required field each (`serverTimestamp`, `err`), so a valid answer always parses
@@ -138,6 +145,11 @@ export interface HelloV4 {
  * The fields every variant of `HelloV4Body` shares.
  */
 export interface HelloV4Common {
+    /**
+     * Optional board name, used only when creating a device. Without it the device ID is used. Existing
+     * devices keep their name, including manual renames in Studio.
+     */
+    name?: string;
     /**
      * The project's API key. From DA9 a device credential replaces it.
      */
@@ -970,6 +982,17 @@ export interface LastUpdate {
     timestamp: number;
 }
 /**
+ * Device to server, at most once every 30 seconds after a Hello response advertises
+ * supportsMonitoringSummaryPolicy. Refresh remains available if the initial policy lookup failed and
+ * monitoringSummaryPolicy was omitted. No summary needs to be sent to request a refresh.
+ */
+export interface MonitoringSummaryPolicyRequest {
+    /**
+     * Always true; requests a refreshed policy for this session.
+     */
+    getMonitoringSummaryPolicy: true;
+}
+/**
  * The session was accepted. Remote Management always sends the server's clock with it.
  */
 export interface HelloAccepted {
@@ -982,6 +1005,11 @@ export interface HelloAccepted {
      */
     serverTimestamp: number;
     capabilities?: ServerCapabilities;
+    monitoringSummaryPolicy?: MonitoringSummaryPolicy;
+    /**
+     * True when policy refresh is supported, even if the initial policy lookup failed.
+     */
+    supportsMonitoringSummaryPolicy?: boolean;
 }
 /**
  * New, optional. What the server supports beyond the existing protocol.
@@ -1001,6 +1029,35 @@ export interface ServerCapabilities {
     telemetry?: boolean;
 }
 /**
+ * Initial policy for opted-in inference clients; omitted if the lookup failed.
+ */
+export interface MonitoringSummaryPolicy {
+    /**
+     * Recommended reporting interval in milliseconds for the strictest project requirement. With standard
+     * settings this ranges from 5000 for short metric rules to 60000 without fast rules. A faster saved
+     * client preference may remain effective, subject to minimumIntervalMs.
+     */
+    intervalMs: number;
+    /**
+     * Minimum permitted effective interval: the greater of 5000 milliseconds and twice the configured
+     * ingestion rate limit, allowing arrival headroom. A custom limit may prevent the required alert
+     * cadence and may exceed the usual 60000-millisecond reporting ceiling.
+     */
+    minimumIntervalMs: number;
+    /**
+     * Longest active metric evaluation window, or zero with no metric rules. Budget this much fresh
+     * history after acceleration; it is not an enforced wait or a readiness status. Shorter rules can
+     * evaluate as soon as their own sample requirements are met.
+     */
+    preparationWindowMs: number;
+    /**
+     * Whether the selected interval fits the project requirements. False when supported intervals or
+     * server ingestion limits prevent the needed cadence. This is a configuration check, not a statement
+     * that sufficient telemetry has arrived; slow clients remain accepted.
+     */
+    requirementsMet: boolean;
+}
+/**
  * The session was refused. Remote Management sends the reason and no timestamp.
  */
 export interface HelloRejected {
@@ -1016,6 +1073,12 @@ export interface HelloRejected {
      * Whether the credential was valid, when the rejection was about it.
      */
     auth?: boolean;
+    /**
+     * New, optional. A stable identifier for the rejection, so a device can act on it without parsing
+     * `err`. The list is open: a device ignores codes it does not know. `inferenceNotEnabled` means the
+     * project does not accept inference-mode sessions; the device can connect again in ingestion mode.
+     */
+    code?: string;
 }
 /**
  * Server to device. Requests a sample using the existing sampling protocol.
@@ -1201,4 +1264,39 @@ export interface DeploymentTarget1 {
      * back to, which the device must still hold.
      */
     deploymentVersion: number;
+}
+/**
+ * Server to device: current project policy. A failed refresh leaves the last policy in effect.
+ */
+export interface MonitoringSummaryPolicyResponse {
+    monitoringSummaryPolicyUpdate: MonitoringSummaryPolicy1;
+}
+/**
+ * The current reporting requirements of the authenticated project.
+ */
+export interface MonitoringSummaryPolicy1 {
+    /**
+     * Recommended reporting interval in milliseconds for the strictest project requirement. With standard
+     * settings this ranges from 5000 for short metric rules to 60000 without fast rules. A faster saved
+     * client preference may remain effective, subject to minimumIntervalMs.
+     */
+    intervalMs: number;
+    /**
+     * Minimum permitted effective interval: the greater of 5000 milliseconds and twice the configured
+     * ingestion rate limit, allowing arrival headroom. A custom limit may prevent the required alert
+     * cadence and may exceed the usual 60000-millisecond reporting ceiling.
+     */
+    minimumIntervalMs: number;
+    /**
+     * Longest active metric evaluation window, or zero with no metric rules. Budget this much fresh
+     * history after acceleration; it is not an enforced wait or a readiness status. Shorter rules can
+     * evaluate as soon as their own sample requirements are met.
+     */
+    preparationWindowMs: number;
+    /**
+     * Whether the selected interval fits the project requirements. False when supported intervals or
+     * server ingestion limits prevent the needed cadence. This is a configuration check, not a statement
+     * that sufficient telemetry has arrived; slow clients remain accepted.
+     */
+    requirementsMet: boolean;
 }

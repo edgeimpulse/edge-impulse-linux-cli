@@ -1,11 +1,14 @@
 import fs from 'fs/promises';
+import { MonitoringSummaryPolicy } from '../shared/device-protocol/remote-management';
 import Path from 'path';
 import { Config } from './config';
 import { RunnerClassifyResponseSuccess, ModelInformation, RunnerHelloHasAnomaly } from "../library/classifier/linux-impulse-runner-types";
 import { EventEmitter } from 'tsee';
 import { MgmtInterfaceImpulseRecordRawData, MgmtInterfaceInferenceSummary } from '../shared/MgmtInterfaceTypes';
 
-export const DEFAULT_MONITOR_SUMMARY_INTERVAL_MS = 60000;
+// Preserve the legacy cadence until the server confirms that faster summaries can be ingested.
+export const DEFAULT_MONITOR_SUMMARY_INTERVAL_MS = 60_000;
+export const MIN_MONITOR_SUMMARY_INTERVAL_MS = 5_000;
 const MONITOR_PREFIX = '\x1b[34m[MON]\x1b[0m';
 
 const DEFAULT_THRESHOLD = 0.5;
@@ -567,6 +570,7 @@ class MetricsCalculator {
     private _metrics: InferenceMetrics;
     private _model: ModelInformation;
     private _summaryWindowMs: number;
+    readonly configuredSummaryIntervalMs: number | undefined;
     private _confidenceThresholds = new Map<string, number>();
 
     // parameters and variables used to determine summary period
@@ -588,12 +592,12 @@ class MetricsCalculator {
         storage: StorageManager,
         model: ModelInformation
     ): Promise<MetricsCalculator> {
-        // Get the interval from config, default to DEFAULT_MONITOR_SUMMARY_INTERVAL_MS
-        let summaryWindowMs = await config.getMonitorSummaryIntervalMs();
-        if (!summaryWindowMs || isNaN(summaryWindowMs) || summaryWindowMs <= 0) {
-            summaryWindowMs = DEFAULT_MONITOR_SUMMARY_INTERVAL_MS;
-        }
-        const metrics = new MetricsCalculator(storage, model, summaryWindowMs);
+        const savedInterval = await config.getMonitorSummaryIntervalMs();
+        const configuredInterval = savedInterval && Number.isFinite(savedInterval) && savedInterval > 0 ?
+            savedInterval : undefined;
+        const metrics = new MetricsCalculator(storage, model,
+            Math.max(configuredInterval ?? DEFAULT_MONITOR_SUMMARY_INTERVAL_MS,
+                DEFAULT_MONITOR_SUMMARY_INTERVAL_MS), configuredInterval);
 
         // Initialize the metrics by restoring them from the storage
         await metrics.restoreMetrics();
@@ -602,10 +606,12 @@ class MetricsCalculator {
     }
 
     // private constructor to prevent direct object creation, use getMetricsInstance instead
-    private constructor(storage: StorageManager, model: ModelInformation, summaryWindowMs: number) {
+    private constructor(storage: StorageManager, model: ModelInformation, summaryWindowMs: number,
+        configuredSummaryIntervalMs: number | undefined) {
         this._storageManager = storage;
         this._model = model;
         this._summaryWindowMs = summaryWindowMs;
+        this.configuredSummaryIntervalMs = configuredSummaryIntervalMs;
 
         let threshold: number | undefined;
 
@@ -657,6 +663,16 @@ class MetricsCalculator {
             standardDeviation: [],
             metrics: {},
         };
+    }
+
+    get summaryIntervalMs() {
+        return this._summaryWindowMs;
+    }
+
+    setSummaryIntervalMs(intervalMs: number) {
+        // Preserve the in-flight aggregate. The next inference closes it if the shorter deadline is due;
+        // speeding up cannot manufacture historical summaries or duplicate the records already included.
+        this._summaryWindowMs = intervalMs;
     }
 
     private resetMetrics(): void {
@@ -856,6 +872,7 @@ export class ModelMonitor extends EventEmitter<{
     private _storageManager: StorageManager | undefined;
     private _metricsCalculator: MetricsCalculator | undefined;
     private _streamState: 'idle' | 'debug' | 'records-request' = 'idle';
+    private _lastPolicy: string | undefined;
     private _streamPrevState: 'idle' | 'debug' | 'records-request' = 'idle';
 
     private constructor(_config: Config) {
@@ -875,6 +892,60 @@ export class ModelMonitor extends EventEmitter<{
         monitor._metricsCalculator = await MetricsCalculator.getMetricsInstance(config, monitor._storageManager, model);
 
         return monitor;
+    }
+
+    get configuredSummaryIntervalMs() {
+        return this._metricsCalculator?.configuredSummaryIntervalMs;
+    }
+
+    get effectiveSummaryIntervalMs() {
+        return this._metricsCalculator?.summaryIntervalMs;
+    }
+
+    /**
+     * Apply the server requirement to this session without overwriting the saved CLI preference.
+     * With standard limits, saved 60s becomes 5s for a Default rule, then returns to 60s when it is
+     * removed. Saved 10s stays at 10s when the policy relaxes to 60s, reducing potential volume savings.
+     * The server's minimum interval takes precedence over a faster preference; incompatible settings
+     * produce a warning. Preserving the in-flight aggregate means acceleration cannot backfill history.
+     */
+    applySummaryPolicy(policy: MonitoringSummaryPolicy | undefined) {
+        const calculator = this._metricsCalculator;
+        if (!calculator) return;
+        if (policy && (!Number.isFinite(policy.intervalMs) || !Number.isFinite(policy.minimumIntervalMs) ||
+            policy.minimumIntervalMs < MIN_MONITOR_SUMMARY_INTERVAL_MS ||
+            policy.intervalMs < policy.minimumIntervalMs || !Number.isFinite(policy.preparationWindowMs) ||
+            policy.preparationWindowMs < 0 || typeof policy.requirementsMet !== 'boolean')) {
+            console.warn(MONITOR_PREFIX, 'Ignoring invalid summary policy');
+            return;
+        }
+        const policyKey = JSON.stringify(policy) ?? 'legacy';
+        if (this._lastPolicy === policyKey) return;
+        this._lastPolicy = policyKey;
+        const configured = this.configuredSummaryIntervalMs;
+        const effective = policy ? Math.max(policy.minimumIntervalMs,
+            Math.min(configured ?? policy.intervalMs, policy.intervalMs)) :
+            Math.max(configured ?? DEFAULT_MONITOR_SUMMARY_INTERVAL_MS,
+                DEFAULT_MONITOR_SUMMARY_INTERVAL_MS);
+        calculator.setSummaryIntervalMs(effective);
+        console.log(MONITOR_PREFIX, `Summary interval: configured ${configured ?? 'automatic'}, effective ${effective} ms`);
+        if (configured !== undefined && configured !== effective) {
+            console.warn(MONITOR_PREFIX, 'The server policy overrides the saved interval for this session; ' +
+                'the saved preference is unchanged.');
+        }
+        if (policy && !policy.requirementsMet) {
+            console.warn(MONITOR_PREFIX, 'Server ingestion limits cannot satisfy all active alert windows. ' +
+                'Metric alerts may lack sufficient summaries.');
+        }
+        if (policy && policy.preparationWindowMs > 0) {
+            console.log(MONITOR_PREFIX, `Metric rules need fresh history: allow up to ` +
+                `${policy.preparationWindowMs / 1000} seconds after a cadence increase. ` +
+                'Evaluation still requires enough real summaries; gaps or slow inference can delay readiness.');
+        }
+        if (!policy) {
+            console.warn(MONITOR_PREFIX, 'Server does not provide an adaptive summary policy; using a minimum ' +
+                '60-second interval for compatibility. The saved preference is unchanged.');
+        }
     }
 
     async flushMetrics(): Promise<void> {

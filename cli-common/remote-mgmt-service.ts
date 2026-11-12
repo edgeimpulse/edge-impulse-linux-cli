@@ -1,6 +1,7 @@
 import TypedEmitter from "typed-emitter";
+import { HelloResponse, MonitoringSummaryPolicyResponse } from '../shared/device-protocol/remote-management';
 import {
-    MgmtInterfaceHelloResponse, MgmtInterfaceHelloV4, MgmtInterfaceSampleFinishedResponse,
+    MgmtInterfaceHelloV4, MgmtInterfaceSampleFinishedResponse,
     MgmtInterfaceSampleProcessingResponse,
     MgmtInterfaceSampleReadingResponse, MgmtInterfaceSampleRequest,
     MgmtInterfaceSampleRequestSample,
@@ -110,6 +111,7 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
     private _checkNameCb: (currName: string) => Promise<string>;
     private _monitor: ModelMonitor | undefined;
     private _isConnected = false;
+    private _supportsMonitoringSummaryPolicy = false;
     private _inferenceInfo: MgmtInterfaceInferenceInfo | undefined;
 
     constructor(projectId: number,
@@ -158,6 +160,8 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
         await this._device.beforeConnect();
 
         this._inferenceInfo = inferenceInfo;
+        this._isConnected = false;
+        this._supportsMonitoringSummaryPolicy = false;
 
         console.log(TCP_PREFIX, `Connecting to ${this._eiConfig.endpoints.internal.ws}`);
         try {
@@ -212,15 +216,6 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
             return console.error(TCP_PREFIX, 'Not connected to remote management service');
         }
 
-        this._ws.once('message', (data: Buffer) => {
-            let ret = <MgmtInterfaceImpulseRecordAck>JSON.parse(data.toString('utf-8'));
-            if (!ret.impulseRecordAck) {
-                if (this._monitor) {
-                    this._monitor.impulseDebug = false;
-                }
-                console.error(TCP_PREFIX, 'Failed to send record to remote management service', ret.error);
-            }
-        });
         this._ws.send(JSON.stringify(ev));
     }
 
@@ -248,13 +243,6 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
             };
         }
 
-        this._ws.once('message', (data: Buffer) => {
-            let ret = <MgmtInterfaceImpulseRecordAck>JSON.parse(data.toString('utf-8'));
-            if (!ret.impulseRecordAck) {
-                this._monitor?.abortImpulseRecordsRequest();
-                console.error(TCP_PREFIX, 'Failed to send record to remote management service', ret.error);
-            }
-        });
         this._ws.send(JSON.stringify(resp));
     }
 
@@ -264,6 +252,11 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
             if (myws) {
                 let received = false;
                 myws.ping();
+                // Poll independently of summaries so paused/slow inference still picks up rule changes.
+                // Only a successful policy response changes the effective interval; failures retain it.
+                if (this._isConnected && this._supportsMonitoringSummaryPolicy) {
+                    myws.send(JSON.stringify({ getMonitoringSummaryPolicy: true }));
+                }
                 myws.once('pong', () => {
                     received = true;
                 });
@@ -295,6 +288,20 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
                 }
             }
             catch (ex) {
+                return;
+            }
+            const ack = d as Partial<MgmtInterfaceImpulseRecordAck>;
+            if (typeof ack.impulseRecordAck === 'boolean') {
+                if (!ack.impulseRecordAck && this._monitor) {
+                    this._monitor.impulseDebug = false;
+                    this._monitor.abortImpulseRecordsRequest();
+                    console.error(TCP_PREFIX, 'Failed to send record to remote management service', ack.error);
+                }
+                return;
+            }
+            const policyResponse = d as Partial<MonitoringSummaryPolicyResponse>;
+            if (policyResponse.monitoringSummaryPolicyUpdate && this._supportsMonitoringSummaryPolicy) {
+                this._monitor?.applySummaryPolicy(policyResponse.monitoringSummaryPolicyUpdate);
                 return;
             }
             // hello messages are handled in sendHello()
@@ -710,6 +717,7 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
                     ...baseHello,
                     version: 4, // Ensure version is explicitly set to 4
                     mode: 'inference',
+                    supportsMonitoringSummaryPolicy: !!this._monitor,
                     inferenceInfo: this._inferenceInfo,
                     availableRecords: storageStatus ? {
                         firstIndex: storageStatus.firstIndex,
@@ -736,7 +744,7 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
         }
 
         this._ws.once('message', async (helloResponse: Buffer) => {
-            let ret = <MgmtInterfaceHelloResponse>JSON.parse(helloResponse.toString('utf-8'));
+            let ret = <HelloResponse>JSON.parse(helloResponse.toString('utf-8'));
             if (!ret.hello) {
                 console.error(TCP_PREFIX, 'Failed to authenticate, API key not correct?', ret.err);
                 this.emit('authenticationFailed');
@@ -749,6 +757,14 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
             else {
                 if (!deviceId) {
                     throw new Error('Could not read serial number for device');
+                }
+                this._supportsMonitoringSummaryPolicy = ret.supportsMonitoringSummaryPolicy === true;
+                if (ret.monitoringSummaryPolicy || !this._supportsMonitoringSummaryPolicy) {
+                    this._monitor?.applySummaryPolicy(ret.monitoringSummaryPolicy);
+                }
+                else {
+                    console.warn(TCP_PREFIX, 'Summary policy is temporarily unavailable; keeping the current ' +
+                        'interval and retrying on the next refresh.');
                 }
                 let name = await this.checkName(deviceId);
 

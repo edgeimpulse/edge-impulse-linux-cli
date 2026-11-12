@@ -2,10 +2,11 @@
 
 import type { BlockDisplayCategory } from './blockDisplayCategory';
 import type { BlockType } from './blockType';
+import type { LearnBlockType } from './learnBlockType';
 import type { PublicProjectTierAvailability } from './publicProjectTierAvailability';
 
 export type LearnBlock = {
-    type: string;
+    type: LearnBlockType;
     title: string;
     author: string;
     description: string;

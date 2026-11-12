@@ -14,7 +14,7 @@ import { RemoteMgmt } from '../../cli-common/remote-mgmt-service';
 import WebSocket from 'ws';
 import { Config, EdgeImpulseConfig } from "../../cli-common/config";
 import { LinuxDevice } from './linux-device';
-import { ModelMonitor, DEFAULT_MONITOR_SUMMARY_INTERVAL_MS } from '../../cli-common/model-monitor';
+import { ModelMonitor, DEFAULT_MONITOR_SUMMARY_INTERVAL_MS, MIN_MONITOR_SUMMARY_INTERVAL_MS } from '../../cli-common/model-monitor';
 import {
     listTargets,
     audioClassifierHelloMsg,
@@ -86,7 +86,7 @@ program
     .option('--preview-original-resolution', 'If set, does not resize the preview image to the impulse resolution')
     .option('--monitor', 'Enable model monitoring', false)
     .option('--monitor-max-storage-size <size>', 'The maximum storage size to be used for model monitoring, in MB. Defaults to 250.')
-    .option('--monitor-summary-interval-ms <ms>', `The time interval (in milliseconds) for model monitoring summaries. Defaults to ${DEFAULT_MONITOR_SUMMARY_INTERVAL_MS}.`)
+    .option('--monitor-summary-interval-ms <ms>', `Preferred summary interval in milliseconds (minimum ${MIN_MONITOR_SUMMARY_INTERVAL_MS}). Adapts to active alert rules; without cadence negotiation the effective interval is at least ${DEFAULT_MONITOR_SUMMARY_INTERVAL_MS}.`)
     .option('--clean', 'Clear credentials')
     .option('--silent', `Run in silent mode, don't prompt for credentials`)
     .option('--quantized', 'Download int8 quantized neural networks, rather than the float32 neural networks. ' +
@@ -155,7 +155,7 @@ const monitorMaxStorageSizeArgv = monitorMaxStorageSizeStr && !isNaN(Number(moni
     ? Number(monitorMaxStorageSizeStr)
     : undefined;
 const monitorSummaryIntervalStr = <string | undefined>program.monitorSummaryIntervalMs;
-const monitorSummaryIntervalArgv = monitorSummaryIntervalStr && !isNaN(Number(monitorSummaryIntervalStr))
+const monitorSummaryIntervalArgv = monitorSummaryIntervalStr !== undefined
     ? Number(monitorSummaryIntervalStr)
     : undefined;
 const listTargetsArgv: boolean = !!program.listTargets;
@@ -432,16 +432,18 @@ async function ensureVlmServer(opts: { serverPath: string,
             throw new Error('Invalid value for --monitor-max-storage-size (was: "' + monitorMaxStorageSizeArgv + '")');
         }
 
-        if (monitorSummaryIntervalArgv && !monitorArgv) {
+        if (monitorSummaryIntervalArgv !== undefined && !monitorArgv) {
             throw new Error('Cannot use --monitor-summary-interval-ms without --monitor');
         }
 
-        if (monitorSummaryIntervalArgv &&
-            (isNaN(monitorSummaryIntervalArgv) || monitorSummaryIntervalArgv < DEFAULT_MONITOR_SUMMARY_INTERVAL_MS)
+        if (monitorSummaryIntervalArgv !== undefined &&
+            (!Number.isFinite(monitorSummaryIntervalArgv) ||
+                monitorSummaryIntervalArgv < MIN_MONITOR_SUMMARY_INTERVAL_MS)
         ) {
             throw new Error(
-                `Invalid value for --monitor-summary-interval-ms (was: "${monitorSummaryIntervalArgv}"). ` +
-                `Minimum value is ${DEFAULT_MONITOR_SUMMARY_INTERVAL_MS} (1 minute).`
+                `Invalid value for --monitor-summary-interval-ms (was: "${monitorSummaryIntervalStr}"). ` +
+                `Minimum value is ${MIN_MONITOR_SUMMARY_INTERVAL_MS} ` +
+                `(${MIN_MONITOR_SUMMARY_INTERVAL_MS / 1000} seconds).`
             );
         }
 
@@ -887,7 +889,7 @@ async function ensureVlmServer(opts: { serverPath: string,
             if (monitorMaxStorageSizeArgv) {
                 await configFactory.setStorageMaxSizeMb(monitorMaxStorageSizeArgv);
             }
-            if (monitorSummaryIntervalArgv) {
+            if (monitorSummaryIntervalArgv !== undefined) {
                 await configFactory.setMonitorSummaryIntervalMs(monitorSummaryIntervalArgv);
             }
 
