@@ -6,6 +6,7 @@ import {
     Command,
     CommandResult,
     CompletedInferenceEvent,
+    ContractErrorCode,
     EventBatch,
     EventBatchResponse,
     InferenceRunnerRegistration,
@@ -33,6 +34,8 @@ const RECONNECT_DELAY_MS = 1000;
 const INITIAL_CONNECT_MAX_DELAY_MS = 30000;
 const REQUEST_TIMEOUT_MS = 10000;
 const SHUTDOWN_FLUSH_TIMEOUT_MS = 3000;
+// Matches the device agent's default activation lease so an ambiguous result cannot block rollback forever.
+const COMMAND_RESULT_RETRY_TIMEOUT_MS = 60000;
 const RETRYABLE_TRANSPORT_ERROR_CODES = new Set([
     'ENOENT',
     'ECONNREFUSED',
@@ -40,6 +43,40 @@ const RETRYABLE_TRANSPORT_ERROR_CODES = new Set([
     'EPIPE',
     'ETIMEDOUT',
 ]);
+
+/** Non-success response from the agent workload API, including its contract refusal code. */
+class AgentRequestError extends Error {
+    /** HTTP response status returned by the agent. */
+    readonly statusCode: number | undefined;
+    /** Structured refusal reason, when the response contains a valid contract error. */
+    readonly contractCode: ContractErrorCode | undefined;
+
+    /** Creates an error for one refused workload API request. */
+    constructor(statusCode: number | undefined, responseBody: string) {
+        const contractError = parseContractError(responseBody);
+        super(`Agent returned HTTP ${statusCode || 'unknown'}: ${responseBody}`);
+        this.statusCode = statusCode;
+        this.contractCode = contractError?.code;
+    }
+}
+
+/** Reads the small portion of a contract error needed to choose command-stream recovery. */
+function parseContractError(responseBody: string): { code: ContractErrorCode } | undefined {
+    try {
+        const value = JSON.parse(responseBody) as { code?: unknown };
+        const codes: ContractErrorCode[] = [
+            'invalid_request', 'not_registered', 'rate_limited', 'unknown_command',
+            'unsupported_version', 'internal',
+        ];
+        if (typeof value.code === 'string' && codes.includes(value.code as ContractErrorCode)) {
+            return { code: value.code as ContractErrorCode };
+        }
+    }
+    catch {
+        // The original HTTP response remains available in AgentRequestError for diagnostics.
+    }
+    return undefined;
+}
 
 /**
  * Identifies socket failures that can succeed after the local agent starts or restarts. Contract,
@@ -52,16 +89,145 @@ function isRetryableTransportError(error: unknown): boolean {
     return typeof code === 'string' && RETRYABLE_TRANSPORT_ERROR_CODES.has(code);
 }
 
-export interface AgentInferenceInput {
-    type: 'jpg' | 'wav';
-    buffer: Buffer;
+/** Whether a failed result post indicates that the command session itself must be rebuilt. */
+function shouldRecoverCommandSession(error: unknown): boolean {
+    return isRetryableTransportError(error) ||
+        (error instanceof AgentRequestError && error.contractCode === 'not_registered');
 }
 
-export interface AgentClientOptions {
+/** Whether the agent may have accepted a command result and requires the identical result to be retried. */
+function shouldRetryCommandResult(error: unknown): boolean {
+    return error instanceof AgentRequestError &&
+        (error.statusCode === 408 || error.contractCode === 'internal');
+}
+
+/** Encoded sensor input attached to an inference event for agent-side capture and inspection. */
+export type AgentInferenceInput = {
+    type: 'jpg' | 'wav';
+    buffer: Buffer;
+};
+
+/** Request timeout and reconnect timing used by the local agent transport. */
+export type AgentClientOptions = {
     // Maximum time to wait for one registration, event or command-result response.
     requestTimeoutMs?: number;
     // Base initial-connect backoff and fixed delay for recovering an established command stream.
     reconnectDelayMs?: number;
+    // Maximum total time to retry an ambiguous command-result response before later commands proceed.
+    commandResultRetryTimeoutMs?: number;
+};
+
+/** Commands supported here; capture needs payload-aware bounded retry handling before it can be enabled. */
+type AgentCommandType = Exclude<Command['type'], 'capture'>;
+
+/** Type-specific workload command operation registered by the runner. */
+export type AgentCommandHandler<T extends AgentCommandType> =
+    (command: Extract<Command, { type: T }>) => Promise<void>;
+
+/** Type-erased command handler stored after on() checks its command key. */
+type StoredCommandHandler = (command: Command) => Promise<void>;
+
+/**
+ * Posts a completed result to the agent. Rejection means delivery failed, not that the command's
+ * action was undone; the agent can redeliver the command through a later stream.
+ */
+type CommandResultSender = (result: CommandResult) => Promise<void>;
+
+/**
+ * Owns command registration, ordered execution and result posting. The transport only needs to
+ * pass each validated command to process().
+ */
+export class AgentCommandProcessor {
+    private readonly _postResult: CommandResultSender;
+    private readonly _handlers = new Map<Command['type'], StoredCommandHandler>();
+    // Commands execute in delivery order. A failed result post does not poison later work.
+    private _queue: Promise<void> = Promise.resolve();
+
+    /**
+     * Creates a processor whose completed results are sent through the supplied transport operation.
+     *
+     * @param postResult Posts one completed result and resolves when the agent accepts it.
+     */
+    constructor(postResult: CommandResultSender) {
+        this._postResult = postResult;
+    }
+
+    /**
+     * Registers the sole handler for one command type.
+     *
+     * @param type Command type owned by this definition.
+     * @param handler Applies one validated command of this type.
+     */
+    on<T extends AgentCommandType>(type: T, handler: AgentCommandHandler<T>): void {
+        if (this._handlers.has(type)) {
+            throw new Error(`A handler is already registered for command "${type}"`);
+        }
+        this._handlers.set(type, handler as unknown as StoredCommandHandler);
+    }
+
+    /**
+     * Processes one validated delivery after earlier commands, including posting its final result.
+     *
+     * @param command Command received from the agent stream.
+     */
+    process(command: Command): Promise<void> {
+        const processing = this._queue.then(() => this.processDelivery(command));
+        this._queue = processing.catch(() => undefined);
+        return processing;
+    }
+
+    /** Waits until every queued command has attempted to post its result, up to the supplied bound. */
+    async waitForIdle(timeoutMs: number): Promise<void> {
+        let timer: NodeJS.Timeout | undefined;
+        try {
+            await Promise.race([
+                this._queue,
+                new Promise<void>(resolve => timer = setTimeout(resolve, timeoutMs)),
+            ]);
+        }
+        finally {
+            if (timer) clearTimeout(timer);
+        }
+    }
+
+    /** Executes one delivered command, then posts its completed result to the agent. */
+    private async processDelivery(command: Command): Promise<void> {
+        const result = await this.executeCommand(command, this._handlers.get(command.type));
+        await this._postResult(result);
+    }
+
+    /** Runs the command handler and converts success or failure into a contract result. */
+    private async executeCommand(
+        command: Command,
+        handler: StoredCommandHandler | undefined
+    ): Promise<CommandResult> {
+        let result: CommandResult;
+        try {
+            if (!handler) {
+                throw new Error(`No handler is registered for command "${command.type}"`);
+            }
+            if (command.type === 'capture') {
+                throw new Error('Capture commands are not supported by this workload');
+            }
+            await handler(command);
+            result = {
+                commandId: command.id,
+                type: command.type,
+                success: true,
+            };
+        }
+        catch (ex2) {
+            const ex = <Error>ex2;
+            result = {
+                commandId: command.id,
+                type: command.type,
+                success: false,
+                reason: ex.message || ex.toString(),
+            };
+        }
+        return result;
+    }
+
 }
 
 // This experimental module should remain excluded from public builds for now.
@@ -73,12 +239,16 @@ export interface AgentClientOptions {
  * stream, re-registering the runner's latest state when the agent restarts or the stream is lost.
  */
 export class AgentClient {
+    // Command ownership exposed to the runner before the command stream is opened.
+    readonly commands: AgentCommandProcessor;
     // Unix socket created by the device agent for this workload's HTTP API.
     private readonly _socketPath: string;
     // Maximum time an ordinary workload API request may wait for the agent to respond.
     private readonly _requestTimeoutMs: number;
     // Base initial-connect backoff and fixed delay for recovering an established command stream.
     private readonly _reconnectDelayMs: number;
+    // Bound on ambiguous same-ID result retries so replacement and rollback commands cannot starve.
+    private readonly _commandResultRetryTimeoutMs: number;
     // Latest complete runner state, retained so a reconnected agent can be registered again.
     private _registration: InferenceRunnerRegistration | undefined;
     // Agent-provided session settings, including the current input collection policy.
@@ -93,16 +263,12 @@ export class AgentClient {
     private _rejectInitialConnect: ((error: Error) => void) | undefined;
     // Times of recently attached inputs, used to enforce the agent's per-second limit.
     private _inputTimestamps: number[] = [];
-    // Serializes command handling so command results are applied and acknowledged in order.
-    private _commandQueue: Promise<void> = Promise.resolve();
     // Complete event-reporting operations that graceful shutdown must wait for.
     private _pendingEventRequests = new Set<Promise<EventBatchResponse>>();
     // Registration and command requests that shutdown must abort instead of leaving open.
     private _abortOnCloseRequests = new Set<ClientRequest>();
     // Prevents new work and reconnection after shutdown begins.
     private _closed = false;
-    // Runner callback for workload commands not implemented by this transport client.
-    private _onCommand: (command: Command) => Promise<void> | void = () => undefined;
 
     /**
      * Creates a client for the HTTP/1.1 workload API exposed on the agent's Unix socket.
@@ -114,6 +280,11 @@ export class AgentClient {
         this._socketPath = socketPath;
         this._requestTimeoutMs = options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
         this._reconnectDelayMs = options.reconnectDelayMs ?? RECONNECT_DELAY_MS;
+        this._commandResultRetryTimeoutMs = options.commandResultRetryTimeoutMs ??
+            COMMAND_RESULT_RETRY_TIMEOUT_MS;
+        this.commands = new AgentCommandProcessor(result => this.postCommandResult(result));
+        // On policy delivery, apply it before success because subsequent events must use the new value.
+        this.commands.on('updateInputPolicy', command => this.applyInputPolicy(command.inputPolicy));
     }
 
     /**
@@ -121,14 +292,9 @@ export class AgentClient {
      * stream through which the agent will deliver future model and input-policy commands.
      *
      * @param registration Complete initial state of the runner before it has loaded a model.
-     * @param onCommand Handler for validated commands delivered by the agent.
      */
-    async connect(
-        registration: InferenceRunnerRegistration,
-        onCommand?: (command: Command) => Promise<void> | void
-    ) {
+    async connect(registration: InferenceRunnerRegistration) {
         this._registration = registration;
-        this._onCommand = onCommand || (() => undefined);
         // Compose does not guarantee that the agent socket exists before the runner starts. Retry
         // transport failures with exponential backoff so startup order is irrelevant without
         // repeatedly hammering an unavailable agent. Invalid contract responses remain fatal.
@@ -152,25 +318,30 @@ export class AgentClient {
     }
 
     /**
-     * Replaces the agent's view of this runner after its active model changes while preserving the
-     * existing command stream and workload session.
+     * Publishes the runner's current model after activation while preserving the command stream and
+     * workload session.
      *
-     * @param registration Complete replacement state, including the model the runner now serves.
+     * @param registration Complete state, including the model the runner now serves.
      */
     async updateRegistration(registration: InferenceRunnerRegistration): Promise<void> {
-        this._registration = registration;
         try {
-            this._session = await this.register(registration);
+            const session = await this.register(registration);
+            // Only confirmed state is used for later reconnects. A timed-out request may have been
+            // accepted, so startup still treats that activation as unconfirmed.
+            this._registration = registration;
+            this._session = session;
         }
         catch (error) {
             if (!isRetryableTransportError(error)) {
                 throw error;
             }
             // Force session recovery even if the old command stream has not noticed the agent
-            // restart. reconnect() will register the latest state before opening a new stream.
+            // restart. reconnect() restores the last confirmed state before opening a new stream.
             const commandRequest = this._commandRequest;
             commandRequest?.destroy();
             this.reconnect(commandRequest);
+            // A bundle command succeeds only after the agent accepts its model registration.
+            throw error;
         }
     }
 
@@ -272,36 +443,51 @@ export class AgentClient {
     }
 
     /**
-     * Applies commands owned by the transport client and delegates workload-specific commands to the
-     * runner. The input policy is updated before success is reported so subsequent events use it.
+     * Posts a completed result so the agent can resolve the command and stop redelivering its ID.
      *
-     * @param command Validated command delivered by the agent's server-sent event stream.
-     */
-    private async handleCommand(command: Command): Promise<void> {
-        if (command.type === 'updateInputPolicy') {
-            if (!this._session) {
-                throw new Error('Cannot update the input policy before registration');
-            }
-            this._session = { ...this._session, inputPolicy: command.inputPolicy };
-            await this.postCommandResult({
-                commandId: command.id,
-                type: command.type,
-                success: true,
-            });
-            return;
-        }
-        await this._onCommand(command);
-    }
-
-    /**
-     * Reports whether a delivered command completed so the agent can commit the corresponding state
-     * change and stop redelivering that command.
-     *
-     * @param result Success or failure result carrying the delivered command's ID and type.
+     * @param result Success or failure produced by the command processor.
      */
     private async postCommandResult(result: CommandResult): Promise<void> {
         const path = `/v1/commands/${encodeURIComponent(result.commandId)}/result`;
-        await this.request('POST', path, serializeCommandResult(result));
+        const body = serializeCommandResult(result);
+        const retryStartedAt = Date.now();
+        let lastAmbiguousError: Error | undefined;
+        while (!this._closed) {
+            if (lastAmbiguousError &&
+                Date.now() - retryStartedAt >= this._commandResultRetryTimeoutMs) {
+                throw new Error(
+                    `Stopped retrying result for command "${result.commandId}" after ` +
+                    `${this._commandResultRetryTimeoutMs} ms: ${lastAmbiguousError.message}`);
+            }
+            try {
+                await this.request('POST', path, body);
+                return;
+            }
+            catch (error) {
+                // The agent may stop waiting while a command is still completing. The action remains
+                // complete locally, and reconnecting cannot make that expired command valid again.
+                if (error instanceof AgentRequestError && error.contractCode === 'unknown_command') return;
+                if (!shouldRetryCommandResult(error)) throw error;
+                lastAmbiguousError = error instanceof Error ? error : new Error(String(error));
+                const retryTimeRemaining = this._commandResultRetryTimeoutMs -
+                    (Date.now() - retryStartedAt);
+                if (retryTimeRemaining <= 0) continue;
+                await new Promise(resolve => setTimeout(
+                    resolve,
+                    Math.min(this._reconnectDelayMs, retryTimeRemaining)
+                ));
+            }
+        }
+        throw new Error('Cannot post a command result after the agent client has closed');
+    }
+
+    /** Applies the input policy before its successful command result is posted. */
+    private applyInputPolicy(inputPolicy: RegisterResponse['inputPolicy']): Promise<void> {
+        if (!this._session) {
+            throw new Error('Cannot update the input policy before registration');
+        }
+        this._session = { ...this._session, inputPolicy };
+        return Promise.resolve();
     }
 
     /**
@@ -428,11 +614,16 @@ export class AgentClient {
                             reconnect();
                             return;
                         }
-                        this._commandQueue = this._commandQueue
-                            .then(() => this.handleCommand(command))
-                            .catch(() => {
-                                req.destroy();
-                                reconnect();
+                        this.commands.process(command)
+                            .catch(error => {
+                                if (shouldRecoverCommandSession(error)) {
+                                    req.destroy();
+                                    reconnect();
+                                }
+                                else {
+                                    const ex = error instanceof Error ? error : new Error(String(error));
+                                    console.warn(`Failed to post command result: ${ex.message}`);
+                                }
                             });
                     }
                 }
@@ -522,7 +713,7 @@ export class AgentClient {
                 res.on('data', chunk => responseBody += chunk);
                 res.on('end', () => {
                     if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
-                        reject(new Error(`Agent returned HTTP ${res.statusCode || 'unknown'}: ${responseBody}`));
+                        reject(new AgentRequestError(res.statusCode, responseBody));
                         return;
                     }
                     resolve(responseBody);

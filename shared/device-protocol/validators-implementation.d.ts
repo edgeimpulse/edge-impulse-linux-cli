@@ -5,6 +5,7 @@ export declare const validateNewModelUpdated: (value: unknown) => boolean;
 export declare const validateInferenceSummary: (value: unknown) => boolean;
 export declare const validateDeployModel: (value: unknown) => boolean;
 export declare const validateRollbackModel: (value: unknown) => boolean;
+export declare const validateWorkloadInventory: (value: unknown) => boolean;
 export declare const validateLegacyRemoteManagementMessage: (value: unknown) => boolean;
 export declare const validateWorkloadContractMessage: (value: unknown) => boolean;
 export declare const validateRegisterRequest: (value: unknown) => boolean;

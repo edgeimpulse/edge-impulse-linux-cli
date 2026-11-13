@@ -59,6 +59,10 @@ export type InferenceRunnerRegistration = RegisterRequestCommon & {
     kind: 'inference_runner';
 };
 /**
+ * The kind of the activated inference bundle.
+ */
+export type InferenceBundleKind = 'model' | 'workflow';
+/**
  * The contract's major version, the same as in the path.
  */
 export type ContractVersion = 1;
@@ -208,6 +212,10 @@ export type ActivateBundleCommand = CommandCommon & {
     type: 'activateBundle';
 };
 /**
+ * A single-model bundle for the runner or a workflow bundle for the workflow runtime.
+ */
+export type InferenceBundleKind1 = 'model' | 'workflow';
+/**
  * Replace the input policy from the registration.
  */
 export type UpdateInputPolicyCommand = CommandCommon & {
@@ -264,6 +272,7 @@ export type ContractErrorCode =
  * The fields every variant of `RegisterRequest` shares.
  */
 export interface RegisterRequestCommon {
+    activeBundle?: ActiveInferenceBundle;
     /**
      * What the workload can do beyond posting events, from
      * [`capability`]. Unknown names are ignored.
@@ -286,6 +295,21 @@ export interface RegisterRequestCommon {
      * The workload's software version: the runner's version, for example.
      */
     version: string;
+}
+/**
+ * The complete verified active bundle, reported by bundleIdentity peers independently of their image
+ * artifact.
+ */
+export interface ActiveInferenceBundle {
+    /**
+     * The activated bundle version, independent of its models' individual versions.
+     */
+    deploymentVersion: number;
+    kind: InferenceBundleKind;
+    /**
+     * The verified content digest defined by InferenceBundle.digest.
+     */
+    digest: string;
 }
 /**
  * One model the workload serves from its active inference bundle, with identity fields from
@@ -712,13 +736,16 @@ export interface InferenceBundle {
      */
     deploymentVersion: number;
     /**
-     * The bundle's digest, when the agent verified it.
+     * The bundle's digest, when the agent verified it. For bundleIdentity peers, use sha256:<lowercase
+     * hex> over the byte string: UTF-8 edge-impulse-bundle-v1 followed by NUL, then every manifest-listed
+     * file plus manifest.json, sorted by UTF-8 relative path bytes. Each entry is its path byte length as
+     * unsigned 64-bit big-endian, its UTF-8 path, its file byte length as unsigned 64-bit big-endian, then
+     * its raw file bytes. Include the workflow file for workflow bundles; include each path once. This
+     * includes workflow-only changes and is independent of the directory's location. Workloads verify this
+     * identity before reporting activeBundle.
      */
     digest?: string;
-    /**
-     * A single-model bundle for the runner or a workflow bundle for the workflow runtime.
-     */
-    kind: 'model' | 'workflow';
+    kind: InferenceBundleKind1;
     /**
      * The staged directory containing manifest.json, as the workload sees it.
      */

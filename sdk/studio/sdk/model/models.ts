@@ -256,6 +256,8 @@ export * from './deviceDeploymentEvent';
 export * from './deviceModelDeploymentRequest';
 export * from './deviceNameResponse';
 export * from './deviceTelemetryInterval';
+export * from './deviceWorkload';
+export * from './deviceWorkloadModel';
 export * from './downgradeSubscriptionRequest';
 export * from './download';
 export * from './downloadPortalFileRequest';

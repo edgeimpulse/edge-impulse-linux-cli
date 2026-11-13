@@ -24,7 +24,8 @@ import {
     printThresholds,
     isVlmServerRunning,
     startVlmServer,
-    stopVlmServer
+    stopVlmServer,
+    InferenceAvailability,
 } from './runner-utils';
 import { initCamera, initMicrophone, getCameraType, CameraType } from '../../library/sensors/sensors-helper';
 import { AWSSecretsManagerUtils } from "../../cli-common/aws-sm-utils";
@@ -36,20 +37,38 @@ import os from 'os';
 import { ChildProcess } from 'node:child_process';
 import type { AgentClient, AgentInferenceInput } from '../../cli-common/agent-client';
 import { CompletedInferenceEvent, InferenceRunnerRegistration, ModelRegistration } from '../../shared/device-protocol/workload-contract';
-import { agentEngineName, agentRunnerMode } from './agent-runner-metadata';
+import { BundleModel } from '../../shared/device-protocol/inference-bundle-manifest';
+import { agentRunnerMode } from './agent-runner-metadata';
 import { buildMonoPcm16WavFile } from './audio-utils';
+import type { PreparedAgentBundle } from './agent-bundle';
+import type { AgentBundleLifecycle } from './agent-bundle-lifecycle';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 const CLASSIFIER_THRESHOLD: RunnerBlockThreshold =
                             { id: 42, type: 'classification', min_score: 0.001 };
+// Leaves the current activation lease time to stop a failed candidate and post its failure result.
+const DEFAULT_AGENT_BUNDLE_PREPARE_TIMEOUT_MS = 25_000;
+const AGENT_FAILURE_RESULT_GRACE_MS = 11_000;
+const TERMINAL_SHUTDOWN_TIMEOUT_MS = 10_000;
+const PLANNED_RESTART_EXIT_CODE = 75;
 
 let audioClassifier: AudioClassifier | undefined;
 let imageClassifier: ImageClassifier | undefined;
 let modelMonitor: ModelMonitor | undefined;
 let configFactory: Config | undefined;
 let agentClient: AgentClient | undefined;
+let agentBundleLifecycle: AgentBundleLifecycle | undefined;
+let terminateRunner: ((reason: string, exitCode?: number) => Promise<never>) | undefined;
 
 let vlmServerProcess: ChildProcess | null = null;
+
+/** Requests terminal agent-mode shutdown without returning to the command result path. */
+async function restartForBundleActivation(): Promise<never> {
+    if (!terminateRunner) {
+        throw new Error('Cannot restart for bundle activation before serving has started');
+    }
+    return terminateRunner('A different bundle is ready for activation', PLANNED_RESTART_EXIT_CODE);
+}
 
 type ImagePayload = {
     image?: string;
@@ -66,7 +85,7 @@ program
     .description('Edge Impulse Linux runner ' + packageVersion)
     .version(packageVersion)
     .option('--model-file <file>', 'Specify model file (either path to .eim, or the socket on which the model is running), ' +
-        'if not provided the model will be fetched from Edge Impulse. Agent mode also reads EI_MODEL_FILE')
+        'if not provided the model will be fetched from Edge Impulse. Cannot be used in agent mode')
     .option('--api-key <key>', 'API key to authenticate with Edge Impulse (overrides current credentials)')
     .option('--agent <socket>', 'Report to the Edge Impulse device agent over this Unix socket. Also reads EI_AGENT_SOCKET')
     .option('--download <file>', 'Just download the model and store it on the file system')
@@ -76,7 +95,7 @@ program
     .option('--force-variant <variant>', 'Do not autodetect the model variant, but set it by hand (e.g. "int8")')
     .option('--force-resize-mode <mode>', 'Do not use the resize method from the impulse, but set it by hand (valid: "squash", "fit-shortest" or "fit-longest")')
     .option('--force-camera-resolution <width,height>', 'Do not auto-select camera resolution based on your impulse, but force a resolution (format: "1280,720" for w=1280, h=720)')
-    .option('--impulse-id <impulseId>', 'Select the impulse ID (if you have multiple impulses). Agent mode also reads EI_IMPULSE_ID')
+    .option('--impulse-id <impulseId>', 'Select the impulse ID (if you have multiple impulses). Cannot be used in agent mode')
     .option('--run-http-server <port>', 'Do not run using a sensor, but instead expose an API server at the specified port. ' +
         'Agent mode also reads EI_RUNNER_HTTP_PORT')
     .option('--preview-port <port>', 'Port to use to render the preview HTTP interface (default: 4912) (ignored when running with --run-http-server). ' +
@@ -138,16 +157,17 @@ const enableGpuArgv: boolean = !!program.enableGpu;
 const apiKeyArgv = <string | undefined>program.apiKey;
 const agentSocketArgv = <string | undefined>program.agent || process.env.EI_AGENT_SOCKET;
 const greengrassArgv: boolean = !!program.greengrass;
-const modelFileArgv = <string | undefined>program.modelFile ||
-    (agentSocketArgv ? process.env.EI_MODEL_FILE : undefined);
+const agentModelFileArgv = <string | undefined>program.modelFile || process.env.EI_MODEL_FILE;
+const modelFileArgv = agentSocketArgv ? undefined : <string | undefined>program.modelFile;
 const downloadArgv = <string | undefined>program.download;
-const forceTargetArgv = <string | undefined>program.forceTarget;
+const forceTargetArgv = <string | undefined>program.forceTarget ||
+    (agentSocketArgv ? process.env.EI_RUNNER_TARGET : undefined);
 const forceEngineArgv = <string | undefined>program.forceEngine;
 const forceVariantArgv = <models.KerasModelVariantEnum | undefined>program.forceVariant;
 const forceResizeModeArgv = <RunnerHelloResponseModelParameters['image_resize_mode'] | undefined>program.forceResizeMode;
 const forceCameraResolutionArgv = <string | undefined>program.forceCameraResolution;
-const impulseIdArgvStr = <string | undefined>program.impulseId ||
-    (agentSocketArgv ? process.env.EI_IMPULSE_ID : undefined);
+const agentImpulseIdArgvStr = <string | undefined>program.impulseId || process.env.EI_IMPULSE_ID;
+const impulseIdArgvStr = agentSocketArgv ? undefined : <string | undefined>program.impulseId;
 const impulseIdArgv = impulseIdArgvStr && !isNaN(Number(impulseIdArgvStr)) ? Number(impulseIdArgvStr) : undefined;
 const monitorArgv: boolean = !!program.monitor;
 const monitorMaxStorageSizeStr = <string | undefined>program.monitorMaxStorageSize;
@@ -194,6 +214,10 @@ const experimentalGstPreferJpegArgv = !!program.experimentalGstPreferJpeg;
 let modeArgv = <'streaming' | 'http-server' | undefined>(program.mode ||
     (agentSocketArgv ? process.env.EI_RUNNER_MODE : undefined));
 const fakeCameraArgv = <string | undefined>program.fakeCamera;
+const agentBundlePrepareTimeoutValue = agentSocketArgv ?
+    process.env.EI_AGENT_BUNDLE_PREPARE_TIMEOUT_MS : undefined;
+const agentBundlePrepareTimeoutMs = agentBundlePrepareTimeoutValue ?
+    Number(agentBundlePrepareTimeoutValue) : DEFAULT_AGENT_BUNDLE_PREPARE_TIMEOUT_MS;
 
 if (modeArgv === 'http-server' && typeof runHttpServerPort === 'undefined') {
     runHttpServerPort = 1337;
@@ -260,6 +284,7 @@ const onSignal = async () => {
             if (imageClassifier) {
                 await imageClassifier.stop();
             }
+            await agentBundleLifecycle?.stopPendingRunner();
             if (profiling) {
                 profiling.printSummary();
             }
@@ -354,6 +379,8 @@ async function ensureVlmServer(opts: { serverPath: string,
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {
+    // Retained outside the startup try block so failure handling can restore an empty registration.
+    let preparedAgentBundle: PreparedAgentBundle | undefined;
     try {
         let modelFile;
         let remoteMgmt: RemoteMgmt | undefined;
@@ -397,6 +424,8 @@ async function ensureVlmServer(opts: { serverPath: string,
         }
 
         if (agentSocketArgv) {
+            // Agent deployments start empty and receive their model through activateBundle. The
+            // reference Compose migration to this invocation is tracked by #16494.
             if (apiKeyArgv) {
                 throw new Error('Cannot combine --agent and --api-key');
             }
@@ -406,11 +435,15 @@ async function ensureVlmServer(opts: { serverPath: string,
             if (greengrassArgv) {
                 throw new Error('Cannot combine --agent and --greengrass');
             }
-            if (!modelFileArgv) {
-                throw new Error('--agent currently requires --model-file until inference bundle activation is implemented');
+            if (agentModelFileArgv) {
+                throw new Error('Cannot combine --agent and --model-file or EI_MODEL_FILE; models are selected by activateBundle');
             }
-            if (!impulseIdArgv) {
-                throw new Error('--agent with --model-file requires --impulse-id because the .eim does not report its impulse ID');
+            if (agentImpulseIdArgvStr) {
+                throw new Error('Cannot combine --agent and --impulse-id or EI_IMPULSE_ID; model identity comes from the bundle manifest');
+            }
+            if (!Number.isInteger(agentBundlePrepareTimeoutMs) || agentBundlePrepareTimeoutMs <= 0) {
+                throw new Error(`Invalid EI_AGENT_BUNDLE_PREPARE_TIMEOUT_MS "${agentBundlePrepareTimeoutValue}", ` +
+                    'expected a positive integer');
             }
         }
 
@@ -565,9 +598,55 @@ async function ensureVlmServer(opts: { serverPath: string,
         }
 
         if (agentSocketArgv) {
-            const AgentClientConstructor = await loadAgentClient();
+            const {
+                AgentClient: AgentClientConstructor,
+                AgentBundleLifecycle: AgentBundleLifecycleConstructor,
+            } = await loadAgentModules();
             agentClient = new AgentClientConstructor(agentSocketArgv);
+            agentBundleLifecycle = new AgentBundleLifecycleConstructor({
+                agentClient,
+                policy: {
+                    // When lifecycle identity changes, include both manifest identity and initialized metadata.
+                    createRegistration(bundle) {
+                        return createAgentRegistration(bundle?.registrationModel, bundle?.manifestModel);
+                    },
+                    // Before activation, apply CLI thresholds and resize overrides to runtime metadata only.
+                    async configure(candidate) {
+                        if (forceResizeModeArgv) {
+                            candidate.model.modelParameters.image_resize_mode = forceResizeModeArgv;
+                        }
+                        if (candidate.model.modelParameters.model_type === 'classification' &&
+                            candidate.model.modelParameters.sensorType === 'camera') {
+                            candidate.model.modelParameters.thresholds?.push(CLASSIFIER_THRESHOLD);
+                        }
+                        await setThresholdsFromArgv(candidate.runner, candidate.model);
+                    },
+                    // Before initial preparation, derive the configured input mode for runtime validation.
+                    servingMode() {
+                        return agentRunnerMode(runHttpServerPort, cameraArgv, microphoneArgv, undefined);
+                    },
+                },
+                validateOptions: {
+                    forceTarget: forceTargetArgv,
+                    packageVersion,
+                },
+                prepareOptions: {
+                    shmBehavior: shmBehaviorArgv,
+                    startupTimeoutMs: agentBundlePrepareTimeoutMs,
+                    verbose: verboseArgv,
+                },
+            });
+            // On activation delivery, restart after static validation so a fresh process owns the new model.
+            agentClient.commands.on('activateBundle', async command => {
+                const result = await agentBundleLifecycle!.activateBundle(command);
+                if (result.kind === 'restart-required') {
+                    await restartForBundleActivation();
+                }
+            });
+            // Agent mode deliberately starts without a model. The first activateBundle command is
+            // held open by the lifecycle until the selected sensor or HTTP server is ready to use it.
             await agentClient.connect(createAgentRegistration(undefined, undefined));
+            preparedAgentBundle = await agentBundleLifecycle.waitForInitialBundle();
         }
 
         let initializedProjectState: {
@@ -576,7 +655,11 @@ async function ensureVlmServer(opts: { serverPath: string,
             deploymentType: string,
         } | undefined;
 
-        if (modelFileArgv) {
+        if (preparedAgentBundle) {
+            modelFile = undefined;
+            initializedProjectState = undefined;
+        }
+        else if (modelFileArgv) {
             // if we have the model file, just use that and make it executable
             modelFile = modelFileArgv;
             await fs.promises.chmod(modelFile, 0o755);
@@ -769,20 +852,82 @@ async function ensureVlmServer(opts: { serverPath: string,
         }
 
         // create the runner and init (get info from model file)
-        runner = new LinuxImpulseRunner(modelFile, {
-            verbose: verboseArgv,
-            shmBehavior: shmBehaviorArgv,
-        });
-        model = await runner.init();
+        if (preparedAgentBundle) {
+            runner = preparedAgentBundle.runner;
+            model = preparedAgentBundle.model;
+        }
+        else {
+            if (!modelFile) {
+                throw new Error('No model file available');
+            }
+            runner = new LinuxImpulseRunner(modelFile, {
+                verbose: verboseArgv,
+                shmBehavior: shmBehaviorArgv,
+            });
+            model = await runner.init();
+        }
 
-        if (agentClient) {
-            // Register before applying runner-only threshold defaults or command-line overrides. The agent receives
-            // the model metadata exactly as the .eim reported it.
-            await agentClient.updateRegistration(createAgentRegistration(model, impulseIdArgv));
+        const inferenceAvailability: InferenceAvailability = {
+            // Agent mode serves only after the agent accepts the model registration.
+            available: !agentSocketArgv,
+        };
+        let terminalShutdown: Promise<never> | undefined;
+        terminateRunner = (reason, exitCode = 1) => {
+            if (terminalShutdown) return terminalShutdown;
+
+            terminalShutdown = (async (): Promise<never> => {
+                inferenceAvailability.available = false;
+                const recovery = agentSocketArgv ? ' so the process supervisor can restart the runner' : '';
+                console.log(RUNNER_PREFIX, `${reason}; stopping${recovery}`);
+                const forceExit = setTimeout(() => {
+                    console.warn(RUNNER_PREFIX,
+                        `Shutdown did not complete within ${TERMINAL_SHUTDOWN_TIMEOUT_MS} ms; exiting`);
+                    if (vlmServerProcess) stopVlmServer(vlmServerProcess);
+                    process.exit(exitCode);
+                }, TERMINAL_SHUTDOWN_TIMEOUT_MS);
+                const cleanup = async (description: string, operation: () => unknown) => {
+                    try {
+                        await operation();
+                    }
+                    catch (cleanupError) {
+                        console.warn(RUNNER_PREFIX, `Failed to ${description}`, asError(cleanupError).message);
+                    }
+                };
+                try {
+                    if (audioClassifier) {
+                        await cleanup('stop audio inference', () => audioClassifier!.stop());
+                    }
+                    else if (imageClassifier) {
+                        await cleanup('stop image inference', () => imageClassifier!.stop());
+                    }
+                    else {
+                        await cleanup('stop model inference', () => runner.stop());
+                    }
+                    if (vlmServerProcess) {
+                        await cleanup('stop the VLM server', () => stopVlmServer(vlmServerProcess!));
+                    }
+                    // close() destroys the command stream and gives started event requests a bounded flush.
+                    await cleanup('close the agent connection', async () => agentClient?.close());
+                }
+                finally {
+                    clearTimeout(forceExit);
+                }
+                process.exit(exitCode);
+            })();
+            return terminalShutdown;
+        };
+        if (agentSocketArgv) {
+            // Agent mode exits for supervisor recovery when its serving model cannot recover in place.
+            runner.on('unexpectedTermination', termination => {
+                const detail = termination.signal ?
+                    `signal ${termination.signal}` : termination.code !== null ?
+                        `exit code ${termination.code}` : 'serving socket closed';
+                void terminateRunner?.(`The serving .eim terminated unexpectedly (${detail})`);
+            });
         }
 
         // treat the user provided resize arguments as-if from the model
-        if (forceResizeModeArgv) {
+        if (forceResizeModeArgv && !preparedAgentBundle) {
             const resizeParam = model.modelParameters.image_resize_mode;
             model.modelParameters.image_resize_mode = forceResizeModeArgv || resizeParam || 'none';
         }
@@ -846,19 +991,21 @@ async function ensureVlmServer(opts: { serverPath: string,
             previewOriginalResolutionArgv = true;
         }
 
-        if (model.modelParameters.model_type === 'classification' &&
+        if (!preparedAgentBundle && model.modelParameters.model_type === 'classification' &&
             model.modelParameters.sensorType === 'camera') {
             model.modelParameters.thresholds?.push(CLASSIFIER_THRESHOLD);
         }
 
-        await setThresholdsFromArgv(runner, model);
+        if (!preparedAgentBundle) {
+            await setThresholdsFromArgv(runner, model);
+        }
 
         if (greengrassArgv && awsIOT?.isConnected() === true) {
             awsIOT.initModelInfo(model.project.name, "v" + model.project.deploy_version, model.modelParameters);
         }
 
         // if downloaded? then store...
-        if (!modelFileArgv && modelPath) {
+        if (!agentSocketArgv && !modelFileArgv && modelPath && modelFile) {
             let file = modelPath.getModelPath(model.project.deploy_version);
             if (file !== modelFile) {
                 await fs.promises.mkdir(Path.dirname(file), { recursive: true });
@@ -873,6 +1020,15 @@ async function ensureVlmServer(opts: { serverPath: string,
         }
 
         let param = model.modelParameters;
+        // When sensor or HTTP startup completes, finish initial commit because inference can now be served.
+        const completeInitialAgentBundleActivation = async () => {
+            await agentBundleLifecycle?.completeInitialActivation();
+            inferenceAvailability.available = true;
+            if (agentSocketArgv) {
+                audioClassifier?.resume();
+                imageClassifier?.resume();
+            }
+        };
         if (monitorArgv) {
             // make sure the config is set
             if (!config) {
@@ -1050,6 +1206,7 @@ async function ensureVlmServer(opts: { serverPath: string,
 
             try {
                 await startApiServer({
+                    availability: inferenceAvailability,
                     model,
                     runner,
                     projectStudioUrl,
@@ -1067,7 +1224,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                     console.log(``);
                     console.log(`    edge-impulse-linux-runner --run-http-server ${runHttpServerPort + 1}`);
                     console.log(``);
-                    process.exit(1);
+                    throw ex;
                 }
                 throw ex;
             }
@@ -1076,6 +1233,7 @@ async function ensureVlmServer(opts: { serverPath: string,
             console.log(RUNNER_PREFIX, `HTTP Server now running at http://${(ips.length > 0 ? ips[0].address : 'localhost')}:${runHttpServerPort}`);
             console.log(RUNNER_PREFIX, '');
 
+            await completeInitialAgentBundleActivation();
             return;
         }
 
@@ -1121,7 +1279,7 @@ async function ensureVlmServer(opts: { serverPath: string,
             catch (ex2) {
                 const ex = <Error>ex2;
                 console.warn(RUNNER_PREFIX, (ex.message || ex.toString()));
-                process.exit(1);
+                throw ex;
             }
             if (!agentSocketArgv) {
                 await configFactory.storeAudio(audioDeviceName);
@@ -1129,7 +1287,11 @@ async function ensureVlmServer(opts: { serverPath: string,
 
             console.log(RUNNER_PREFIX, 'Using microphone ' + audioDeviceName);
 
-            audioClassifier = new AudioClassifier(runner, verboseArgv);
+            // Silence is valid model input in managed workloads, so only interactive mode applies
+            // the legacy first-frame device diagnostic.
+            audioClassifier = new AudioClassifier(runner, verboseArgv, {
+                rejectSilentFirstFrame: !agentSocketArgv,
+            });
 
             audioClassifier.on('noAudioError', async () => {
                 console.log('');
@@ -1139,11 +1301,11 @@ async function ensureVlmServer(opts: { serverPath: string,
                 console.log('  Are you running this command from a simulated shell (like in Visual Studio Code)?');
                 console.log('* If you are on Linux and use a microphone in a webcam, you might also want');
                 console.log('  to initialize the camera with --enable-camera');
-                await audioClassifier?.stop();
-                process.exit(1);
+                await terminateRunner?.('The microphone did not provide usable audio');
             });
 
             await audioClassifier.start(audioDeviceName);
+            if (agentSocketArgv) audioClassifier.pause();
 
             try {
                 await startWebServer({
@@ -1164,7 +1326,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                     console.log(``);
                     console.log(`    edge-impulse-linux-runner --preview-port ${previewPortArgv + 1}`);
                     console.log(``);
-                    process.exit(1);
+                    throw ex;
                 }
                 throw ex;
             }
@@ -1316,7 +1478,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                     }
                 }
                 else {
-                    process.exit(1);
+                    void terminateRunner?.(`Camera capture failed: ${String(error)}`);
                 }
             });
             let opts = camera.getLastOptions();
@@ -1326,6 +1488,7 @@ async function ensureVlmServer(opts: { serverPath: string,
             console.log(RUNNER_PREFIX, `Connected to camera "${opts.device}" (run with --clean to select another one)`);
 
             await imageClassifier.start();
+            if (agentSocketArgv) imageClassifier.pause();
 
             try {
                 await startWebServer({
@@ -1350,7 +1513,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                     console.log(``);
                     console.log(`    edge-impulse-linux-runner --preview-port ${previewPortArgv + 1}`);
                     console.log(``);
-                    process.exit(1);
+                    throw ex;
                 }
                 throw ex;
             }
@@ -1509,6 +1672,7 @@ async function ensureVlmServer(opts: { serverPath: string,
         else {
             throw new Error('Invalid sensorType: ' + param.sensorType);
         }
+        await completeInitialAgentBundleActivation();
     }
     catch (ex2) {
         // The signal handler owns cleanup and the successful exit code once shutdown has started.
@@ -1516,6 +1680,10 @@ async function ensureVlmServer(opts: { serverPath: string,
             return;
         }
         let ex = <Error>ex2;
+        agentBundleLifecycle?.failInitialBundle(ex);
+        // The command handler resumes after failInitialBundle(). Give it a bounded opportunity to
+        // post the operator-visible failure before this process terminates.
+        await agentClient?.commands.waitForIdle(AGENT_FAILURE_RESULT_GRACE_MS);
         console.warn(RUNNER_PREFIX, 'Failed to run impulse', ex.message || ex.toString());
 
         if ((ex.message || ex.toString()).indexOf('libtensorflowlite_flex') > -1) {
@@ -1529,26 +1697,41 @@ async function ensureVlmServer(opts: { serverPath: string,
             }
         }
 
-        if (audioClassifier) {
-            await audioClassifier.stop();
-        }
-        if (imageClassifier) {
-            await imageClassifier.stop();
-        }
-        if (vlmServerProcess) {
-            await stopVlmServer(vlmServerProcess);
-        }
+        const cleanup = async (description: string, operation: () => unknown) => {
+            try {
+                await operation();
+            }
+            catch (cleanupError) {
+                console.warn(RUNNER_PREFIX, `Failed to ${description}`, asError(cleanupError).message);
+            }
+        };
+        if (audioClassifier) await cleanup('stop audio inference', () => audioClassifier!.stop());
+        if (imageClassifier) await cleanup('stop image inference', () => imageClassifier!.stop());
+        await cleanup('stop a partially initialized model', async () => agentBundleLifecycle?.stopPendingRunner());
+        if (vlmServerProcess) await cleanup('stop the VLM server', () => stopVlmServer(vlmServerProcess!));
+        if (agentClient) await cleanup('close the agent connection', () => agentClient!.close());
         process.exit(1);
     }
 })();
 
 /**
- * Loads the experimental workload API client only after agent-managed mode is selected, so ordinary
- * runner modes do not depend on a module that is intentionally absent from some builds.
+ * Loads agent-managed command and bundle support only after agent mode is selected. Ordinary runner
+ * modes therefore remain independent of validators intentionally absent from some public builds.
  */
-async function loadAgentClient(): Promise<new(socketPath: string) => AgentClient> {
+async function loadAgentModules(): Promise<{
+    AgentClient: new(socketPath: string) => AgentClient;
+    AgentBundleLifecycle: typeof import('./agent-bundle-lifecycle').AgentBundleLifecycle;
+}> {
     try {
-        return (await import('../../cli-common/agent-client')).AgentClient;
+        const [ agentClientModule, bundleLifecycleModule ] = await Promise.all([
+            import('../../cli-common/agent-client'),
+            import('./agent-bundle-lifecycle'),
+        ]);
+
+        return {
+            AgentClient: agentClientModule.AgentClient,
+            AgentBundleLifecycle: bundleLifecycleModule.AgentBundleLifecycle,
+        };
     }
     catch (ex2) {
         const ex = <NodeJS.ErrnoException>ex2;
@@ -1566,11 +1749,11 @@ async function loadAgentClient(): Promise<new(socketPath: string) => AgentClient
  * loaded `.eim` so the agent knows which model this runner currently serves.
  *
  * @param model Metadata reported by the loaded `.eim`, or undefined for the initial registration.
- * @param impulseId Studio impulse ID supplied separately because the `.eim` does not report it.
+ * @param manifestModel Model identity supplied by the activated bundle manifest.
  */
 function createAgentRegistration(
     model: ModelInformation | undefined,
-    impulseId: number | undefined
+    manifestModel: BundleModel | undefined
 ): InferenceRunnerRegistration {
     const imageReference = process.env.EI_RUNNER_IMAGE || `edge-impulse-linux-runner:${packageVersion}`;
     const imageDigest = process.env.EI_RUNNER_IMAGE_DIGEST;
@@ -1578,22 +1761,20 @@ function createAgentRegistration(
 
     let modelRegistrations: ModelRegistration[] = [];
     if (model) {
-        if (!impulseId) {
-            throw new Error('Cannot register a loaded model with the agent without an impulse ID');
+        if (!manifestModel) {
+            throw new Error('Cannot register a loaded model with the agent without bundle manifest identity');
         }
-        const engine = model.modelParameters.inferencing_engine;
         modelRegistrations = [{
-            // TODO(closed-loop-demo#67): Use the bundle-local model ID from manifest.json.
-            id: `impulse-${impulseId}`,
-            projectId: model.project.id,
+            id: manifestModel.id,
+            projectId: manifestModel.projectId,
             projectName: model.project.name,
             projectOwner: model.project.owner,
-            impulseId,
-            deploymentVersion: model.project.deploy_version,
-            engine: typeof engine === 'number' ? agentEngineName(engine) : 'unknown',
-            modelType: model.modelParameters.model_type,
-            labels: model.modelParameters.labels,
-            thresholds: model.modelParameters.thresholds,
+            impulseId: manifestModel.impulseId,
+            deploymentVersion: manifestModel.deploymentVersion,
+            engine: manifestModel.engine,
+            modelType: manifestModel.modelType,
+            labels: [ ...model.modelParameters.labels ],
+            thresholds: model.modelParameters.thresholds?.map(threshold => ({ ...threshold })),
         }];
     }
 
@@ -1601,7 +1782,7 @@ function createAgentRegistration(
         kind: 'inference_runner',
         version: packageVersion,
         contractVersion: 1,
-        capabilities: [ 'inputPolicy' ],
+        capabilities: [ 'activateBundle', 'inputPolicy' ],
         artifact: {
             kind: 'containerImage',
             reference: imageReference,
@@ -1624,7 +1805,8 @@ async function reportAgentInference(
     result: RunnerClassifyResponseSuccess,
     input?: AgentInferenceInput
 ) {
-    if (!agentClient || !impulseIdArgv) {
+    const activeModelId = agentBundleLifecycle?.activeModelId();
+    if (!agentClient || !activeModelId) {
         return;
     }
 
@@ -1632,8 +1814,7 @@ async function reportAgentInference(
         id: uuidv4(),
         inferenceTimestamp: Date.now(),
         results: [{
-            // TODO(closed-loop-demo#67): Use the same bundle-local model ID as registration.
-            modelId: `impulse-${impulseIdArgv}`,
+            modelId: activeModelId,
             result: result.result,
             timing: result.timing,
             ...(result.info ? { info: result.info } : {}),
@@ -1646,6 +1827,11 @@ async function reportAgentInference(
         const ex = <Error>ex2;
         console.warn(RUNNER_PREFIX, `Failed to report inference to the device agent: ${ex.message || ex.toString()}`);
     }
+}
+
+/** Converts an unknown cleanup failure into an Error suitable for terminal logging. */
+function asError(error: unknown): Error {
+    return error instanceof Error ? error : new Error(String(error));
 }
 
 function getFriendlyModelTypeName(modelType: models.KerasModelVariantEnum) {

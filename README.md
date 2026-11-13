@@ -88,15 +88,19 @@ By default, `edge-impulse-linux-runner` runs directly under the user or service 
 
 Agent-managed mode is experimental and is not included in the standard published package or runner image. A build that enables it must explicitly include the experimental agent client and device protocol validators.
 
-Pass `--agent <socket>` or set `EI_AGENT_SOCKET` to enable this mode. The runner then skips its normal Edge Impulse login and remote-management connection. Instead, it registers with the local device agent, receives commands, and sends inference events as HTTP/1.1 messages over the agent's Unix socket. Agent mode cannot be combined with `--api-key`, `--monitor`, or `--greengrass`.
+Pass `--agent <socket>` or set `EI_AGENT_SOCKET` to enable this mode. The runner then skips its normal Edge Impulse login and remote-management connection. It registers with no model, waits for the agent to send an `activateBundle` command, and sends inference events as HTTP/1.1 messages over the agent's Unix socket. Agent mode cannot be combined with `--api-key`, `--monitor`, `--greengrass`, `--model-file`, or `--impulse-id`.
+
+The agent stages each model as a directory containing `manifest.json` and one executable `.eim`, then mounts that directory read-only into the runner container. Initial activation validates and starts the model, builds its sensor or HTTP pipeline, and registers it before reporting success. A different bundle is statically validated while the current model remains available; the runner then exits without completing the command so its supervisor can restart it and the agent can replay the activation in a fresh process. A replacement rejected by static checks leaves the current model running. A bundle that passes those checks but fails while its `.eim` or input pipeline starts is recovered by the agent rolling back and restarting the previous bundle.
 
 Agent-specific environment variables are ignored unless agent mode is enabled. `--agent` takes precedence over `EI_AGENT_SOCKET`; after agent mode is enabled, each other command-line option takes precedence over its corresponding environment variable.
 
 | Variable | Purpose and accepted values | Corresponding command-line option and precedence |
 | --- | --- | --- |
 | `EI_AGENT_SOCKET` | Enables agent-managed mode and gives the path of the agent's Unix socket. | `--agent <socket>` takes precedence. |
-| `EI_MODEL_FILE` | Path to the `.eim` model to execute. This is currently required because the agent does not yet tell the runner which model file to load. | `--model-file <file>` takes precedence. |
-| `EI_IMPULSE_ID` | Numeric Studio impulse ID associated with `EI_MODEL_FILE`. This is currently required because a `.eim` does not contain its impulse ID. | `--impulse-id <id>` takes precedence. |
+| `EI_RUNNER_TARGET` | Exact Studio deployment target expected in bundle manifests, for example `runner-linux-aarch64-qnn-ventuno-q`. Set this when automatic host detection is less specific than the deployment format. | `--force-target <target>` takes precedence. |
+| `EI_AGENT_BUNDLE_PREPARE_TIMEOUT_MS` | Maximum time for a staged `.eim` to initialize, including accelerator warm-up. Defaults to `25000`; deployments must leave enough of the current activation lease to stop a failed candidate and post its result. Rollback starts a separate activation with its own lease. | No command-line equivalent. |
+| `EI_MODEL_FILE` | Not supported in agent mode; models are selected only through `activateBundle`. | The runner exits with a clear error if this or `--model-file` is set. |
+| `EI_IMPULSE_ID` | Not supported in agent mode; model identity comes from the bundle manifest. | The runner exits with a clear error if this or `--impulse-id` is set. |
 | `EI_RUNNER_HTTP_PORT` | Port from `1` to `65535` for on-demand HTTP inference. | `--run-http-server <port>` takes precedence. |
 | `EI_RUNNER_MODE` | Runner behavior: `streaming` reads continuously from a camera or microphone; `http-server` waits for inference requests. | `--mode <mode>` takes precedence. Passing `--run-http-server` also selects `http-server` unless `--mode` is explicitly set. |
 | `EI_CAMERA` | Camera name or device path for streaming mode. It avoids an interactive device-selection prompt. | `--camera <camera>` takes precedence. |

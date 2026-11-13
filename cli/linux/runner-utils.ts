@@ -95,13 +95,22 @@ export function printThresholds(model: ModelInformation) {
     }
 }
 
+/** Mutable gate used to reject inference while the runner is shutting down. */
+export type InferenceAvailability = {
+    available: boolean;
+};
+
 export function startApiServer(opts: {
+    availability?: InferenceAvailability,
     model: ModelInformation,
     runner: LinuxImpulseRunner,
     projectStudioUrl: string,
     port: number
     printIncomingInferenceReqs: boolean,
-    onInference?: (result: RunnerClassifyResponseSuccess, input?: AgentInferenceInput) => Promise<void>,
+    onInference?: (
+        result: RunnerClassifyResponseSuccess,
+        input?: AgentInferenceInput
+    ) => Promise<void>,
 }) {
     const { model, runner, projectStudioUrl, port, printIncomingInferenceReqs, onInference } = opts;
 
@@ -110,10 +119,15 @@ export function startApiServer(opts: {
     app.use(express.json({ limit: '150mb' }));
     app.use(express.urlencoded({ extended: true }));
     app.use((req, res, next) => {
+        if (opts.availability && !opts.availability.available) {
+            res.status(503);
+            res.header('Content-Type', 'text/plain');
+            return res.end('Inference is unavailable\n');
+        }
         res.header('x-ei-owner', model.project.owner);
         res.header('x-ei-project-name', model.project.name);
         res.header('x-ei-project-version', model.project.deploy_version.toString());
-        next();
+        return next();
     });
 
     const server = new HttpServer(app);

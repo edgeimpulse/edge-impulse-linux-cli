@@ -36,6 +36,9 @@ const CUSTOM_GST_LAUNCH_COMMAND = 'custom-gst-launch-command';
 const DEFAULT_GST_VIDEO_SOURCE = 'v4l2src';
 const STREAMING_TCP_SERVER_COMMAND = 'streaming-tcp-server';
 const TCP_SERVER_GST_VIDEO_SOURCE = 'tcpserversrc';
+const CAPTURE_STOP_GRACE_PERIOD_MS = 3_000;
+const CAPTURE_STOP_FORCE_PERIOD_MS = 2_000;
+const CAPTURE_STOP_FINAL_PERIOD_MS = 2_000;
 
 export class GStreamer extends EventEmitter<{
     snapshot: (buffer: Buffer, filename: string) => void,
@@ -1073,19 +1076,46 @@ export class GStreamer extends EventEmitter<{
 
         let stopRes = new Promise<void>((resolve) => {
             if (captureProcess) {
-                captureProcess.once('close', () => {
+                let settled = false;
+                let hangupTimer: NodeJS.Timeout | undefined;
+                let forceTimer: NodeJS.Timeout | undefined;
+                let finalTimer: NodeJS.Timeout | undefined;
+                const finish = () => {
+                    if (settled) return;
+                    settled = true;
+                    if (hangupTimer) clearTimeout(hangupTimer);
+                    if (forceTimer) clearTimeout(forceTimer);
+                    if (finalTimer) clearTimeout(finalTimer);
+                    captureProcess.off('close', finish);
                     if (this._watcher) {
-                        this._watcher.close();
+                        try {
+                            this._watcher.close();
+                        }
+                        catch {
+                            // The watcher may already have closed after the final captured frame.
+                        }
+                    }
+                    if (this._captureProcess === captureProcess) {
+                        this._captureProcess = undefined;
                     }
                     resolve();
-                });
+                };
+                captureProcess.once('close', finish);
 
                 captureProcess.kill('SIGINT');
-                setTimeout(() => {
+                hangupTimer = setTimeout(() => {
                     if (this._captureProcess === captureProcess) {
                         captureProcess.kill('SIGHUP');
                     }
-                }, 3000);
+                }, CAPTURE_STOP_GRACE_PERIOD_MS);
+                forceTimer = setTimeout(() => {
+                    if (this._captureProcess === captureProcess) {
+                        captureProcess.kill('SIGKILL');
+                    }
+                }, CAPTURE_STOP_GRACE_PERIOD_MS + CAPTURE_STOP_FORCE_PERIOD_MS);
+                finalTimer = setTimeout(finish,
+                    CAPTURE_STOP_GRACE_PERIOD_MS + CAPTURE_STOP_FORCE_PERIOD_MS +
+                        CAPTURE_STOP_FINAL_PERIOD_MS);
             }
             else {
                 resolve();

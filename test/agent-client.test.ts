@@ -1,9 +1,3 @@
-/**
- * Exercises the client used by an agent-managed runner to register, report inference events and
- * receive commands over the device agent's Unix-socket HTTP API. Each test starts a small mock agent
- * server on a temporary Unix socket, registers only the routes needed for that flow, and asserts the
- * JSON requests sent by the client together with its handling of agent responses and shutdown.
- */
 import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import http from 'node:http';
@@ -35,6 +29,13 @@ interface MockAgentRoute {
     response: MockAgentResponse | ((request: MockAgentRequest) => MockAgentResponse | Promise<MockAgentResponse>);
 }
 
+/**
+ * Exercises `AgentClient`, the Unix-socket workload transport for registration, commands and inference
+ * events. Normal flows register canonical state, maintain the command stream, post results, apply input
+ * policy and send inline or spooled captures. Failure flows cover unavailable or malformed agent
+ * responses, registration recovery, command-result retry and expiry, spool failure, request timeout,
+ * stream reconnection and graceful shutdown while event requests are still pending.
+ */
 describe('AgentClient', () => {
     let tempDir: string;
     let socketPath: string;
@@ -162,8 +163,8 @@ describe('AgentClient', () => {
         await rejected;
     });
 
-    // Keeps inference running when model registration overlaps a temporary agent restart.
-    it('recovers a registration update after a transport failure', async () => {
+    // Rejects an unconfirmed model registration and reconnects with the last confirmed state.
+    it('restores the previous registration after an update transport failure', async () => {
         let registrations = 0;
         let commandStreams = 0;
         let recoveredRegistration: InferenceRunnerRegistration | undefined;
@@ -220,10 +221,13 @@ describe('AgentClient', () => {
             }],
         } satisfies InferenceRunnerRegistration;
 
-        await client.updateRegistration(updatedRegistration);
+        await assert.rejects(
+            client.updateRegistration(updatedRegistration),
+            /timed out after 20 ms/
+        );
         await waitFor(() => registrations === 3 && commandStreams === 2);
 
-        assert.deepStrictEqual(recoveredRegistration, updatedRegistration);
+        assert.deepStrictEqual(recoveredRegistration, testRegistration());
         await client.close();
     });
 
@@ -309,8 +313,8 @@ describe('AgentClient', () => {
         await client.close();
     });
 
-    // Verifies commands outside AgentClient's input-policy responsibility reach the runner implementation.
-    it('delegates workload commands to the runner callback', async () => {
+    // Verifies command handlers receive the validated, type-specific command.
+    it('delivers workload commands to their registered handler', async () => {
         let delivered: Command | undefined;
         server = await mockAgentServer(socketPath, [
             {
@@ -329,21 +333,207 @@ describe('AgentClient', () => {
                 path: '/v1/commands',
                 response: {
                     headers: { 'content-type': 'text/event-stream' },
-                    body: 'data: {"id":"capture-1","type":"capture",' +
-                        '"capture":{"sensor":"Microphone","lengthMs":2000}}\n\n',
+                    body: 'data: {"id":"activate-1","type":"activateBundle",' +
+                        '"bundle":{"kind":"model","path":"/models/version-2",' +
+                        '"deploymentVersion":2}}\n\n',
                     keepOpen: true,
                 },
+            },
+            {
+                method: 'POST',
+                path: '/v1/commands/activate-1/result',
+                response: { body: {} },
             },
         ]);
 
         const client = new AgentClient(socketPath);
-        await client.connect(testRegistration(), command => {
+        client.commands.on('activateBundle', command => {
             delivered = command;
+            return Promise.resolve();
         });
+        await client.connect(testRegistration());
         await waitFor(() => delivered !== undefined);
 
-        assert.strictEqual(delivered?.type, 'capture');
+        assert.strictEqual(delivered?.type, 'activateBundle');
         await client.close();
+    });
+
+    // An expired command result is final; it must not disrupt a healthy stream or repeat the action.
+    it('does not reconnect when the agent refuses an expired command result', async () => {
+        let registrations = 0;
+        let commandStreams = 0;
+        let results = 0;
+        server = await mockAgentServer(socketPath, [
+            {
+                method: 'POST',
+                path: '/v1/register',
+                response: () => {
+                    registrations++;
+                    return {
+                        body: {
+                            workloadId: 'vision',
+                            inputPolicy: { mode: 'none' },
+                            inlineSizeLimitBytes: 1024,
+                        },
+                    };
+                },
+            },
+            {
+                method: 'GET',
+                path: '/v1/commands',
+                response: () => {
+                    commandStreams++;
+                    return {
+                        headers: { 'content-type': 'text/event-stream' },
+                        body: 'data: {"id":"policy-expired","type":"updateInputPolicy",' +
+                            '"inputPolicy":{"mode":"all"}}\n\n',
+                        keepOpen: true,
+                    };
+                },
+            },
+            {
+                method: 'POST',
+                path: '/v1/commands/policy-expired/result',
+                response: () => {
+                    results++;
+                    return {
+                        statusCode: 404,
+                        body: { code: 'unknown_command', message: 'The command has expired' },
+                    };
+                },
+            },
+        ]);
+
+        const client = new AgentClient(socketPath, { reconnectDelayMs: 10 });
+        await client.connect(testRegistration());
+        await waitFor(() => results === 1);
+        await client.commands.waitForIdle(100);
+        await new Promise(resolve => setTimeout(resolve, 30));
+
+        assert.strictEqual(registrations, 1);
+        assert.strictEqual(commandStreams, 1);
+        await client.close();
+    });
+
+    // A request timeout response is ambiguous, so retry the identical result without applying the command twice.
+    it('retries a command result after HTTP 408', async () => {
+        let handlerCalls = 0;
+        const results: CommandResult[] = [];
+        server = await mockAgentServer(socketPath, commandResultRetryRoutes('activate-timeout', results, attempt =>
+            attempt === 1 ? { statusCode: 408, body: { message: 'Timed out' } } : { body: {} }));
+
+        const client = new AgentClient(socketPath, { reconnectDelayMs: 10 });
+        client.commands.on('activateBundle', () => {
+            handlerCalls++;
+            return Promise.resolve();
+        });
+        await client.connect(testRegistration());
+        await waitFor(() => results.length === 2);
+
+        assert.strictEqual(handlerCalls, 1);
+        assert.deepStrictEqual(results[1], results[0]);
+        await client.close();
+    });
+
+    // An internal contract response requires same-ID delivery retry because the first result may have been accepted.
+    it('retries a command result after an internal response', async () => {
+        let handlerCalls = 0;
+        const results: CommandResult[] = [];
+        server = await mockAgentServer(socketPath, commandResultRetryRoutes('activate-internal', results, attempt =>
+            attempt === 1 ? {
+                statusCode: 500,
+                body: { code: 'internal', message: 'Result state is uncertain' },
+            } : { body: {} }));
+
+        const client = new AgentClient(socketPath, { reconnectDelayMs: 10 });
+        client.commands.on('activateBundle', () => {
+            handlerCalls++;
+            return Promise.resolve();
+        });
+        await client.connect(testRegistration());
+        await waitFor(() => results.length === 2);
+
+        assert.strictEqual(handlerCalls, 1);
+        assert.deepStrictEqual(results[1], results[0]);
+        await client.close();
+    });
+
+    // A permanently ambiguous result must eventually be logged and released so rollback can run.
+    it('bounds ambiguous result retries and processes the next queued command', async () => {
+        let handlerCalls = 0;
+        let ambiguousResults = 0;
+        let nextResults = 0;
+        const warnings: string[] = [];
+        server = await mockAgentServer(socketPath, [
+            {
+                method: 'POST',
+                path: '/v1/register',
+                response: {
+                    body: {
+                        workloadId: 'vision',
+                        inputPolicy: { mode: 'none' },
+                        inlineSizeLimitBytes: 1024,
+                    },
+                },
+            },
+            {
+                method: 'GET',
+                path: '/v1/commands',
+                response: {
+                    headers: { 'content-type': 'text/event-stream' },
+                    body: 'data: {"id":"activate-stuck","type":"activateBundle",' +
+                        '"bundle":{"kind":"model","path":"/models/version-2",' +
+                        '"deploymentVersion":2}}\n\n' +
+                        'data: {"id":"policy-next","type":"updateInputPolicy",' +
+                        '"inputPolicy":{"mode":"none"}}\n\n',
+                    keepOpen: true,
+                },
+            },
+            {
+                method: 'POST',
+                path: '/v1/commands/activate-stuck/result',
+                response: () => {
+                    ambiguousResults++;
+                    return {
+                        statusCode: 500,
+                        body: { code: 'internal', message: 'Result state is uncertain' },
+                    };
+                },
+            },
+            {
+                method: 'POST',
+                path: '/v1/commands/policy-next/result',
+                response: () => {
+                    nextResults++;
+                    return { body: {} };
+                },
+            },
+        ]);
+
+        const client = new AgentClient(socketPath, {
+            reconnectDelayMs: 10,
+            commandResultRetryTimeoutMs: 25,
+        });
+        client.commands.on('activateBundle', () => {
+            handlerCalls++;
+            return Promise.resolve();
+        });
+        const originalWarn = console.warn;
+        console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(' '));
+        try {
+            await client.connect(testRegistration());
+            await waitFor(() => nextResults === 1);
+            await client.commands.waitForIdle(100);
+
+            assert.strictEqual(handlerCalls, 1);
+            assert(ambiguousResults >= 2);
+            assert(warnings.some(message =>
+                message.includes('Stopped retrying result for command "activate-stuck" after 25 ms')));
+        }
+        finally {
+            console.warn = originalWarn;
+            await client.close();
+        }
     });
 
     // Confirms a selected small input is embedded in the event JSON and acknowledged by the agent.
@@ -752,6 +942,46 @@ describe('AgentClient', () => {
         await client.close();
     });
 });
+
+/** Creates a complete agent session that initially refuses one command-result delivery. */
+function commandResultRetryRoutes(
+    commandId: string,
+    results: CommandResult[],
+    response: (attempt: number) => MockAgentResponse
+): MockAgentRoute[] {
+    return [
+        {
+            method: 'POST',
+            path: '/v1/register',
+            response: {
+                body: {
+                    workloadId: 'vision',
+                    inputPolicy: { mode: 'none' },
+                    inlineSizeLimitBytes: 1024,
+                },
+            },
+        },
+        {
+            method: 'GET',
+            path: '/v1/commands',
+            response: {
+                headers: { 'content-type': 'text/event-stream' },
+                body: `data: {"id":"${commandId}","type":"activateBundle",` +
+                    '"bundle":{"kind":"model","path":"/models/version-2",' +
+                    '"deploymentVersion":2}}\n\n',
+                keepOpen: true,
+            },
+        },
+        {
+            method: 'POST',
+            path: `/v1/commands/${commandId}/result`,
+            response: request => {
+                results.push(request.body as CommandResult);
+                return response(results.length);
+            },
+        },
+    ];
+}
 
 /**
  * Starts a mock device agent on a Unix socket. Routes declare the response data directly or provide

@@ -43,7 +43,12 @@ export class RunnerDownloader extends EventEmitter<{
                         'armv7l or aarch64 supported for now');
                 }
 
-                downloadType = 'runner-linux-armv7';
+                if (await isUclibcSystem()) {
+                    downloadType = 'runner-linux-armv7-uclibc';
+                }
+                else {
+                    downloadType = 'runner-linux-armv7';
+                }
             }
             // 64-bit ARM
             else if (process.arch === 'arm64') {
@@ -264,6 +269,25 @@ function checkFileExists(file: string) {
             .then(() => resolve(true))
             .catch(() => resolve(false));
     });
+}
+
+/**
+ * uClibc / uClibc-ng systems ship a dynamic loader called ld-uClibc.so.* (e.g. ld-uClibc.so.0
+ * or ld-uClibc.so.1) in the library directories, which glibc systems do not have.
+ */
+async function isUclibcSystem() {
+    for (const dir of [ '/lib', '/usr/lib' ]) {
+        try {
+            const files = await fs.promises.readdir(dir);
+            if (files.some(f => f.startsWith('ld-uClibc'))) {
+                return true;
+            }
+        }
+        catch (_ex) {
+            // directory does not exist or is not readable, try the next one
+        }
+    }
+    return false;
 }
 
 export async function downloadModel(opts: {

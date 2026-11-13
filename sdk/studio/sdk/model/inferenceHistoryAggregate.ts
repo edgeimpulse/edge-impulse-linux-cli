@@ -3,6 +3,14 @@
 import type { InferenceSummaryMetrics } from './inferenceSummaryMetrics';
 
 export type InferenceHistoryAggregate = {
+    /**
+    * Workload producer, absent for legacy device summaries.
+    */
+    workloadId?: string;
+    /**
+    * Bundle-local model producer, absent for legacy device summaries.
+    */
+    modelId?: string;
     deviceId: string;
     deviceName: string;
     totalInferences: number;

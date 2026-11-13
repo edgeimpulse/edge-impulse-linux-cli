@@ -15,6 +15,10 @@ import { EimRunnerClassifyResponseSuccess, ModelInformation, RunnerBlockThreshol
 import { VALGRIND_SUPPRESSION_FILE } from './valgrind-suppression';
 
 const PREFIX = '\x1b[33m[RUN]\x1b[0m';
+const RUNNER_SOCKET_TIMEOUT_MS = 60_000;
+const STOP_GRACE_PERIOD_MS = 3_000;
+const STOP_FORCE_PERIOD_MS = 2_000;
+const SOCKET_CLOSE_EXIT_GRACE_PERIOD_MS = 1_000;
 
 export * from './linux-impulse-runner-types';
 
@@ -22,14 +26,32 @@ type EimRunnerClassifyResponse = ({
     success: true;
 } & EimRunnerClassifyResponseSuccess) | RunnerErrorResponse;
 
+/** Exit details emitted when an initialized model process terminates without an intentional stop. */
+export type LinuxImpulseRunnerUnexpectedTermination = {
+    code: number | null;
+    signal: NodeJS.Signals | null;
+};
+
+/** Process lifecycle notifications exposed by an initialized model runner. */
+type LinuxImpulseRunnerEvents = {
+    unexpectedTermination: (termination: LinuxImpulseRunnerUnexpectedTermination) => void;
+};
+
 export class LinuxImpulseRunner {
     private _path: string;
     private _runner: ChildProcess | undefined;
+    // Child whose initialization completed and whose exit therefore makes serving unavailable.
+    private _servingRunner: ChildProcess | undefined;
     private _helloResponse: ModelInformation | undefined;
     private _runnerEe = new EventEmitter<{
         message: (data: { id: number }) => void,
         error: (err: string) => void
     }>();
+    private _lifecycleEe = new EventEmitter<LinuxImpulseRunnerEvents>();
+    // Unexpected terminal outcome retained so an owner attaching after init cannot miss it.
+    private _unexpectedTermination: LinuxImpulseRunnerUnexpectedTermination | undefined;
+    // Socket close usually precedes child exit; this fallback handles a child that never reports exit.
+    private _socketCloseTerminationTimer: NodeJS.Timeout | undefined;
     private _id = 0;
     private _stopped = false;
     private _socket: net.Socket | undefined;
@@ -37,19 +59,28 @@ export class LinuxImpulseRunner {
         libc: LibcWrapper,
         fd: number,
         buf: ArrayBuffer,
+        address: unknown,
+        size: number,
     } | undefined;
     private _freeformOutputShm: {
         index: number,
         libc: LibcWrapper,
         fd: number,
         buf: ArrayBuffer,
+        address: unknown,
+        size: number,
         features: Float32Array,
     }[] | undefined;
     private _verbose: boolean;
     private _shmBehavior: 'auto' | 'always' | 'never';
     private _valgrind: boolean;
+    private _startupTimeoutMs: number | undefined;
     private _stdout: Buffer[] = [];
     private _tempDir: string | undefined;
+    // Stable listener reference so stopped runners can detach their process-level cleanup handler.
+    private _processExitHandler: () => void;
+    // Requests currently awaiting a response from this runner, settled when it exits or is retired.
+    private _pendingSends = new Map<number, (error: string) => void>();
 
     /**
      * Start a new impulse runner
@@ -67,14 +98,17 @@ export class LinuxImpulseRunner {
         shmBehavior?: 'auto' | 'always' | 'never',
         // If enabled, throws error when shm setup fails (otherwise will fall back to JSON over TCP socket)
         throwOnShmInitFailed?: boolean,
+        // Optional deadline for complete startup, including accelerator warm-up.
+        startupTimeoutMs?: number,
     }) {
         this._path = Path.resolve(path);
         this._valgrind = opts?.valgrind || false;
         this._verbose = opts?.verbose || false;
         this._shmBehavior = opts?.shmBehavior || 'auto';
+        this._startupTimeoutMs = opts?.startupTimeoutMs;
 
         // Make sure to send a SIGINT to the eim file to clear out shared memory
-        process.on('exit', () => {
+        this._processExitHandler = () => {
             if (this._runner && this._runner.pid) {
                 try {
                     this._runner.kill('SIGINT');
@@ -83,6 +117,7 @@ export class LinuxImpulseRunner {
                     // noop
                 }
             }
+            this.releaseSharedMemory();
             // and the shared memory we mapped in here (sync)
             if (this._tempDir) {
                 try {
@@ -93,7 +128,14 @@ export class LinuxImpulseRunner {
                     // noop
                 }
             }
-        });
+        };
+        process.on('exit', this._processExitHandler);
+    }
+
+    /** Registers an observer and immediately replays an already-observed terminal outcome. */
+    on(type: 'unexpectedTermination', handler: LinuxImpulseRunnerEvents['unexpectedTermination']): void {
+        this._lifecycleEe.on(type, handler);
+        if (this._unexpectedTermination) handler(this._unexpectedTermination);
     }
 
     /**
@@ -101,6 +143,15 @@ export class LinuxImpulseRunner {
      * This returns information about the model
      */
     async init(modelPath?: string) {
+        this._stopped = false;
+        this._servingRunner = undefined;
+        this._unexpectedTermination = undefined;
+        if (this._socketCloseTerminationTimer) {
+            clearTimeout(this._socketCloseTerminationTimer);
+            this._socketCloseTerminationTimer = undefined;
+        }
+        const startupDeadline = this._startupTimeoutMs === undefined ?
+            undefined : Date.now() + this._startupTimeoutMs;
         if (modelPath) {
             this._path = Path.resolve(modelPath);
         }
@@ -184,21 +235,54 @@ export class LinuxImpulseRunner {
             }
 
             let exitCode: number | undefined | null;
+            let spawnError: Error | undefined;
 
-            this._runner.on('exit', code => {
+            this._runner.once('error', error => {
+                spawnError = error;
+            });
+
+            const child = this._runner;
+            if (!child) {
+                throw new Error('Runner process was not created');
+            }
+            child.on('exit', (code, signal) => {
                 exitCode = code;
+                if (this._socketCloseTerminationTimer) {
+                    clearTimeout(this._socketCloseTerminationTimer);
+                    this._socketCloseTerminationTimer = undefined;
+                }
                 if (typeof code === 'number' && code !== 0) {
                     this._runnerEe.emit('error', 'Runner has exited with code ' + code);
                 }
-                this._runner = undefined;
-                this._helloResponse = undefined;
-                this._runnerEe.removeAllListeners();
+                if (!this._stopped) {
+                    this.rejectPendingSends(`Process exited with ${code}`);
+                }
+                const terminatedWhileServing = this._servingRunner === child;
+                if (this._runner === child) {
+                    this._runner = undefined;
+                    this._helloResponse = undefined;
+                }
+                if (terminatedWhileServing) {
+                    this._servingRunner = undefined;
+                    if (!this._stopped) {
+                        this.recordUnexpectedTermination({ code, signal });
+                    }
+                }
             });
 
-            while (typeof exitCode === 'undefined' && !await this.exists(socketPath)) {
+            const socketWaitStarted = Date.now();
+            const socketDeadline = Math.min(
+                startupDeadline ?? Number.POSITIVE_INFINITY,
+                socketWaitStarted + RUNNER_SOCKET_TIMEOUT_MS
+            );
+            while (!spawnError && typeof exitCode === 'undefined' && !await this.exists(socketPath) &&
+                Date.now() < socketDeadline) {
                 await new Promise((resolve) => setTimeout(resolve, 100));
             }
 
+            if (spawnError) {
+                throw new Error(`Failed to start runner: ${spawnError.message}`);
+            }
             if (typeof exitCode !== 'undefined') {
                 let err = 'Failed to start runner (code: ' + exitCode + '): ' + stdout;
                 if (stdout.indexOf('libtensorflowlite_flex') > -1) {
@@ -207,6 +291,10 @@ export class LinuxImpulseRunner {
                         'shared library to run this model. Learn more at https://docs.edgeimpulse.com/docs/edge-impulse-for-linux/flex-delegates';
                 }
                 throw new Error(err);
+            }
+            if (!await this.exists(socketPath)) {
+                const waitedSeconds = Math.ceil((socketDeadline - socketWaitStarted) / 1000);
+                throw new Error(`Runner did not create its socket within ${waitedSeconds} seconds`);
             }
 
             this._runner?.stdout.off('data', onStdout);
@@ -260,23 +348,54 @@ export class LinuxImpulseRunner {
 
         this._socket.on('error', error => {
             this._runnerEe.emit('error', error.message || error.toString());
+            if (!this._stopped) {
+                this.rejectPendingSends(error.message || error.toString());
+            }
+        });
+        this._socket.on('close', () => {
+            if (!this._stopped) {
+                this.rejectPendingSends('Runner socket closed');
+                if (this._servingRunner) {
+                    const servingRunner = this._servingRunner;
+                    if (!this._socketCloseTerminationTimer) {
+                        this._socketCloseTerminationTimer = setTimeout(() => {
+                            this._socketCloseTerminationTimer = undefined;
+                            if (!this._stopped && this._servingRunner === servingRunner) {
+                                this.recordUnexpectedTermination({
+                                    code: servingRunner.exitCode,
+                                    signal: servingRunner.signalCode,
+                                });
+                            }
+                        }, SOCKET_CLOSE_EXIT_GRACE_PERIOD_MS);
+                    }
+                }
+                else if (!this._runner) {
+                    // An externally managed socket has no child process that can provide richer details.
+                    this.recordUnexpectedTermination({ code: null, signal: null });
+                }
+            }
         });
 
-        await new Promise((resolve, reject) => {
+        await this.withStartupDeadline(new Promise((resolve, reject) => {
             this._socket?.once('connect', resolve);
             this._socket?.once('error', reject);
 
             setTimeout(() => {
                 reject('Timeout when connecting to ' + socketPath);
             }, 10000);
-        });
+        }), startupDeadline);
 
-        let helloResp = await this.sendHello();
+        let helloResp = await this.withStartupDeadline(this.sendHello(), startupDeadline);
 
         if (this.shouldWarmGpu(helloResp)) {
-            await this.runTensorRTWarmup(helloResp.modelParameters);
+            await this.withStartupDeadline(this.runTensorRTWarmup(helloResp.modelParameters), startupDeadline);
         }
 
+        const servingRunner = this._runner;
+        if (!isSocket && (!servingRunner || servingRunner.exitCode !== null || servingRunner.signalCode !== null)) {
+            throw new Error('Runner process exited before initialization completed');
+        }
+        this._servingRunner = servingRunner;
         return helloResp;
     }
 
@@ -304,30 +423,62 @@ export class LinuxImpulseRunner {
      */
     async stop() {
         this._stopped = true;
+        this._servingRunner = undefined;
+        if (this._socketCloseTerminationTimer) {
+            clearTimeout(this._socketCloseTerminationTimer);
+            this._socketCloseTerminationTimer = undefined;
+        }
+        this.rejectPendingSends('Runner stopped');
+        this._socket?.removeAllListeners();
+        this._socket?.destroy();
+        this._socket = undefined;
+        this.releaseSharedMemory();
 
-        if (!this._runner) {
+        const child = this._runner;
+        if (!child) {
             await this.cleanupTempDirAsync();
+            process.removeListener('exit', this._processExitHandler);
             return Buffer.concat(this._stdout).toString('utf-8');
         }
 
-        await new Promise<void>((resolve) => {
-            if (this._runner) {
-                this._runner.on('close', (code) => {
-                    resolve();
-                });
-                this._runner.kill('SIGINT');
-                setTimeout(() => {
-                    if (this._runner) {
-                        this._runner.kill('SIGHUP');
-                    }
-                }, 3000);
-            }
-            else {
+        await new Promise<void>((resolve, reject) => {
+            let settled = false;
+            let forceTimer: NodeJS.Timeout | undefined;
+            let finalTimer: NodeJS.Timeout | undefined;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                if (forceTimer) clearTimeout(forceTimer);
+                if (finalTimer) clearTimeout(finalTimer);
+                child.off('close', finish);
                 resolve();
+            };
+            const fail = () => {
+                if (settled) return;
+                settled = true;
+                if (forceTimer) clearTimeout(forceTimer);
+                child.off('close', finish);
+                reject(new Error(`Runner process ${child.pid || 'unknown'} did not exit after SIGKILL`));
+            };
+            child.once('close', finish);
+
+            if (child.exitCode !== null || child.signalCode !== null || !child.pid) {
+                finish();
+                return;
             }
+
+            child.kill('SIGINT');
+            forceTimer = setTimeout(() => child.kill('SIGKILL'), STOP_GRACE_PERIOD_MS);
+            finalTimer = setTimeout(() => {
+                if (child.exitCode !== null || child.signalCode !== null) finish();
+                else fail();
+            }, STOP_GRACE_PERIOD_MS + STOP_FORCE_PERIOD_MS);
         });
+        if (this._runner === child) this._runner = undefined;
 
         await this.cleanupTempDirAsync();
+        // Detach only after cleanup is confirmed; a failed stop retains process-exit ownership.
+        process.removeListener('exit', this._processExitHandler);
 
         return Buffer.concat(this._stdout).toString('utf-8');
     }
@@ -445,8 +596,7 @@ export class LinuxImpulseRunner {
                 sensor = 'positional'; break;
         }
 
-        this._inputShm = undefined;
-        this._freeformOutputShm = undefined;
+        this.releaseSharedMemory();
 
         if (!resp.features_shm) {
             if (this._shmBehavior === 'always') {
@@ -477,12 +627,19 @@ export class LinuxImpulseRunner {
                     // input tensor
                     {
                         const fd = libcWrapper.shmOpen(resp.features_shm.name, O_RDWR, 0o666);
-                        const buf = libcWrapper.mmapToArrayBuffer(fd, resp.features_shm.size_bytes);
+                        let mapping;
+                        try {
+                            mapping = libcWrapper.mmapToArrayBuffer(fd, resp.features_shm.size_bytes);
+                        }
+                        catch (error) {
+                            libcWrapper.close(fd);
+                            throw error;
+                        }
 
                         this._inputShm = {
                             libc: libcWrapper,
                             fd: fd,
-                            buf: buf,
+                            ...mapping,
                         };
 
                         if (this._verbose) {
@@ -494,14 +651,21 @@ export class LinuxImpulseRunner {
                         this._freeformOutputShm = [];
                         for (const outputShm of resp.freeform_output_shm || []) {
                             const fd = libcWrapper.shmOpen(outputShm.name, O_RDWR, 0o666);
-                            const buf = libcWrapper.mmapToArrayBuffer(fd, outputShm.size_bytes);
+                            let mapping;
+                            try {
+                                mapping = libcWrapper.mmapToArrayBuffer(fd, outputShm.size_bytes);
+                            }
+                            catch (error) {
+                                libcWrapper.close(fd);
+                                throw error;
+                            }
 
                             this._freeformOutputShm.push({
                                 index: outputShm.index,
                                 libc: libcWrapper,
                                 fd: fd,
-                                buf: buf,
-                                features: new Float32Array(buf, 0, outputShm.elements),
+                                ...mapping,
+                                features: new Float32Array(mapping.buf, 0, outputShm.elements),
                             });
 
                             if (this._verbose) {
@@ -543,7 +707,6 @@ export class LinuxImpulseRunner {
     }
 
     private send<T extends object, U>(msg: T, timeoutArg?: number) {
-
         return new Promise<U>((resolve, reject) => {
             const defaultTimeout = this._valgrind ?
                 300_000 : // valgrind takes its time (esp on x86)
@@ -558,41 +721,92 @@ export class LinuxImpulseRunner {
 
             let msgId = ++this._id;
 
-            const onData = (resp: { id: number }) => {
-                if (resp.id === msgId) {
-                    if (this._runner) {
-                        this._runner.off('exit', onExit);
-                    }
-                    this._runnerEe.off('message', onData);
-                    resolve(<U><unknown>resp);
-                }
-            };
-
-            this._runnerEe.on('message', onData);
-
             const body = JSON.stringify(Object.assign(msg, {
                 id: msgId
             }));
 
-            this._socket.write(body + '\n');
-
-            setTimeout(() => {
-                reject(`No response within ${timeout / 1000} seconds:\n\n` +
-                    Buffer.concat(this._stdout).toString('utf-8'));
-            }, timeout);
-
-            const onExit = async (code: number) => {
-                await this.cleanupTempDirAsync();
-
-                if (!this._stopped) {
-                    reject('Process exited with ' + code);
-                }
+            let timer: NodeJS.Timeout;
+            const rejectSend = (error: string) => {
+                clearTimeout(timer);
+                this._runnerEe.off('message', onData);
+                this._pendingSends.delete(msgId);
+                reject(error);
+            };
+            const resolveSend = (response: U) => {
+                clearTimeout(timer);
+                this._runnerEe.off('message', onData);
+                this._pendingSends.delete(msgId);
+                resolve(response);
+            };
+            const onData = (resp: { id: number }) => {
+                if (resp.id === msgId) resolveSend(<U><unknown>resp);
             };
 
-            if (this._runner) {
-                this._runner.on('exit', onExit);
-            }
+            this._runnerEe.on('message', onData);
+            this._pendingSends.set(msgId, rejectSend);
+            timer = setTimeout(() => rejectSend(`No response within ${timeout / 1000} seconds:\n\n` +
+                Buffer.concat(this._stdout).toString('utf-8')), timeout);
+            this._socket.write(body + '\n', error => {
+                if (error) rejectSend(error.message);
+            });
         });
+    }
+
+    /** Rejects every request still owned by this runner and removes its response listeners. */
+    private rejectPendingSends(error: string): void {
+        for (const reject of Array.from(this._pendingSends.values())) {
+            reject(error);
+        }
+    }
+
+    /** Records one terminal outcome so process owners cannot miss it while taking ownership. */
+    private recordUnexpectedTermination(termination: LinuxImpulseRunnerUnexpectedTermination): void {
+        if (this._unexpectedTermination) return;
+        this._unexpectedTermination = termination;
+        this._lifecycleEe.emit('unexpectedTermination', termination);
+    }
+
+    /** Applies the configured whole-startup deadline to one startup stage. */
+    private async withStartupDeadline<T>(operation: Promise<T>, deadline: number | undefined): Promise<T> {
+        if (deadline === undefined) return operation;
+        const remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) throw new Error('Runner startup timed out');
+        let timer: NodeJS.Timeout | undefined;
+        try {
+            return await Promise.race([
+                operation,
+                new Promise<T>((_resolve, reject) => {
+                    timer = setTimeout(() => reject(new Error('Runner startup timed out')), remainingMs);
+                }),
+            ]);
+        }
+        finally {
+            if (timer) clearTimeout(timer);
+        }
+    }
+
+    /** Unmaps and closes all shared-memory resources owned by this runner. */
+    private releaseSharedMemory(): void {
+        const mappings = [
+            ...(this._inputShm ? [ this._inputShm ] : []),
+            ...(this._freeformOutputShm || []),
+        ];
+        this._inputShm = undefined;
+        this._freeformOutputShm = undefined;
+        for (const mapping of mappings) {
+            try {
+                mapping.libc.munmap(mapping.address, mapping.size);
+            }
+            catch {
+                // Continue closing the descriptor even if the mapping was already released.
+            }
+            try {
+                mapping.libc.close(mapping.fd);
+            }
+            catch {
+                // Cleanup is best effort during process shutdown.
+            }
+        }
     }
 
     /**

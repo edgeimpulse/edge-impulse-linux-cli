@@ -21,12 +21,14 @@ export class LibcWrapper {
     private _ftruncate: koffi.KoffiFunction;
     private _close: koffi.KoffiFunction;
     private _mmap: koffi.KoffiFunction;
+    private _munmap: koffi.KoffiFunction;
 
     constructor(libc: koffi.IKoffiLib) {
         this._shm_open = libc.func('int shm_open(const char* name, int oflag, int mode)');
         this._ftruncate = libc.func('int ftruncate(int fd, long length)');
         this._close = libc.func('int close(int fd)');
         this._mmap = libc.func('void* mmap(void* addr, size_t len, int prot, int flags, int fd, long off)');
+        this._munmap = libc.func('int munmap(void* addr, size_t length)');
     }
 
     shmOpen(name: string, flags: number, mode: number): number {
@@ -44,7 +46,15 @@ export class LibcWrapper {
     mmapToArrayBuffer(fd: number, size: number) {
         // mmap returns a Buffer *whose internal pointer* is the mapped region
         // eslint-disable-next-line no-bitwise
-        const ptrBuf = this._mmap(null, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-        return koffi.view(ptrBuf, size);
+        const address = this._mmap(null, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        return {
+            address,
+            buf: koffi.view(address, size),
+            size,
+        };
+    }
+
+    munmap(address: unknown, size: number): number {
+        return this._munmap(address, size);
     }
 }

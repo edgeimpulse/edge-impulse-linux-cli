@@ -11,6 +11,9 @@ import fs from 'fs';
 import util from 'util';
 
 const PREFIX = '\x1b[35m[AUD]\x1b[0m';
+const AUDIO_START_TIMEOUT_MS = 10_000;
+const AUDIO_STOP_GRACE_MS = 3_000;
+const AUDIO_STOP_FORCE_MS = 2_000;
 
 export interface AudioRecorderOptionsNullable {
     sampleRate? : number;
@@ -146,24 +149,35 @@ export class AudioRecorder {
                 return reject('cp is null');
             }
 
+            let settled = false;
+            let startTimer: NodeJS.Timeout;
+            const finish = (error?: unknown) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(startTimer);
+                if (error) reject(error);
+                else resolve({ ee: ee, stop: this.stop.bind(this) });
+            };
+
             let err = '';
             this._cp.stderr.on('data', (data: Buffer) => err += data.toString('utf-8'));
 
-            this._cp.on('error', reject);
+            this._cp.on('error', finish);
             this._cp.on('close', (code) => {
-                return reject(cmd + ' exited with code ' + code + ': ' + err);
+                finish(cmd + ' exited with code ' + code + ': ' + err);
             });
             // first data segment will resolve
             rec.once('data', () => {
-                resolve({
-                    ee: ee,
-                    stop: this.stop.bind(this)
-                });
+                finish();
             });
 
-            setTimeout(() => {
-                reject('Timeout when waiting for audio recording to start');
-            }, 10000);
+            startTimer = setTimeout(() => {
+                void this.stop().then(
+                    () => finish('Timeout when waiting for audio recording to start'),
+                    stopError => finish(`Timeout when waiting for audio recording to start; ` +
+                        `failed to stop recorder: ${String(stopError)}`)
+                );
+            }, AUDIO_START_TIMEOUT_MS);
         });
     }
 
@@ -240,25 +254,43 @@ export class AudioRecorder {
     }
 
     private stop() {
-        if (!this._cp) {
+        const child = this._cp;
+        if (!child) {
             return Promise.resolve();
         }
 
-        return new Promise < void > ((resolve) => {
-            if (this._cp) {
-                this._cp.on('close', code => {
-                    resolve();
-                });
-                this._cp.kill('SIGINT');
-                setTimeout(() => {
-                    if (this._cp) {
-                        this._cp.kill('SIGHUP');
-                    }
-                }, 3000);
-            }
-            else {
+        return new Promise<void>((resolve, reject) => {
+            let settled = false;
+            let forceTimer: NodeJS.Timeout | undefined;
+            let finalTimer: NodeJS.Timeout | undefined;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                if (forceTimer) clearTimeout(forceTimer);
+                if (finalTimer) clearTimeout(finalTimer);
+                child.off('close', finish);
+                if (this._cp === child) this._cp = undefined;
                 resolve();
+            };
+            const fail = () => {
+                if (settled) return;
+                settled = true;
+                if (forceTimer) clearTimeout(forceTimer);
+                child.off('close', finish);
+                reject(new Error(`Audio recorder process ${child.pid || 'unknown'} did not exit after SIGKILL`));
+            };
+            child.once('close', finish);
+            if (child.exitCode !== null || child.signalCode !== null || !child.pid) {
+                finish();
+                return;
             }
+
+            child.kill('SIGINT');
+            forceTimer = setTimeout(() => child.kill('SIGKILL'), AUDIO_STOP_GRACE_MS);
+            finalTimer = setTimeout(() => {
+                if (child.exitCode !== null || child.signalCode !== null) finish();
+                else fail();
+            }, AUDIO_STOP_GRACE_MS + AUDIO_STOP_FORCE_MS);
         });
     }
 

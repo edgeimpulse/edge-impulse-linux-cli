@@ -32,7 +32,8 @@ export type DeviceToServer =
     | ImpulseRecordsResponse
     | NewModelUpdated
     | Telemetry
-    | MonitoringSummaryPolicyRequest;
+    | MonitoringSummaryPolicyRequest
+    | WorkloadInventory;
 /**
  * The device's identity, sensors and mode.
  */
@@ -69,11 +70,26 @@ export type HelloInference = HelloV4Common & {
      * policy. Clients that omit this field keep their existing reporting cadence.
      */
     supportsMonitoringSummaryPolicy?: boolean;
+    /**
+     * Opt in to workloadIdentity. No scoped messages are sent unless the accepted server also advertises
+     * it.
+     */
+    supportsWorkloadIdentity?: boolean;
 };
 /**
  * What the model produces.
  */
 export type ModelType = 'classification' | 'object_detection' | 'constrained_object_detection' | 'freeform';
+/**
+ * Producer identity. Requires workloadIdentity negotiation and modelId and inferenceInfo. Preserved
+ * even for historical records.
+ */
+export type WorkloadId = string;
+/**
+ * Producer identity. Requires workloadIdentity negotiation and modelId and inferenceInfo. Preserved
+ * even for historical records.
+ */
+export type WorkloadId1 = string;
 /**
  * How the input image was resized, for image models.
  */
@@ -82,6 +98,16 @@ export type ResizeMode = 'none' | 'fit-shortest' | 'fit-longest' | 'squash';
  * The file's format.
  */
 export type RawDataType = 'wav' | 'jpg';
+/**
+ * Producer identity. Requires workloadIdentity negotiation and modelId and inferenceInfo. Preserved
+ * even for historical records.
+ */
+export type WorkloadId2 = string;
+/**
+ * Producer identity. Requires workloadIdentity negotiation and modelId and inferenceInfo. Preserved
+ * even for historical records.
+ */
+export type WorkloadId3 = string;
 /**
  * Device to server. The outcome of a model update, whichever message or
  * policy started it.
@@ -92,9 +118,19 @@ export type NewModelUpdated = ModelUpdateSuccess | ModelUpdateFailure;
  */
 export type UpdateOperation = 'deploy' | 'rollback';
 /**
+ * Provisioning identity of the workload that completed this bundle operation. Requires
+ * workloadIdentity negotiation and models.
+ */
+export type WorkloadId4 = string;
+/**
  * New, optional. Which operation failed.
  */
 export type UpdateOperation1 = 'deploy' | 'rollback';
+/**
+ * Provisioning identity of the workload that completed this bundle operation. Requires
+ * workloadIdentity negotiation and models.
+ */
+export type WorkloadId5 = string;
 /**
  * Whether it was a deploy or a rollback.
  */
@@ -103,6 +139,10 @@ export type UpdateOperation2 = 'deploy' | 'rollback';
  * Where the workload is in its life.
  */
 export type WorkloadState = 'starting' | 'running' | 'unhealthy' | 'stopped';
+/**
+ * Identity assigned by provisioning.
+ */
+export type WorkloadId6 = string;
 /**
  * Server-to-device messages of a Hello V4 session, including the existing
  * Remote Management protocol and the agent's additive commands.
@@ -126,6 +166,10 @@ export type ServerToDevice =
  * as the right one.
  */
 export type HelloResponse = HelloAccepted | HelloRejected;
+/**
+ * Producer being acknowledged. Present for negotiated workload-scoped records, together with modelId.
+ */
+export type WorkloadId7 = string;
 /**
  * The version to consider.
  */
@@ -151,7 +195,7 @@ export interface HelloV4Common {
      */
     name?: string;
     /**
-     * The project's API key. From DA9 a device credential replaces it.
+     * The project's API key. A device credential will replace it.
      */
     apiKey: string;
     /**
@@ -388,12 +432,46 @@ export interface InferenceStarted {
      * Whether inference has started.
      */
     inferenceStarted: boolean;
+    workloadId?: WorkloadId;
+    /**
+     * Bundle-local model that produced the record or summary.
+     */
+    modelId?: string;
+    inferenceInfo?: InferenceInfo1;
+}
+/**
+ * Model version at production time, independent of current inventory.
+ */
+export interface InferenceInfo1 {
+    /**
+     * The deployment version the device runs.
+     */
+    deploymentVersion: number;
+    modelType: ModelType;
+    /**
+     * The Studio project of the impulse.
+     */
+    projectId: number;
+    /**
+     * The project's name.
+     */
+    projectName: string;
+    /**
+     * The project owner's name, as Studio shows it.
+     */
+    projectOwner: string;
 }
 /**
  * Device to server. The summary of a window of inferences.
  */
 export interface InferenceSummary {
     inferenceSummary: InferenceSummaryBody;
+    workloadId?: WorkloadId1;
+    /**
+     * Bundle-local model that produced the record or summary.
+     */
+    modelId?: string;
+    inferenceInfo?: InferenceInfo2;
 }
 /**
  * The summary.
@@ -414,8 +492,7 @@ export interface InferenceSummaryBody {
      * means the runner's original rules. The agent computes with rules v2
      * and sends `2` only when the server's `capabilities` include
      * `summaryRulesVersion`, because older Studio versions do not consume or
-     * store the field. Studio support is tracked at
-     * https://github.com/edgeimpulse/closed-loop-demo/issues/52.
+     * store the field.
      */
     rulesVersion?: number;
     /**
@@ -491,6 +568,28 @@ export interface RecordPosition1 {
     timestamp: number;
 }
 /**
+ * Model version at production time, independent of current inventory.
+ */
+export interface InferenceInfo2 {
+    /**
+     * The deployment version the device runs.
+     */
+    deploymentVersion: number;
+    modelType: ModelType;
+    /**
+     * The Studio project of the impulse.
+     */
+    projectId: number;
+    /**
+     * The project's name.
+     */
+    projectName: string;
+    /**
+     * The project owner's name, as Studio shows it.
+     */
+    projectOwner: string;
+}
+/**
  * Device to server. One live inference-stream record, distinct from
  * `impulseRecordsResponse` for records requested by index. The server replies
  * with `impulseRecordAck` carrying the same index.
@@ -506,6 +605,12 @@ export interface ImpulseRecord {
      */
     index: number;
     rawData: RawData;
+    workloadId?: WorkloadId2;
+    /**
+     * Bundle-local model that produced the record or summary.
+     */
+    modelId?: string;
+    inferenceInfo?: InferenceInfo3;
 }
 /**
  * The inference result and timing, with the same shape as a stored record.
@@ -670,6 +775,28 @@ export interface RawData {
     type: RawDataType;
 }
 /**
+ * Model version at production time, independent of current inventory.
+ */
+export interface InferenceInfo3 {
+    /**
+     * The deployment version the device runs.
+     */
+    deploymentVersion: number;
+    modelType: ModelType;
+    /**
+     * The Studio project of the impulse.
+     */
+    projectId: number;
+    /**
+     * The project's name.
+     */
+    projectName: string;
+    /**
+     * The project owner's name, as Studio shows it.
+     */
+    projectOwner: string;
+}
+/**
  * Device to server. One record per message, or an error for an index the
  * device no longer has.
  */
@@ -692,6 +819,12 @@ export interface ImpulseRecordsResponse {
      * When the record was made.
      */
     timestamp?: number;
+    workloadId?: WorkloadId3;
+    /**
+     * Bundle-local model that produced the record or summary.
+     */
+    modelId?: string;
+    inferenceInfo?: InferenceInfo4;
 }
 /**
  * The input of the record, inline.
@@ -711,6 +844,28 @@ export interface StoredRecord1 {
     timing: InferenceTiming;
 }
 /**
+ * Model version at production time, independent of current inventory.
+ */
+export interface InferenceInfo4 {
+    /**
+     * The deployment version the device runs.
+     */
+    deploymentVersion: number;
+    modelType: ModelType;
+    /**
+     * The Studio project of the impulse.
+     */
+    projectId: number;
+    /**
+     * The project's name.
+     */
+    projectName: string;
+    /**
+     * The project owner's name, as Studio shows it.
+     */
+    projectOwner: string;
+}
+/**
  * The new version runs and registered with the agent.
  */
 export interface ModelUpdateSuccess {
@@ -725,17 +880,57 @@ export interface ModelUpdateSuccess {
      * leave this unchanged; bundleDigest identifies the active inference bundle.
      */
     imageDigest?: string;
-    inferenceInfo: InferenceInfo1;
+    inferenceInfo: InferenceInfo5;
     /**
      * Always `true`.
      */
     modelUpdateSuccess: true;
     operation?: UpdateOperation;
+    workloadId?: WorkloadId4;
+    /**
+     * All models for the authenticated project, preserving bundle-local model identity.
+     *
+     * @maxItems 64
+     */
+    models?: WorkloadModel[];
 }
 /**
  * The project and impulse the device serves after the update.
  */
-export interface InferenceInfo1 {
+export interface InferenceInfo5 {
+    /**
+     * The deployment version the device runs.
+     */
+    deploymentVersion: number;
+    modelType: ModelType;
+    /**
+     * The Studio project of the impulse.
+     */
+    projectId: number;
+    /**
+     * The project's name.
+     */
+    projectName: string;
+    /**
+     * The project owner's name, as Studio shows it.
+     */
+    projectOwner: string;
+}
+/**
+ * One bundle-local model served by a workload. A workload may contain several models and projects, but
+ * each session contains only its authorized project.
+ */
+export interface WorkloadModel {
+    /**
+     * Bundle-local model identity, unique within this workload.
+     */
+    id: string;
+    inferenceInfo: InferenceInfo6;
+}
+/**
+ * Project and deployment version of this model.
+ */
+export interface InferenceInfo6 {
     /**
      * The deployment version the device runs.
      */
@@ -771,6 +966,13 @@ export interface ModelUpdateFailure {
      */
     modelUpdateSuccess: false;
     operation?: UpdateOperation1;
+    workloadId?: WorkloadId5;
+    /**
+     * All models for the authenticated project, preserving bundle-local model identity.
+     *
+     * @maxItems 64
+     */
+    models?: WorkloadModel[];
 }
 /**
  * Device to server, new. Health of the device and its workloads.
@@ -993,6 +1195,37 @@ export interface MonitoringSummaryPolicyRequest {
     getMonitoringSummaryPolicy: true;
 }
 /**
+ * Negotiated full snapshot of this device session's project. Omitted producers are retired, keeping
+ * persisted models and history. Sent after Hello acceptance and on registration changes, before queued
+ * results. No deviceId is accepted as attribution.
+ */
+export interface WorkloadInventory {
+    /**
+     * Complete project-scoped catalog. Only sent after workloadIdentity negotiation.
+     *
+     * @maxItems 64
+     */
+    workloads: WorkloadRegistration[];
+}
+/**
+ * A local workload producer and its project-scoped models. connected=false retires this producer
+ * without deleting its models or history. Models describe current registration, not an independent
+ * deployment unit.
+ */
+export interface WorkloadRegistration {
+    workloadId: WorkloadId6;
+    /**
+     * Whether this workload is currently registered and serving this project.
+     */
+    connected: boolean;
+    /**
+     * All models for the authenticated project, preserving bundle-local model identity.
+     *
+     * @maxItems 64
+     */
+    models: WorkloadModel[];
+}
+/**
  * The session was accepted. Remote Management always sends the server's clock with it.
  */
 export interface HelloAccepted {
@@ -1018,8 +1251,7 @@ export interface ServerCapabilities {
     /**
      * Whether Studio consumes and stores `rulesVersion` on summaries. Without
      * this capability the agent omits the field, because older Studio versions
-     * ignore it and lose the rules-version provenance. Studio support is tracked
-     * at https://github.com/edgeimpulse/closed-loop-demo/issues/52.
+     * ignore it and lose the rules-version provenance.
      */
     summaryRulesVersion?: boolean;
     /**
@@ -1027,6 +1259,11 @@ export interface ServerCapabilities {
      * none, because an older server answers an unknown message with an error.
      */
     telemetry?: boolean;
+    /**
+     * Negotiated support for workload catalogs, scoped deployment results and scoped monitoring. False or
+     * absent keeps the single-representative V4 behavior.
+     */
+    workloadIdentity?: boolean;
 }
 /**
  * Initial policy for opted-in inference clients; omitted if the lookup failed.
@@ -1188,6 +1425,11 @@ export interface ImpulseRecordAck {
      * Optional explanation when the record was not accepted.
      */
     error?: string;
+    workloadId?: WorkloadId7;
+    /**
+     * Bundle-local model that produced the record or summary.
+     */
+    modelId?: string;
 }
 /**
  * Server to device. Studio asks for records by index.
