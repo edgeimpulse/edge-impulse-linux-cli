@@ -1,9 +1,9 @@
 // Generated from device-services-contracts/schema/ by device-services-contracts/generate.sh. Do not edit.
 
 /**
- * The manifest.json the agent writes and workloads read in every inference bundle. A model bundle
+ * The manifest.json the agent writes and applications read in every inference bundle. A model bundle
  * serves exactly one model on the inference runner; a workflow bundle serves one or more models and a
- * workflow on the workflow runtime. Paths are relative to the bundle directory. Workloads must also
+ * workflow on the workflow runtime. Paths are relative to the bundle directory. Applications must also
  * verify the listed files, SHA-256 checksums, unique bundle-local model IDs, deployment target and
  * minimum runtime version before activation.
  */
@@ -87,7 +87,7 @@ export interface ManifestCommon {
 }
 /**
  * One model in the inference bundle. Its bundle-local ID and Studio identity are also reported in
- * workload registration.
+ * application registration.
  */
 export interface BundleModel {
     /**
@@ -108,7 +108,7 @@ export interface BundleModel {
      */
     impulseId: number;
     /**
-     * What the model produces, using the same names as workload registration.
+     * What the model produces, using the same names as application registration.
      */
     modelType: 'classification' | 'object_detection' | 'constrained_object_detection' | 'freeform';
     path: BundleRelativePath;
@@ -126,7 +126,7 @@ export interface BundleModel {
  */
 export interface RuntimeRequirementCommon {
     /**
-     * The minimum Semantic Version 2.0.0 the workload must satisfy, including optional prerelease and
+     * The minimum Semantic Version 2.0.0 the application must satisfy, including optional prerelease and
      * build metadata. This is a version, not a version range; comparing it to the installed runtime is a
      * consumer responsibility.
      */

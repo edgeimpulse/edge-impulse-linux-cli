@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import Path from 'node:path';
 import semver from 'semver';
-import { ActivateBundleCommand, InferenceBundle } from '../../shared/device-protocol/workload-contract';
+import { ActivateBundleCommand, InferenceBundle } from '../../shared/device-protocol/application-contract';
 import { BundleModel, ModelBundleManifest } from '../../shared/device-protocol/inference-bundle-manifest';
 import { validateInferenceBundleManifest } from '../../shared/device-protocol/validators';
 import {
@@ -15,7 +15,7 @@ import { agentEngineName } from './agent-runner-metadata';
 
 /** Bundle artifacts that passed every check available without starting model code. */
 export type ValidatedAgentBundle = {
-    // Workload contract identity and location supplied by the activateBundle command.
+    // Application contract identity and location supplied by the activateBundle command.
     bundle: InferenceBundle;
     // Validated manifest read from the staged bundle directory.
     manifest: ModelBundleManifest;

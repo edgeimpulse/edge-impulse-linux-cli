@@ -40,7 +40,6 @@ export enum PageType {
     DeveloperProfile = 39,
     UploadCsv = 41,
     PretrainedModel = 42,
-    Scratchpad = 45,
     TrialSignup = 46,
     ThankYou = 47,
     CommunityProSignUp = 48,

@@ -148,8 +148,10 @@ its summary interval from Remote Management based on the project's active alert 
 
 `--monitor-summary-interval-ms <ms>` saves a preferred interval (minimum `5000`). Active
 rules may require faster reporting; the CLI shows the effective interval and keeps the saved
-preference. Summaries are produced as inference results arrive, so slow or paused inference
-can delay reporting and alerts.
+preference. Once a window contains a result, its timer closes the window at the reporting deadline
+even if no later result arrives. Summaries are sent only when the connected Studio or Remote
+Management server advertises support for the current summary rules. Otherwise the CLI warns that
+summary delivery is disabled while continuing to store inference records.
 
 ## Development tips
 

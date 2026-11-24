@@ -51,7 +51,7 @@ describe('agent runner configuration', () => {
             [ 'microphone-1' ], undefined, '--microphone', 'EI_MICROPHONE'), 'microphone-1');
     });
 
-    // Ambiguous hardware must fail rather than blocking a headless workload on an interactive prompt.
+    // Ambiguous hardware must fail rather than blocking a headless application on an interactive prompt.
     it('rejects ambiguous input device selection', () => {
         assert.throws(
             () => selectNonInteractiveDevice(
@@ -60,7 +60,7 @@ describe('agent runner configuration', () => {
         );
     });
 
-    // Managed workloads accept silence because it does not reliably identify a broken microphone.
+    // Managed applications accept silence because it does not reliably identify a broken microphone.
     it('classifies a silent first audio frame when the legacy diagnostic is disabled', async () => {
         const originalStart = AudioRecorder.prototype.start;
         const audio = new EventEmitter<{ data: (data: Buffer) => void }>();

@@ -1305,7 +1305,7 @@ export class DevicesApi {
     }
 
     /**
-     * Lists one device\'s telemetry reports in newest-first order. Each item represents one device-reported time window and contains metrics for the device and every workload included in that report.
+     * Lists one device\'s telemetry reports in newest-first order. Each item represents one device-reported time window and contains metrics for the device and every application included in that report.
      * @summary List device telemetry history
      * @param projectId Project ID
      * @param deviceId Device ID
@@ -1506,7 +1506,7 @@ export class DevicesApi {
     }
 
     /**
-     * Lists the most recently received telemetry report for every device in the project. Each item contains the device metrics and all workload metrics from the original device-reported time window; devices that have not reported telemetry are omitted.
+     * Lists the most recently received telemetry report for every device in the project. Each item contains the device metrics and all application metrics from the original device-reported time window; devices that have not reported telemetry are omitted.
      * @summary List latest device telemetry
      * @param projectId Project ID
      * @param since Inclusive Unix timestamp in milliseconds based on Studio\&#39;s server receive time.

@@ -105,6 +105,9 @@ export class RunnerDownloader extends EventEmitter<{
                 if (await checkFileExists('/dev/akida0')) {
                     downloadType = 'runner-linux-aarch64-akd1000';
                 }
+                else if (process.env.INFERENCE_CONTAINER_NVIDIA === '1') {
+                    downloadType = 'runner-linux-x86_64-nvidia';
+                }
                 else {
                     downloadType = 'runner-linux-x86_64';
                 }

@@ -36,12 +36,13 @@ import { RunnerProfiling } from './runner-profiling';
 import os from 'os';
 import { ChildProcess } from 'node:child_process';
 import type { AgentClient, AgentInferenceInput } from '../../cli-common/agent-client';
-import { CompletedInferenceEvent, InferenceRunnerRegistration, ModelRegistration } from '../../shared/device-protocol/workload-contract';
+import { CompletedInferenceEvent, InferenceRunnerRegistration, ModelRegistration } from '../../shared/device-protocol/application-contract';
 import { BundleModel } from '../../shared/device-protocol/inference-bundle-manifest';
 import { agentRunnerMode } from './agent-runner-metadata';
 import { buildMonoPcm16WavFile } from './audio-utils';
 import type { PreparedAgentBundle } from './agent-bundle';
 import type { AgentBundleLifecycle } from './agent-bundle-lifecycle';
+import type { AgentCaptureController } from './agent-capture';
 
 const RUNNER_PREFIX = '\x1b[33m[RUN]\x1b[0m';
 const CLASSIFIER_THRESHOLD: RunnerBlockThreshold =
@@ -58,6 +59,7 @@ let modelMonitor: ModelMonitor | undefined;
 let configFactory: Config | undefined;
 let agentClient: AgentClient | undefined;
 let agentBundleLifecycle: AgentBundleLifecycle | undefined;
+let agentCapture: AgentCaptureController | undefined;
 let terminateRunner: ((reason: string, exitCode?: number) => Promise<never>) | undefined;
 
 let vlmServerProcess: ChildProcess | null = null;
@@ -273,16 +275,18 @@ const onSignal = async () => {
         console.log(RUNNER_PREFIX, 'Received stop signal, stopping application... ' +
             'Press CTRL+C again to force quit.');
         firstExit = false;
+        agentCapture?.disable();
         try {
-            // Flush metrics before stopping
-            if (modelMonitor) {
-                await modelMonitor.flushMetrics();
+            try {
+                if (audioClassifier) {
+                    await audioClassifier.stop();
+                }
+                if (imageClassifier) {
+                    await imageClassifier.stop();
+                }
             }
-            if (audioClassifier) {
-                await audioClassifier.stop();
-            }
-            if (imageClassifier) {
-                await imageClassifier.stop();
+            finally {
+                await modelMonitor?.stop();
             }
             await agentBundleLifecycle?.stopPendingRunner();
             if (profiling) {
@@ -601,8 +605,10 @@ async function ensureVlmServer(opts: { serverPath: string,
             const {
                 AgentClient: AgentClientConstructor,
                 AgentBundleLifecycle: AgentBundleLifecycleConstructor,
+                AgentCaptureController: AgentCaptureControllerConstructor,
             } = await loadAgentModules();
             agentClient = new AgentClientConstructor(agentSocketArgv);
+            agentCapture = new AgentCaptureControllerConstructor();
             agentBundleLifecycle = new AgentBundleLifecycleConstructor({
                 agentClient,
                 policy: {
@@ -642,6 +648,14 @@ async function ensureVlmServer(opts: { serverPath: string,
                 if (result.kind === 'restart-required') {
                     await restartForBundleActivation();
                 }
+            });
+            // On capture delivery, read the canonical live sensor and prepare its required agent input.
+            agentClient.commands.on('capture', async command => {
+                const captured = await agentCapture!.capture(command.capture);
+                return agentClient!.prepareCapture({
+                    type: captured.format,
+                    buffer: captured.buffer,
+                }, captured.metadata);
             });
             // Agent mode deliberately starts without a model. The first activateBundle command is
             // held open by the lifecycle until the selected sensor or HTTP server is ready to use it.
@@ -877,6 +891,7 @@ async function ensureVlmServer(opts: { serverPath: string,
 
             terminalShutdown = (async (): Promise<never> => {
                 inferenceAvailability.available = false;
+                agentCapture?.disable();
                 const recovery = agentSocketArgv ? ' so the process supervisor can restart the runner' : '';
                 console.log(RUNNER_PREFIX, `${reason}; stopping${recovery}`);
                 const forceExit = setTimeout(() => {
@@ -1051,7 +1066,9 @@ async function ensureVlmServer(opts: { serverPath: string,
 
             let device = new LinuxDevice(config, projectId, devKeys, param.sensorType === 'microphone',
                 enableVideo, verboseArgv, configFactory);
-            modelMonitor = await ModelMonitor.getModelMonitor(configFactory, model);
+            modelMonitor = await ModelMonitor.getModelMonitor(configFactory, model, {
+                reportedThresholds: runner.getReportedModelThresholds(),
+            });
             let storageStatus = await modelMonitor?.getStorageStatus();
 
             if (!projectId) {
@@ -1150,6 +1167,7 @@ async function ensureVlmServer(opts: { serverPath: string,
                 // pause features streaming
                 imageClassifier?.pause();
                 audioClassifier?.pause();
+                await modelMonitor?.flushMetrics();
 
                 // load the new model
                 model = await runner.init(modelFile);
@@ -1161,17 +1179,24 @@ async function ensureVlmServer(opts: { serverPath: string,
 
                 await setThresholdsFromArgv(runner, model);
 
+                if (modelMonitor) {
+                    await configFactory.setDeploymentVersion(model.project.deploy_version);
+                    await modelMonitor.replaceModel(configFactory, model, {
+                        reportedThresholds: runner.getReportedModelThresholds(),
+                    });
+                }
+
                 console.log(RUNNER_PREFIX, 'Model updated successfully');
                 // resume (refresh the model info internally as well)
                 if (model.modelParameters.sensorType === 'microphone') {
                     audioClassifierHelloMsg(model);
-                    audioClassifier?.resume();
                     await remoteMgmt?.sendModelUpdateStatus(model, true);
+                    audioClassifier?.resume();
                 }
                 else if (model.modelParameters.sensorType === 'camera') {
                     imageClassifierHelloMsg(model);
-                    imageClassifier?.resume();
                     await remoteMgmt?.sendModelUpdateStatus(model, true);
+                    imageClassifier?.resume();
                 }
             }
             catch (ex) {
@@ -1287,7 +1312,7 @@ async function ensureVlmServer(opts: { serverPath: string,
 
             console.log(RUNNER_PREFIX, 'Using microphone ' + audioDeviceName);
 
-            // Silence is valid model input in managed workloads, so only interactive mode applies
+            // Silence is valid model input in managed applications, so only interactive mode applies
             // the legacy first-frame device diagnostic.
             audioClassifier = new AudioClassifier(runner, verboseArgv, {
                 rejectSilentFirstFrame: !agentSocketArgv,
@@ -1305,7 +1330,11 @@ async function ensureVlmServer(opts: { serverPath: string,
             });
 
             await audioClassifier.start(audioDeviceName);
-            if (agentSocketArgv) audioClassifier.pause();
+            if (agentSocketArgv) {
+                // Pause inference before exposing the live microphone, until activation commits registration.
+                audioClassifier.pause();
+                agentCapture?.useMicrophone(audioClassifier);
+            }
 
             try {
                 await startWebServer({
@@ -1488,7 +1517,11 @@ async function ensureVlmServer(opts: { serverPath: string,
             console.log(RUNNER_PREFIX, `Connected to camera "${opts.device}" (run with --clean to select another one)`);
 
             await imageClassifier.start();
-            if (agentSocketArgv) imageClassifier.pause();
+            if (agentSocketArgv) {
+                // While inference is paused, read a source frame so registration uses the live camera dimensions.
+                imageClassifier.pause();
+                await agentCapture?.useCamera(imageClassifier);
+            }
 
             try {
                 await startWebServer({
@@ -1680,6 +1713,7 @@ async function ensureVlmServer(opts: { serverPath: string,
             return;
         }
         let ex = <Error>ex2;
+        agentCapture?.disable();
         agentBundleLifecycle?.failInitialBundle(ex);
         // The command handler resumes after failInitialBundle(). Give it a bounded opportunity to
         // post the operator-visible failure before this process terminates.
@@ -1707,6 +1741,7 @@ async function ensureVlmServer(opts: { serverPath: string,
         };
         if (audioClassifier) await cleanup('stop audio inference', () => audioClassifier!.stop());
         if (imageClassifier) await cleanup('stop image inference', () => imageClassifier!.stop());
+        if (modelMonitor) await cleanup('stop model monitoring', () => modelMonitor!.stop());
         await cleanup('stop a partially initialized model', async () => agentBundleLifecycle?.stopPendingRunner());
         if (vlmServerProcess) await cleanup('stop the VLM server', () => stopVlmServer(vlmServerProcess!));
         if (agentClient) await cleanup('close the agent connection', () => agentClient!.close());
@@ -1721,16 +1756,19 @@ async function ensureVlmServer(opts: { serverPath: string,
 async function loadAgentModules(): Promise<{
     AgentClient: new(socketPath: string) => AgentClient;
     AgentBundleLifecycle: typeof import('./agent-bundle-lifecycle').AgentBundleLifecycle;
+    AgentCaptureController: typeof import('./agent-capture').AgentCaptureController;
 }> {
     try {
-        const [ agentClientModule, bundleLifecycleModule ] = await Promise.all([
+        const [ agentClientModule, bundleLifecycleModule, captureModule ] = await Promise.all([
             import('../../cli-common/agent-client'),
             import('./agent-bundle-lifecycle'),
+            import('./agent-capture'),
         ]);
 
         return {
             AgentClient: agentClientModule.AgentClient,
             AgentBundleLifecycle: bundleLifecycleModule.AgentBundleLifecycle,
+            AgentCaptureController: captureModule.AgentCaptureController,
         };
     }
     catch (ex2) {
@@ -1745,7 +1783,7 @@ async function loadAgentModules(): Promise<{
 
 /**
  * Builds the runner state sent to the device agent. The runner first calls this without a model so
- * the agent knows the workload is alive, then calls it again with the metadata reported by the
+ * the agent knows the application is alive, then calls it again with the metadata reported by the
  * loaded `.eim` so the agent knows which model this runner currently serves.
  *
  * @param model Metadata reported by the loaded `.eim`, or undefined for the initial registration.
@@ -1758,6 +1796,7 @@ function createAgentRegistration(
     const imageReference = process.env.EI_RUNNER_IMAGE || `edge-impulse-linux-runner:${packageVersion}`;
     const imageDigest = process.env.EI_RUNNER_IMAGE_DIGEST;
     const mode = agentRunnerMode(runHttpServerPort, cameraArgv, microphoneArgv, model);
+    const sensors = agentCapture?.sensors() || [];
 
     let modelRegistrations: ModelRegistration[] = [];
     if (model) {
@@ -1782,7 +1821,7 @@ function createAgentRegistration(
         kind: 'inference_runner',
         version: packageVersion,
         contractVersion: 1,
-        capabilities: [ 'activateBundle', 'inputPolicy' ],
+        capabilities: [ 'activateBundle', 'inputPolicy', ...(sensors.length > 0 ? [ 'capture' ] : []) ],
         artifact: {
             kind: 'containerImage',
             reference: imageReference,
@@ -1790,6 +1829,7 @@ function createAgentRegistration(
         },
         ...(mode ? { mode } : {}),
         models: modelRegistrations,
+        ...(sensors.length > 0 ? { sensors } : {}),
     };
 }
 

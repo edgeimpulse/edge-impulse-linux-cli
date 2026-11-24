@@ -16,7 +16,6 @@ import {
     MgmtInterfaceStopSnapshotStreamRequest,
     MgmtInterfaceInferenceStreamStartedResponse,
     MgmtInterfaceStartInferenceStreamRequest,
-    MgmtInterfaceInferenceStreamFailedResponse,
     MgmtInterfaceStopInferenceStreamRequest,
     MgmtInterfaceInferenceStreamStoppedResponse,
     MgmtInterfaceInferenceInfo,
@@ -112,6 +111,7 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
     private _monitor: ModelMonitor | undefined;
     private _isConnected = false;
     private _supportsMonitoringSummaryPolicy = false;
+    private _supportsTelemetry = false;
     private _inferenceInfo: MgmtInterfaceInferenceInfo | undefined;
 
     constructor(projectId: number,
@@ -162,6 +162,7 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
         this._inferenceInfo = inferenceInfo;
         this._isConnected = false;
         this._supportsMonitoringSummaryPolicy = false;
+        this._supportsTelemetry = false;
 
         console.log(TCP_PREFIX, `Connecting to ${this._eiConfig.endpoints.internal.ws}`);
         try {
@@ -174,7 +175,7 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
             if (reconnectOnFailure) {
                 setTimeout(() => {
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    this.connect();
+                    this.connect(true, this._inferenceInfo);
                 }, 1000);
             }
             else {
@@ -184,14 +185,20 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
     }
 
     disconnect() {
+        this._isConnected = false;
+        this._supportsMonitoringSummaryPolicy = false;
+        this._supportsTelemetry = false;
         if (this._ws) {
             this._ws.terminate();
         }
     }
 
     inferenceSummaryListener(ev: InferenceMetrics) {
+        // Send telemetry only after Studio advertises that it can ingest the summary contract.
+        if (!this._ws || !this._supportsTelemetry || ev.rulesVersion !== 2) return;
         let req: MgmtInterfaceInferenceSummary = {
             inferenceSummary: {
+                rulesVersion: 2,
                 start: ev.start,
                 end: ev.end,
                 classificationCounter: ev.classificationCounter.map((counter) => {
@@ -642,6 +649,9 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
         });
 
         this._ws.on('close', () => {
+            this._isConnected = false;
+            this._supportsMonitoringSummaryPolicy = false;
+            this._supportsTelemetry = false;
             console.log(TCP_PREFIX, 'Trying to connect in 1 second...');
             setTimeout(() => {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -670,19 +680,19 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
     }
 
     async sendModelUpdateStatus(model: ModelInformation, success: boolean, error?: string) {
-        if (!this._ws) return;
-
         let req: MgmtInterfaceNewModelUpdated;
         if (success) {
+            // Reconnects must advertise the replacement deployment, even if its update happened offline.
+            this._inferenceInfo = {
+                projectId: model.project.id,
+                projectOwner: model.project.owner,
+                projectName: model.project.name,
+                deploymentVersion: model.project.deploy_version,
+                modelType: model.modelParameters.model_type,
+            };
             req = {
                 modelUpdateSuccess: true,
-                inferenceInfo: {
-                    projectId: model.project.id,
-                    projectOwner: model.project.owner,
-                    projectName: model.project.name,
-                    deploymentVersion: model.project.deploy_version,
-                    modelType: model.modelParameters.model_type,
-                }
+                inferenceInfo: this._inferenceInfo,
             };
         }
         else {
@@ -692,7 +702,7 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
             };
         }
 
-        this._ws.send(JSON.stringify(req));
+        this._ws?.send(JSON.stringify(req));
     }
 
     private async sendHello() {
@@ -753,10 +763,16 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
                     this._ws.terminate();
                     this._ws = undefined;
                 }
+                this._supportsTelemetry = false;
             }
             else {
                 if (!deviceId) {
                     throw new Error('Could not read serial number for device');
+                }
+                this._supportsTelemetry = ret.capabilities?.summaryRulesVersion === true;
+                if (this._monitor && !this._supportsTelemetry) {
+                    console.warn(TCP_PREFIX, 'Model monitoring summaries are disabled because this server does ' +
+                        'not support the current summary rules. Inference records will continue to be stored.');
                 }
                 this._supportsMonitoringSummaryPolicy = ret.supportsMonitoringSummaryPolicy === true;
                 if (ret.monitoringSummaryPolicy || !this._supportsMonitoringSummaryPolicy) {
@@ -859,4 +875,5 @@ export class RemoteMgmt extends (EventEmitter as new () => TypedEmitter<{
     private sleep(ms: number) {
         return new Promise<void>((resolve) => setTimeout(resolve, ms));
     }
+
 }

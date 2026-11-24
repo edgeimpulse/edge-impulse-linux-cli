@@ -10,13 +10,14 @@ import {
     CommandResult,
     EventBatch,
     InferenceRunnerRegistration,
-} from '../shared/device-protocol/workload-contract';
+} from '../shared/device-protocol/application-contract';
 import { writeBundle } from './utils/agent-runner-fixtures';
 
-/** Requests observed by the fake agent across the retiring and replacement workload sessions. */
+/** Requests observed by the fake agent across the retiring and replacement application sessions. */
 type AgentObservations = {
     registrations: InferenceRunnerRegistration[];
     results: CommandResult[];
+    resultRegistrations: InferenceRunnerRegistration[];
     events: EventBatch[];
     commandStreams: number;
     commandStream?: ServerResponse;
@@ -39,7 +40,7 @@ type SpawnedRunner = {
 
 /**
  * Exercises the externally visible agent-managed CLI flow using real runner processes and a fake
- * workload API. Startup registers empty state, activation commits model 1 and serves inference, and
+ * application API. Startup registers empty state, activation commits model 1 and serves inference, and
  * replacement closes inference, flushes pending events and exits for supervisor restart. A fresh
  * process then registers empty state, receives the replayed command, prepares changed sensor metadata,
  * commits model 2 and reports subsequent inference against that new canonical identity.
@@ -47,12 +48,13 @@ type SpawnedRunner = {
 describe('agent-managed runner process', () => {
     // The real process must commit canonical metadata, serve inference, then retire atomically for replacement.
     it('activates an initial bundle, retires, then activates the replayed replacement', async () => {
-        // Arrange a complete local workload boundary: staged bundles, agent socket and inference port.
+        // Arrange a complete local application boundary: staged bundles, agent socket and inference port.
         const tempDir = await fs.mkdtemp(Path.join(os.tmpdir(), 'ei-agent-runner-'));
         const socketPath = Path.join(tempDir, 'agent.sock');
         const observations: AgentObservations = {
             registrations: [],
             results: [],
+            resultRegistrations: [],
             events: [],
             commandStreams: 0,
             holdNextEvent: true,
@@ -72,9 +74,10 @@ describe('agent-managed runner process', () => {
         // Run the compiled CLI so this test covers its argument handling, lifecycle wiring and process exit.
         const firstProcess = spawnRunner(runnerPath, socketPath, port);
         let secondProcess: SpawnedRunner | undefined;
+        let thirdProcess: SpawnedRunner | undefined;
 
         try {
-            // Initial startup registers an empty workload before the agent is allowed to select a bundle.
+            // Initial startup registers an empty application before the agent is allowed to select a bundle.
             await waitFor(() => observations.commandStream !== undefined, 'runner command stream');
             sendCommand(observations, first);
 
@@ -85,11 +88,14 @@ describe('agent-managed runner process', () => {
                 'initial activation result');
 
             assert.deepStrictEqual(observations.registrations[0].models, []);
+            assert.deepStrictEqual(observations.registrations[0].capabilities, [ 'activateBundle', 'inputPolicy' ]);
+            assert.strictEqual(observations.registrations[0].activeBundle, undefined);
             // Registration describes the original `.eim`; the 0.8 CLI override belongs only to runtime state.
             assert.deepStrictEqual(observations.registrations[1].models[0]?.thresholds, [
                 { id: 1, type: 'classification', min_score: 0.5 },
             ]);
             assert.strictEqual(observations.results.find(result => result.commandId === first.id)?.success, true);
+            assert.strictEqual(observations.resultRegistrations[0].models[0]?.deploymentVersion, 1);
 
             // A 0.6 result is filtered by the runtime 0.8 threshold while its raw event is posted to the agent.
             const inference = await requestJson(port, '/api/features', { features: [ 0 ] });
@@ -148,20 +154,55 @@ describe('agent-managed runner process', () => {
             assert.strictEqual(replacementInference.statusCode, 200);
             await waitFor(() => observations.events.length === 2, 'replacement inference event');
             assert.strictEqual(observations.events[1]?.events[0]?.results?.[0]?.modelId, 'model-2');
+            assert.strictEqual(observations.resultRegistrations[1].models[0]?.deploymentVersion, 2);
+
+            // Static rejection leaves B serving; runtime rejection happens only after a fresh restart.
+            const corrupt = await writeBundle(tempDir, { ...bundleOptions, deploymentVersion: 3 });
+            await fs.appendFile(Path.join(corrupt.bundle.path, 'model.eim'), '\nchanged');
+            sendCommand(observations, corrupt);
+            await waitFor(() => observations.results.some(result => result.commandId === corrupt.id),
+                'static candidate rejection');
+            assert.strictEqual(observations.results.find(result => result.commandId === corrupt.id)?.success, false);
+            assert.strictEqual((await requestJson(port, '/api/features', { features: [ 0 ] })).statusCode, 200);
+
+            const badRuntime = await writeBundle(tempDir, { ...bundleOptions, deploymentVersion: 4,
+                mock: { deploymentVersion: 99 } });
+            sendCommand(observations, badRuntime);
+            assert.deepStrictEqual(await secondProcess.exited, { code: 75, signal: null });
+            assert.strictEqual(observations.results.some(result => result.commandId === badRuntime.id), false);
+            thirdProcess = spawnRunner(runnerPath, socketPath, port);
+            await waitFor(() => observations.commandStreams === 3, 'recovery runner session');
+            assert.deepStrictEqual(observations.registrations[observations.registrations.length - 1].models, []);
+            sendCommand(observations, badRuntime);
+            await waitFor(() => observations.results.some(result => result.commandId === badRuntime.id),
+                'runtime candidate rejection after restart');
+            assert.strictEqual(observations.results.find(result => result.commandId === badRuntime.id)?.success, false);
+            const rollback = { ...first, id: 'rollback-to-1' };
+            sendCommand(observations, rollback);
+            await waitFor(() => observations.results.some(result => result.commandId === rollback.id),
+                'rollback command registration and result');
+            assert.strictEqual(observations.results.find(result => result.commandId === rollback.id)?.success, true);
+            assert.strictEqual(observations.resultRegistrations[observations.resultRegistrations.length - 1]
+                .models[0]?.deploymentVersion, 1);
+            assert.strictEqual((await requestJson(port, '/api/features', { features: [ 0 ] })).statusCode, 200);
+            await waitFor(() => observations.events.length === 4, 'rollback inference event');
+            assert.strictEqual(observations.events[3]?.events[0]?.results?.[0]?.modelId, 'model-1');
+
         }
         finally {
             // Keep a failed assertion from leaving the fake agent or child runner alive for later tests.
             observations.pendingEventResponse?.end();
             observations.commandStream?.end();
+            await stopRunner(thirdProcess);
             await stopRunner(secondProcess);
             await stopRunner(firstProcess);
             await closeServer(agentServer);
             await fs.rm(tempDir, { recursive: true, force: true });
         }
-    }).timeout(15_000);
+    }).timeout(25_000);
 });
 
-/** Starts the workload API needed to drive and observe a real runner process. */
+/** Starts the application API needed to drive and observe a real runner process. */
 async function startAgentServer(socketPath: string, observations: AgentObservations): Promise<http.Server> {
     const server = http.createServer(async (request, response) => {
         const body = await requestBody(request);
@@ -169,7 +210,7 @@ async function startAgentServer(socketPath: string, observations: AgentObservati
             // Retain both the empty startup registration and the canonical committed model registration.
             observations.registrations.push(JSON.parse(body) as InferenceRunnerRegistration);
             respondJson(response, {
-                workloadId: 'runner',
+                applicationId: 'runner',
                 inputPolicy: { mode: 'none' },
                 inlineSizeLimitBytes: 1024,
             });
@@ -190,6 +231,7 @@ async function startAgentServer(socketPath: string, observations: AgentObservati
             request.url.endsWith('/result')) {
             // Results reveal whether each command completed in this process or was left for replay.
             observations.results.push(JSON.parse(body) as CommandResult);
+            observations.resultRegistrations.push(observations.registrations[observations.registrations.length - 1]);
             respondJson(response, {});
             return;
         }

@@ -4,13 +4,17 @@ export type MonitoringEventContext = {
     deploymentIds: number[];
     deviceIds: string[];
     /**
-    * Workload producers evaluated by this event, absent for legacy summaries.
+    * Application producers evaluated by this event, absent for legacy summaries.
     */
-    workloadIds?: string[];
+    applicationIds?: string[];
     /**
     * Bundle-local models evaluated by this event.
     */
     modelIds?: string[];
+    /**
+    * Summary rules versions evaluated by this event.
+    */
+    rulesVersions?: number[];
     /**
     * Absent if the evaluation strategy does not depend on baseline comparisons
     */

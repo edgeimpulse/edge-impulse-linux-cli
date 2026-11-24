@@ -11,7 +11,7 @@ import {
 import {
     ActivateBundleCommand,
     InferenceRunnerRegistration,
-} from '../shared/device-protocol/workload-contract';
+} from '../shared/device-protocol/application-contract';
 import {
     BundleFixtureOptions,
     mockEimSource,
@@ -326,7 +326,7 @@ function registrationFor(bundle: PreparedAgentBundle): InferenceRunnerRegistrati
  * Exercises `LinuxImpulseRunner`, the child-process and socket owner for one `.eim` model. Normal
  * shutdown must stop the process and settle requests without reporting a failure. Startup failures,
  * timeouts and in-flight inference are bounded, while unexpected exits are retained for late owners
- * and report the exact exit code or signal needed by workload recovery.
+ * and report the exact exit code or signal needed by application recovery.
  */
 describe('LinuxImpulseRunner lifecycle', () => {
     let tempDir: string;

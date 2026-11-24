@@ -1,6 +1,6 @@
 import {
     Command, CommandResult, EventBatch, EventBatchResponse, RegisterRequest, RegisterResponse
-} from '../shared/device-protocol/workload-contract';
+} from '../shared/device-protocol/application-contract';
 import {
     Validator, validateCommand, validateCommandResult, validateEventBatch,
     validateEventBatchResponse, validateRegisterRequest, validateRegisterResponse

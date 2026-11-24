@@ -5,4 +5,9 @@ export type DeviceModelDeploymentRequest = {
     * Project deployment version the device should run.
     */
     deploymentVersion: number;
+    /**
+    * Required for devices using application identity and rejected otherwise. Must identify a connected application
+    * reported by the device.
+    */
+    applicationId?: string;
 };

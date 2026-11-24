@@ -2,7 +2,7 @@ import type { AgentClient } from '../../cli-common/agent-client';
 import type {
     ActivateBundleCommand,
     InferenceRunnerRegistration,
-} from '../../shared/device-protocol/workload-contract';
+} from '../../shared/device-protocol/application-contract';
 import {
     AgentBundlePreparationError,
     PreparedAgentBundle,
@@ -107,7 +107,7 @@ type BundleLifecycleState =
 
 /** Dependencies and fixed settings required to validate and initially prepare bundles. */
 export type AgentBundleLifecycleOptions = {
-    // Workload client used to publish the model identity after successful activation.
+    // Application client used to publish the model identity after successful activation.
     agentClient: Pick<AgentClient, 'updateRegistration'>;
     // Runner-specific initial preparation and registration decisions.
     policy: AgentBundlePreparationPolicy;

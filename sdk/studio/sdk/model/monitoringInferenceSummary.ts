@@ -7,6 +7,10 @@ export type MonitoringInferenceSummary = {
     projectId: number;
     deploymentId: number;
     deviceId: string;
+    /**
+    * Summary rules version used to produce this summary. Defaults to 1 if the device did not send one.
+    */
+    rulesVersion: number;
     groupKey: string;
     entryKey: string;
     entryValue: number;

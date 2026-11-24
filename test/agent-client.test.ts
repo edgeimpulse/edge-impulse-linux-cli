@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import os from 'node:os';
 import Path from 'node:path';
+import { mockAgentServer, MockAgentRequest, MockAgentResponse, MockAgentRoute, testRegistration, waitFor } from './helpers/mock-agent';
 import { AgentClient } from '../cli-common/agent-client';
 import {
     Command,
@@ -10,29 +11,12 @@ import {
     CompletedInferenceEvent,
     EventBatch,
     InferenceRunnerRegistration,
-} from '../shared/device-protocol/workload-contract';
-
-interface MockAgentRequest {
-    body: unknown;
-}
-
-interface MockAgentResponse {
-    statusCode?: number;
-    headers?: http.OutgoingHttpHeaders;
-    body?: object | string;
-    keepOpen?: boolean;
-}
-
-interface MockAgentRoute {
-    method: 'GET' | 'POST';
-    path: string;
-    response: MockAgentResponse | ((request: MockAgentRequest) => MockAgentResponse | Promise<MockAgentResponse>);
-}
+} from '../shared/device-protocol/application-contract';
 
 /**
- * Exercises `AgentClient`, the Unix-socket workload transport for registration, commands and inference
+ * Exercises `AgentClient`, the Unix-socket application transport for registration, commands and inference
  * events. Normal flows register canonical state, maintain the command stream, post results, apply input
- * policy and send inline or spooled captures. Failure flows cover unavailable or malformed agent
+ * policy and send inline or spooled inference inputs. Failure flows cover unavailable or malformed agent
  * responses, registration recovery, command-result retry and expiry, spool failure, request timeout,
  * stream reconnection and graceful shutdown while event requests are still pending.
  */
@@ -72,7 +56,7 @@ describe('AgentClient', () => {
                     registration = mockRequest.body as InferenceRunnerRegistration;
                     return {
                         body: {
-                            workloadId: 'vision',
+                            applicationId: 'vision',
                             inputPolicy: { mode: 'none' },
                             inlineSizeLimitBytes: 1024,
                         },
@@ -98,7 +82,7 @@ describe('AgentClient', () => {
         await waitFor(() => commandStreamOpened);
 
         assert.deepStrictEqual(registration, request);
-        assert.strictEqual(response.workloadId, 'vision');
+        assert.strictEqual(response.applicationId, 'vision');
         await client.close();
     });
 
@@ -107,7 +91,7 @@ describe('AgentClient', () => {
         server = await mockAgentServer(socketPath, [{
             method: 'POST',
             path: '/v1/register',
-            response: { body: { workloadId: 'vision' } },
+            response: { body: { applicationId: 'vision' } },
         }]);
 
         const client = new AgentClient(socketPath);
@@ -131,7 +115,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'none' },
                         inlineSizeLimitBytes: 1024,
                     },
@@ -148,7 +132,7 @@ describe('AgentClient', () => {
         ]);
 
         const response = await connecting;
-        assert.strictEqual(response.workloadId, 'vision');
+        assert.strictEqual(response.applicationId, 'vision');
         await client.close();
     });
 
@@ -184,7 +168,7 @@ describe('AgentClient', () => {
                     }
                     return {
                         body: {
-                            workloadId: 'vision',
+                            applicationId: 'vision',
                             inputPolicy: { mode: 'none' },
                             inlineSizeLimitBytes: 1024,
                         },
@@ -242,12 +226,12 @@ describe('AgentClient', () => {
                     registrations++;
                     return registrations === 1 ? {
                         body: {
-                            workloadId: 'vision',
+                            applicationId: 'vision',
                             inputPolicy: { mode: 'none' },
                             inlineSizeLimitBytes: 1024,
                         },
                     } : {
-                        body: { workloadId: 'vision' },
+                        body: { applicationId: 'vision' },
                     };
                 },
             },
@@ -282,7 +266,7 @@ describe('AgentClient', () => {
                     registrations++;
                     return {
                         body: {
-                            workloadId: 'vision',
+                            applicationId: 'vision',
                             inputPolicy: { mode: 'none' },
                             inlineSizeLimitBytes: 1024,
                         },
@@ -313,51 +297,6 @@ describe('AgentClient', () => {
         await client.close();
     });
 
-    // Verifies command handlers receive the validated, type-specific command.
-    it('delivers workload commands to their registered handler', async () => {
-        let delivered: Command | undefined;
-        server = await mockAgentServer(socketPath, [
-            {
-                method: 'POST',
-                path: '/v1/register',
-                response: {
-                    body: {
-                        workloadId: 'vision',
-                        inputPolicy: { mode: 'none' },
-                        inlineSizeLimitBytes: 1024,
-                    },
-                },
-            },
-            {
-                method: 'GET',
-                path: '/v1/commands',
-                response: {
-                    headers: { 'content-type': 'text/event-stream' },
-                    body: 'data: {"id":"activate-1","type":"activateBundle",' +
-                        '"bundle":{"kind":"model","path":"/models/version-2",' +
-                        '"deploymentVersion":2}}\n\n',
-                    keepOpen: true,
-                },
-            },
-            {
-                method: 'POST',
-                path: '/v1/commands/activate-1/result',
-                response: { body: {} },
-            },
-        ]);
-
-        const client = new AgentClient(socketPath);
-        client.commands.on('activateBundle', command => {
-            delivered = command;
-            return Promise.resolve();
-        });
-        await client.connect(testRegistration());
-        await waitFor(() => delivered !== undefined);
-
-        assert.strictEqual(delivered?.type, 'activateBundle');
-        await client.close();
-    });
-
     // An expired command result is final; it must not disrupt a healthy stream or repeat the action.
     it('does not reconnect when the agent refuses an expired command result', async () => {
         let registrations = 0;
@@ -371,7 +310,7 @@ describe('AgentClient', () => {
                     registrations++;
                     return {
                         body: {
-                            workloadId: 'vision',
+                            applicationId: 'vision',
                             inputPolicy: { mode: 'none' },
                             inlineSizeLimitBytes: 1024,
                         },
@@ -470,7 +409,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'none' },
                         inlineSizeLimitBytes: 1024,
                     },
@@ -536,6 +475,46 @@ describe('AgentClient', () => {
         }
     });
 
+    it('acknowledges activation failure and then handles rollback on the same stream', async () => {
+        const results: CommandResult[] = [];
+        let handled = 0;
+        server = await mockAgentServer(socketPath, [
+            { method: 'POST', path: '/v1/register', response: { body: {
+                applicationId: 'vision', inputPolicy: { mode: 'none' }, inlineSizeLimitBytes: 1024,
+            } } },
+            { method: 'GET', path: '/v1/commands', response: {
+                headers: { 'content-type': 'text/event-stream' }, keepOpen: true,
+                body: [ 7, 3 ].map(version => 'data: ' + JSON.stringify({ id: 'activate-' + version,
+                    type: 'activateBundle', bundle: { kind: 'model', deploymentVersion: version,
+                        path: '/models/12345/' + version } }) + '\n\n').join(''),
+            } },
+            ...[ 7, 3 ].map(version => ({ method: 'POST' as const,
+                path: '/v1/commands/activate-' + version + '/result',
+                response: (request: MockAgentRequest) => {
+                    results.push(request.body as CommandResult); return { statusCode: 204 };
+                },
+            })),
+        ]);
+        const client = new AgentClient(socketPath);
+        try {
+            client.commands.on('activateBundle', command => {
+                    handled++;
+                    if (command.bundle.deploymentVersion === 7) {
+                        throw new Error('failed executable');
+                    }
+                    return Promise.resolve();
+            });
+            await client.connect(testRegistration());
+            await waitFor(() => results.length === 2);
+            assert.strictEqual(handled, 2);
+            assert.deepStrictEqual(results, [
+                { commandId: 'activate-7', type: 'activateBundle', success: false, reason: 'failed executable' },
+                { commandId: 'activate-3', type: 'activateBundle', success: true },
+            ]);
+        }
+        finally { await client.close(); }
+    });
+
     // Confirms a selected small input is embedded in the event JSON and acknowledged by the agent.
     it('posts an inference with an inline input selected by the agent policy', async () => {
         let eventBody: EventBatch | undefined;
@@ -545,7 +524,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'all' },
                         inlineSizeLimitBytes: 1024,
                     },
@@ -598,7 +577,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'all' },
                         inlineSizeLimitBytes: 1,
                         spoolDirectory,
@@ -655,7 +634,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'all' },
                         inlineSizeLimitBytes: 1,
                         spoolDirectory: Path.join(tempDir, 'missing-spool'),
@@ -702,7 +681,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'fraction', fraction: 0.5 },
                         inlineSizeLimitBytes: 1024,
                     },
@@ -755,7 +734,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'all', maxPerSecond: 1 },
                         inlineSizeLimitBytes: 1024,
                     },
@@ -800,7 +779,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'none' },
                         inlineSizeLimitBytes: 1024,
                     },
@@ -864,7 +843,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'none' },
                         inlineSizeLimitBytes: 1024,
                     },
@@ -914,7 +893,7 @@ describe('AgentClient', () => {
                 path: '/v1/register',
                 response: {
                     body: {
-                        workloadId: 'vision',
+                        applicationId: 'vision',
                         inputPolicy: { mode: 'none' },
                         inlineSizeLimitBytes: 1024,
                     },
@@ -955,7 +934,7 @@ function commandResultRetryRoutes(
             path: '/v1/register',
             response: {
                 body: {
-                    workloadId: 'vision',
+                    applicationId: 'vision',
                     inputPolicy: { mode: 'none' },
                     inlineSizeLimitBytes: 1024,
                 },
@@ -984,74 +963,6 @@ function commandResultRetryRoutes(
 }
 
 /**
- * Starts a mock device agent on a Unix socket. Routes declare the response data directly or provide
- * a callback when a test needs to inspect a request, delay a response or record that a stream opened.
- * Unregistered method/path combinations return HTTP 404.
- *
- * @param socketPath Unix socket on which the mock agent should listen.
- * @param routes Workload API routes and the responses they should return.
- */
-async function mockAgentServer(socketPath: string, routes: MockAgentRoute[]): Promise<http.Server> {
-    const server = http.createServer(async (request, response) => {
-        const route = routes.find(candidate =>
-            candidate.method === request.method && candidate.path === request.url);
-        if (!route) {
-            response.writeHead(404).end();
-            return;
-        }
-
-        try {
-            let requestBody = '';
-            request.setEncoding('utf-8');
-            for await (const chunk of request) {
-                requestBody += chunk;
-            }
-            const mockRequest: MockAgentRequest = {
-                body: requestBody ? JSON.parse(requestBody) : undefined,
-            };
-            const mockResponse = typeof route.response === 'function' ?
-                await route.response(mockRequest) : route.response;
-            const statusCode = mockResponse.statusCode ?? 200;
-            const headers = { ...mockResponse.headers };
-            const body = typeof mockResponse.body === 'string' ?
-                mockResponse.body : mockResponse.body === undefined ? undefined : JSON.stringify(mockResponse.body);
-            if (typeof mockResponse.body === 'object' && !headers['content-type']) {
-                headers['content-type'] = 'application/json';
-            }
-            response.writeHead(statusCode, headers);
-            if (body !== undefined) {
-                response.write(body);
-            }
-            if (!mockResponse.keepOpen) {
-                response.end();
-            }
-        }
-        catch (error) {
-            response.writeHead(500).end(error instanceof Error ? error.message : String(error));
-        }
-    });
-    await new Promise<void>(resolve => server.listen(socketPath, resolve));
-    return server;
-}
-
-/**
- * Returns the smallest valid inference-runner registration used to exercise the client transport
- * independently of model loading.
- */
-function testRegistration(): InferenceRunnerRegistration {
-    return {
-        kind: 'inference_runner',
-        version: '1.0.0',
-        contractVersion: 1,
-        artifact: {
-            kind: 'containerImage',
-            reference: 'inference-container:test',
-        },
-        models: [],
-    };
-}
-
-/**
  * Returns one valid completed event so transport tests exercise the generated event validation.
  */
 function testInference(): CompletedInferenceEvent {
@@ -1064,20 +975,4 @@ function testInference(): CompletedInferenceEvent {
             timing: { dsp: 1, classification: 2, anomaly: 0 },
         }],
     };
-}
-
-/**
- * Waits for an asynchronous server observation so the tests can verify command-stream setup without
- * coupling themselves to the exact ordering of Node.js HTTP callbacks.
- *
- * @param predicate Returns true once the expected server-side observation has occurred.
- */
-async function waitFor(predicate: () => boolean) {
-    const deadline = Date.now() + 1000;
-    while (!predicate()) {
-        if (Date.now() >= deadline) {
-            throw new Error('Timed out waiting for condition');
-        }
-        await new Promise(resolve => setTimeout(resolve, 10));
-    }
 }

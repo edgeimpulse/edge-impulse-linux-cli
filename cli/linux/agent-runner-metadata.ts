@@ -1,4 +1,4 @@
-import { InferenceRunnerRegistration } from '../../shared/device-protocol/workload-contract';
+import { InferenceRunnerRegistration } from '../../shared/device-protocol/application-contract';
 import {
     ModelInformation,
     RunnerHelloInferencingEngine,
@@ -25,7 +25,7 @@ const AGENT_ENGINE_NAMES: Partial<Record<RunnerHelloInferencingEngine, string>> 
 };
 
 /**
- * Returns the stable workload API name for an inferencing-engine number reported by the `.eim`.
+ * Returns the stable application API name for an inferencing-engine number reported by the `.eim`.
  * Unknown future engine values remain reportable without preventing the runner from starting.
  *
  * @param engine Numeric inferencing-engine value reported by the loaded `.eim`.
@@ -35,7 +35,7 @@ export function agentEngineName(engine: number): string {
 }
 
 /**
- * Determines the workload mode for initial registration from explicit runner configuration, then
+ * Determines the application mode for initial registration from explicit runner configuration, then
  * falls back to loaded-model metadata once it is available.
  *
  * @param httpPort Configured inference HTTP port, when HTTP mode is active.

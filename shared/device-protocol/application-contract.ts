@@ -2,7 +2,7 @@
 
 /**
  * Any body of the contract, in either direction. The root of the
- * `workload-contract.json` schema.
+ * `application-contract.json` schema.
  *
  * The contract is HTTP/1.1 on a Unix domain socket under the agent's
  * runtime directory. Bodies are JSON. Paths carry the major version:
@@ -14,32 +14,33 @@
  * | Command stream | `GET /v1/commands` | none | server-sent events, each `data:` a `Command` |
  * | Command result | `POST /v1/commands/{commandId}/result` | `CommandResult` | empty |
  *
- * The workload registers before using the other operations. An inference
- * workload initially reports no models, then replaces that registration
+ * The application registers before using the other operations. An inference
+ * application initially reports no models, then replaces that registration
  * after a successful bundle activation with the models it now serves. A
  * dropped command stream is reopened for the same registered session. If
- * the agent loses that session or returns `not_registered`, the workload
+ * the agent loses that session or returns `not_registered`, the application
  * registers again with its current state before reopening the stream.
  *
  * Commands are delivered at least once: the agent sends a command without a
- * result again when the stream reconnects. A workload handles the same command
+ * result again when the stream reconnects. An application handles the same command
  * ID idempotently. If the agent stops waiting for a command, a later result may
  * be refused with `unknown_command`.
  *
  * A refused request answers an HTTP error status with a `ContractError`.
  */
-export type WorkloadContractMessage =
+export type ApplicationContractMessage =
     RegisterRequest | RegisterResponse | EventBatch | EventBatchResponse | Command | CommandResult | ContractError;
 /**
- * Workload to agent: `POST /v1/register`. The workload must register before using the other operations
- * on its socket. Registration replaces the state for that workload session rather than creating
- * another workload. An inference workload registers at startup with an empty `models` array before it
- * has a bundle, and registers again after successful activation with the models it now serves.
- * Reopening a dropped command stream does not require another registration while the agent retains the
- * session. After `not_registered` or an agent restart, the workload registers again with its current
- * active models.
+ * Application to agent: `POST /v1/register`. The application must register before using the other
+ * operations on its socket. Registration replaces the state for that application session rather than
+ * creating another application. An inference application registers at startup with an empty `models`
+ * array before it has a bundle, and registers again after successful activation with the models it now
+ * serves. Reopening a dropped command stream does not require another registration while the agent
+ * retains the session. After `not_registered` or an agent restart, the application registers again
+ * with its current active models.
  */
-export type RegisterRequest = InferenceRunnerRegistration | WorkflowRuntimeRegistration | ApplicationRegistration;
+export type RegisterRequest =
+    InferenceRunnerRegistration | WorkflowRuntimeRegistration | CustomSdkApplicationRegistration;
 /**
  * The Linux runner in agent-managed mode. Its artifact is the container image it runs from. It
  * registers with empty `models` at startup, then with the single model from its active inference
@@ -94,7 +95,7 @@ export type ModelType = 'classification' | 'object_detection' | 'constrained_obj
  */
 export type BlockThreshold = {id: number; type: string} & {[parameter: string]: number | string};
 /**
- * Whether this is the workload's container image or its inference bundle.
+ * Whether this is the application's container image or its inference bundle.
  */
 export type ArtifactKind = 'containerImage' | 'inferenceBundle';
 /**
@@ -110,22 +111,22 @@ export type WorkflowRuntimeRegistration = RegisterRequestCommon & {
     kind: 'workflow_runtime';
 };
 /**
- * A customer application on the SDK. The agent reports it by its
+ * A custom application built on the SDK. The agent reports it by its
  * `version` when it has no artifact.
  */
-export type ApplicationRegistration = RegisterRequestCommon & {
+export type CustomSdkApplicationRegistration = RegisterRequestCommon & {
     artifact?: Artifact2;
     /**
-     * Always `application`.
+     * Always `custom_sdk_application`.
      */
-    kind: 'application';
+    kind: 'custom_sdk_application';
 };
 /**
  * Which inputs to attach to events, until a command replaces it.
  */
 export type InputPolicy = InputPolicyNone | InputPolicyFraction | InputPolicyAll;
 /**
- * One inference of the workload.
+ * One inference of the application.
  */
 export type InferenceEvent = FailedInferenceEvent | CompletedInferenceEvent;
 /**
@@ -197,11 +198,11 @@ export type CompletedInferenceEvent = InferenceEventCommon & {
     failure?: never;
 };
 /**
- * Agent to workload: one event of the command stream.
+ * Agent to application: one event of the command stream.
  */
 export type Command = ActivateBundleCommand | UpdateInputPolicyCommand | CaptureCommand;
 /**
- * Activate a staged inference bundle. Needs the `activateBundle` capability. The workload reads
+ * Activate a staged inference bundle. Needs the `activateBundle` capability. The application reads
  * manifest.json from the bundle directory and registers again with the models it now serves.
  */
 export type ActivateBundleCommand = CommandCommon & {
@@ -240,9 +241,9 @@ export type CaptureCommand = CommandCommon & {
     type: 'capture';
 };
 /**
- * Workload to agent: `POST /v1/commands/{commandId}/result`. The result names the command's type and
- * whether it succeeded, so a successful `capture` must carry its sample, and the agent checks the type
- * against the command it sent. If the agent no longer waits for the command, it may answer
+ * Application to agent: `POST /v1/commands/{commandId}/result`. The result names the command's type
+ * and whether it succeeded, so a successful `capture` must carry its sample, and the agent checks the
+ * type against the command it sent. If the agent no longer waits for the command, it may answer
  * `unknown_command`.
  */
 export type CommandResult = CommandFailure | CaptureResult | CommandSuccess;
@@ -274,25 +275,25 @@ export type ContractErrorCode =
 export interface RegisterRequestCommon {
     activeBundle?: ActiveInferenceBundle;
     /**
-     * What the workload can do beyond posting events, from
+     * What the application can do beyond posting events, from
      * [`capability`]. Unknown names are ignored.
      */
     capabilities?: string[];
     contractVersion: ContractVersion;
     /**
-     * A snapshot of the models the workload currently serves. An inference workload sends an empty array
-     * on its initial registration before a bundle is active. After successful activation it replaces the
-     * registration with the models from the active bundle. A registration used to recover a lost agent
-     * session reports the models that remain active in the workload.
+     * A snapshot of the models the application currently serves. An inference application sends an empty
+     * array on its initial registration before a bundle is active. After successful activation it replaces
+     * the registration with the models from the active bundle. A registration used to recover a lost agent
+     * session reports the models that remain active in the application.
      */
     models: ModelRegistration[];
     /**
-     * The sensors the workload can capture from, with the names and
+     * The sensors the application can capture from, with the names and
      * frequencies Studio validates. The agent declares them in Hello.
      */
     sensors?: Sensor[];
     /**
-     * The workload's software version: the runner's version, for example.
+     * The application's software version: the runner's version, for example.
      */
     version: string;
 }
@@ -312,7 +313,7 @@ export interface ActiveInferenceBundle {
     digest: string;
 }
 /**
- * One model the workload serves from its active inference bundle, with identity fields from
+ * One model the application serves from its active inference bundle, with identity fields from
  * manifest.json and runtime model information.
  */
 export interface ModelRegistration {
@@ -326,7 +327,7 @@ export interface ModelRegistration {
      */
     engine: string;
     /**
-     * The bundle-local model ID from manifest.json, which events refer to. Unique within the workload.
+     * The bundle-local model ID from manifest.json, which events refer to. Unique within the application.
      */
     id: string;
     /**
@@ -380,7 +381,7 @@ export interface Sensor {
  */
 export interface Artifact {
     /**
-     * The image or inference bundle digest, when the workload knows it.
+     * The image or inference bundle digest, when the application knows it.
      */
     digest?: string;
     kind: ArtifactKind;
@@ -395,7 +396,7 @@ export interface Artifact {
  */
 export interface Artifact1 {
     /**
-     * The image or inference bundle digest, when the workload knows it.
+     * The image or inference bundle digest, when the application knows it.
      */
     digest?: string;
     kind: ArtifactKind;
@@ -409,7 +410,7 @@ export interface Artifact1 {
  */
 export interface Artifact2 {
     /**
-     * The image or inference bundle digest, when the workload knows it.
+     * The image or inference bundle digest, when the application knows it.
      */
     digest?: string;
     kind: ArtifactKind;
@@ -419,12 +420,12 @@ export interface Artifact2 {
     reference: string;
 }
 /**
- * Agent to workload: the answer to a registration.
+ * Agent to application: the answer to a registration.
  */
 export interface RegisterResponse {
     /**
-     * The agent marks the workload unhealthy when its command stream has
-     * been down for longer than this. Announced so the workload reconnects
+     * The agent marks the application unhealthy when its command stream has
+     * been down for longer than this. Announced so the application reconnects
      * well within it.
      */
     commandStreamTimeoutS?: number;
@@ -434,14 +435,14 @@ export interface RegisterResponse {
     inlineSizeLimitBytes: number;
     inputPolicy: InputPolicy;
     /**
-     * The spool directory shared with the agent, as the workload sees it.
-     * Absent when the workload has no spool and must drop larger inputs.
+     * The spool directory shared with the agent, as the application sees it.
+     * Absent when the application has no spool and must drop larger inputs.
      */
     spoolDirectory?: string;
     /**
-     * The ID the agent gave this workload.
+     * The ID the agent gave this application.
      */
-    workloadId: string;
+    applicationId: string;
 }
 /**
  * Attach no input. `fraction` is forbidden in this mode.
@@ -485,7 +486,7 @@ export interface InputPolicyAll {
     maxPerSecond?: number;
 }
 /**
- * Workload to agent: `POST /v1/events`.
+ * Application to agent: `POST /v1/events`.
  */
 export interface EventBatch {
     /**
@@ -500,11 +501,11 @@ export interface EventBatch {
  */
 export interface InferenceEventCommon {
     /**
-     * When the input was captured, if the workload knows it.
+     * When the input was captured, if the application knows it.
      */
     captureTimestamp?: number;
     /**
-     * Unique within the workload, so a retried batch is idempotent.
+     * Unique within the application, so a retried batch is idempotent.
      */
     id: string;
     /**
@@ -519,7 +520,7 @@ export interface InferenceEventCommon {
 export interface InputCommon {
     /**
      * A reference to the original capture the input was cut from, when the
-     * workload keeps one.
+     * application keeps one.
      */
     captureRef?: string;
     type: InputFormat;
@@ -699,7 +700,7 @@ export interface InferenceTiming {
     postprocessing?: number;
 }
 /**
- * Agent to workload: the answer to a batch. The device agent accepts the
+ * Agent to application: the answer to a batch. The device agent accepts the
  * whole batch or refuses the request, so `accepted` is the number of events in
  * the batch, deduplicated events included, and `dropped` is zero.
  */
@@ -722,8 +723,8 @@ export interface EventBatchResponse {
  */
 export interface CommandCommon {
     /**
-     * Unique per workload. The result names it. Delivery is at least once,
-     * so the workload handles another command with the same ID idempotently.
+     * Unique per application. The result names it. Delivery is at least once,
+     * so the application handles another command with the same ID idempotently.
      */
     id: string;
 }
@@ -741,13 +742,13 @@ export interface InferenceBundle {
      * file plus manifest.json, sorted by UTF-8 relative path bytes. Each entry is its path byte length as
      * unsigned 64-bit big-endian, its UTF-8 path, its file byte length as unsigned 64-bit big-endian, then
      * its raw file bytes. Include the workflow file for workflow bundles; include each path once. This
-     * includes workflow-only changes and is independent of the directory's location. Workloads verify this
-     * identity before reporting activeBundle.
+     * includes workflow-only changes and is independent of the directory's location. Applications verify
+     * this identity before reporting activeBundle.
      */
     digest?: string;
     kind: InferenceBundleKind1;
     /**
-     * The staged directory containing manifest.json, as the workload sees it.
+     * The staged directory containing manifest.json, as the application sees it.
      */
     path: string;
 }
@@ -806,7 +807,7 @@ export interface CaptureSample {
     metadata: CaptureMetadata;
 }
 /**
- * What the workload knows about the sample.
+ * What the application knows about the sample.
  */
 export interface CaptureMetadata {
     /**
@@ -855,12 +856,12 @@ export interface CommandSuccess {
     type: PlainCommandType;
 }
 /**
- * Agent to workload: the body of an HTTP error response.
+ * Agent to application: the body of an HTTP error response.
  */
 export interface ContractError {
     code: ContractErrorCode;
     /**
-     * Detail for a person reading the workload's log.
+     * Detail for a person reading the application's log.
      */
     message: string;
 }

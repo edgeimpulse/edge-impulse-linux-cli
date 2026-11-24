@@ -89,7 +89,7 @@
     "!build/test/",
     "!build/examples/",
     "!build/cli-common/agent-client.*",
-    "!build/cli-common/workload-contract.*",
+    "!build/cli-common/application-contract.*",
     "!build/cli/linux/agent-bundle*",
     "!build/shared/device-protocol/",
     "package*.json",

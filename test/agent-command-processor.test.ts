@@ -5,7 +5,7 @@ import {
     Command,
     CommandResult,
     UpdateInputPolicyCommand,
-} from '../shared/device-protocol/workload-contract';
+} from '../shared/device-protocol/application-contract';
 
 type Deferred = {
     promise: Promise<void>;

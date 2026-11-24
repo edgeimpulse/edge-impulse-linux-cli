@@ -43,6 +43,7 @@ export class LinuxImpulseRunner {
     // Child whose initialization completed and whose exit therefore makes serving unavailable.
     private _servingRunner: ChildProcess | undefined;
     private _helloResponse: ModelInformation | undefined;
+    private _reportedModelThresholds: RunnerBlockThreshold[] | undefined;
     private _runnerEe = new EventEmitter<{
         message: (data: { id: number }) => void,
         error: (err: string) => void
@@ -261,6 +262,7 @@ export class LinuxImpulseRunner {
                 if (this._runner === child) {
                     this._runner = undefined;
                     this._helloResponse = undefined;
+                    this._reportedModelThresholds = undefined;
                 }
                 if (terminatedWhileServing) {
                     this._servingRunner = undefined;
@@ -497,6 +499,18 @@ export class LinuxImpulseRunner {
     }
 
     /**
+     * Return a copy of the thresholds reported by this model's Hello, before CLI defaults/overrides.
+     * Monitoring retains its own copy for this deployment. An absent threshold is an empty list.
+     * Availability follows getModel(): throws when no model metadata is retained.
+     */
+    getReportedModelThresholds(): RunnerBlockThreshold[] {
+        if (!this._helloResponse || !this._reportedModelThresholds) {
+            throw new Error('Runner is not initialized');
+        }
+        return this._reportedModelThresholds.map(block => ({ ...block }));
+    }
+
+    /**
      * Classify data
      * @param data An array of numbers, already formatted according to the rules in
      *             https://docs.edgeimpulse.com/docs/running-your-impulse-locally-1
@@ -701,6 +715,7 @@ export class LinuxImpulseRunner {
             data.modelParameters.image_input_frames = 1;
         }
 
+        this._reportedModelThresholds = (data.modelParameters.thresholds ?? []).map(block => ({ ...block }));
         this._helloResponse = data;
 
         return data;

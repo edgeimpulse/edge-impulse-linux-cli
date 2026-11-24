@@ -10,6 +10,18 @@ import { ICamera } from "../sensors/icamera";
 import * as models from "../../sdk/studio/sdk/model/models";
 
 const PREFIX = '\x1b[35m[IMG]\x1b[0m';
+const CAMERA_CAPTURE_TIMEOUT_MS = 10_000;
+
+/** One original-resolution JPEG captured from the classifier's live camera stream. */
+export type CameraCapture = {
+    buffer: Buffer;
+    capturedAt: number;
+    height: number;
+    width: number;
+};
+
+/** Rejects a pending camera capture when its live source becomes unavailable. */
+type PendingCameraCapture = (error: Error) => void;
 
 // Map studio
 export const FitMethodMap: { [key: string]: keyof FitEnum } = {
@@ -45,8 +57,12 @@ export class ImageClassifier extends EventEmitter<{
     private _camera: ICamera;
     private _stopped: boolean = true;
     private _runningInference = false;
+    // Changes on pause so in-flight results cannot emit after the classifier resumes.
+    private _pauseGeneration = 0;
+    private _captureAvailable = false;
     private _model: ModelInformation;
     private _verbose: boolean;
+    private readonly _pendingCaptures = new Set<PendingCameraCapture>();
 
     /**
      * Classifies realtime image data from a camera
@@ -74,6 +90,7 @@ export class ImageClassifier extends EventEmitter<{
         }
 
         this._stopped = false;
+        this._captureAvailable = true;
 
         // if resize mode is 'none', we need to get the image size from the first snapshot
         if (this._model.modelParameters.image_resize_mode === 'none') {
@@ -108,6 +125,7 @@ export class ImageClassifier extends EventEmitter<{
                 this.emit('profileSnapshotHandlerBegin', filename);
 
                 this._runningInference = true;
+                const pauseGeneration = this._pauseGeneration;
 
                 try {
 
@@ -131,6 +149,7 @@ export class ImageClassifier extends EventEmitter<{
                         this.emit('profileClassifyBegin', filename);
 
                         const { classifyRes, timingMs } = await this.classify(features);
+                        if (pauseGeneration !== this._pauseGeneration) return;
 
                         this.emit('profileClassifyEnd', filename, classifyRes.timing);
 
@@ -160,13 +179,14 @@ export class ImageClassifier extends EventEmitter<{
                         let resized = await ImageClassifier.resizeImage(model, data, imgSharpMetadata);
                         this.emit('profileFeaturesEnd', filename);
 
-                        if (this._stopped) {
+                        if (this._stopped || pauseGeneration !== this._pauseGeneration) {
                             return;
                         }
 
                         this.emit('profileClassifyBegin', filename);
 
                         const { classifyRes, timingMs } = await this.classify(resized.features);
+                        if (pauseGeneration !== this._pauseGeneration) return;
 
                         this.emit('profileClassifyEnd', filename, classifyRes.timing);
 
@@ -183,15 +203,17 @@ export class ImageClassifier extends EventEmitter<{
                         }
                         else {
                             // data might have changed (e.g. w/h/channel), re-encode the new buffer
-                            this.emit('result', classifyRes,
-                                timingMs,
-                                await resized.img.jpeg({ quality: 90 }).toBuffer());
+                            const jpeg = await resized.img.jpeg({ quality: 90 }).toBuffer();
+                            if (pauseGeneration !== this._pauseGeneration) {
+                                return;
+                            }
+                            this.emit('result', classifyRes, timingMs, jpeg);
                         }
                         this.emit('profileEmitResultEnd', filename);
                     }
                 }
                 finally {
-                    this._runningInference = false;
+                    if (pauseGeneration === this._pauseGeneration) this._runningInference = false;
                 }
             }
             catch (ex2) {
@@ -214,6 +236,7 @@ export class ImageClassifier extends EventEmitter<{
 
     pause() {
         this._stopped = true;
+        this._pauseGeneration++;
     }
 
     /**
@@ -221,11 +244,71 @@ export class ImageClassifier extends EventEmitter<{
      */
     async stop() {
         this._stopped = true;
+        this._pauseGeneration++;
+        this._captureAvailable = false;
+        this.rejectPendingCaptures(new Error('Camera capture was interrupted because the classifier stopped'));
 
         await Promise.all([
             this._camera ? this._camera.stop() : Promise.resolve(),
             this._runner.stop()
         ]);
+    }
+
+    /** Captures the next source JPEG without disturbing the listener that drives inference. */
+    captureNextFrame(): Promise<CameraCapture> {
+        if (!this._captureAvailable) {
+            return Promise.reject(new Error('Cannot capture from a stopped camera classifier'));
+        }
+
+        const capturedAt = Date.now();
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const finish = (error?: Error, capture?: CameraCapture) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                this._camera.off('snapshot', onSnapshot);
+                this._camera.off('error', onError);
+                this._pendingCaptures.delete(onInterrupted);
+                if (error) reject(error);
+                else resolve(capture!);
+            };
+            // On the next camera frame, return the original JPEG and dimensions encoded in those bytes.
+            const onSnapshot = (buffer: Buffer) => {
+                // Claim the first frame before decoding metadata so later frames cannot queue work or win capture.
+                this._camera.off('snapshot', onSnapshot);
+                void sharp(buffer).metadata().then(metadata => {
+                    if (!metadata.width || !metadata.height) {
+                        finish(new Error('Captured camera frame did not contain image dimensions'));
+                        return;
+                    }
+                    finish(undefined, {
+                        buffer,
+                        capturedAt,
+                        width: metadata.width,
+                        height: metadata.height,
+                    });
+                }, error => finish(error instanceof Error ? error : new Error(String(error))));
+            };
+            // On camera failure, reject immediately because no later frame can be relied upon.
+            const onError = (message: string) => finish(new Error(`Camera capture failed: ${message}`));
+            // On classifier stop, reject so shutdown cannot leave a command hanging.
+            const onInterrupted: PendingCameraCapture = error => finish(error);
+            const timeout = setTimeout(() => {
+                finish(new Error(`Timed out waiting ${CAMERA_CAPTURE_TIMEOUT_MS} ms for a camera frame`));
+            }, CAMERA_CAPTURE_TIMEOUT_MS);
+
+            this._pendingCaptures.add(onInterrupted);
+            this._camera.on('snapshot', onSnapshot);
+            this._camera.on('error', onError);
+        });
+    }
+
+    /** Rejects and detaches every capture waiting on the current camera stream. */
+    private rejectPendingCaptures(error: Error): void {
+        for (const rejectCapture of [ ...this._pendingCaptures ]) {
+            rejectCapture(error);
+        }
     }
 
     async setImageParameters(params: {

@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import Path from 'node:path';
-import { ActivateBundleCommand, BlockThreshold } from '../../shared/device-protocol/workload-contract';
+import { ActivateBundleCommand, BlockThreshold } from '../../shared/device-protocol/application-contract';
 
 /** Selects the model identity and behavior exposed by a staged bundle fixture. */
 export type BundleFixtureOptions = {
     deploymentVersion: number;
+    producerLayout?: boolean;
+    mock?: MockEimOptions;
     sensor?: number;
     inferencingEngine?: number;
     manifestEngine?: string;
@@ -16,6 +18,10 @@ export type BundleFixtureOptions = {
 /** Selects the protocol responses and termination behavior of a mock `.eim` process. */
 export type MockEimOptions = {
     deploymentVersion?: number;
+    pidPath?: string;
+    imageWidth?: number;
+    imageHeight?: number;
+    resizeMode?: string;
     sensor?: number;
     inferencingEngine?: number;
     thresholds?: BlockThreshold[];
@@ -31,6 +37,8 @@ export async function writeBundle(
 ): Promise<ActivateBundleCommand> {
     const {
         deploymentVersion,
+        producerLayout = false,
+        mock = {},
         sensor = 3,
         inferencingEngine = 2,
         manifestEngine = 'tflite',
@@ -38,14 +46,16 @@ export async function writeBundle(
         classifyScore,
     } = options;
     const bundlePath = Path.join(rootDirectory, `bundle-${deploymentVersion}`);
-    const modelPath = Path.join(bundlePath, 'model.eim');
-    await fs.mkdir(bundlePath);
+    const relativeModelPath = producerLayout ? 'models/model.eim' : 'model.eim';
+    const modelPath = Path.join(bundlePath, relativeModelPath);
+    await fs.mkdir(Path.dirname(modelPath), { recursive: true });
     const source = mockEimSource({
         deploymentVersion,
         sensor,
         inferencingEngine,
         thresholds,
         classifyScore,
+        ...mock,
     });
     await fs.writeFile(modelPath, source, { mode: 0o755 });
     await fs.writeFile(Path.join(bundlePath, 'manifest.json'), JSON.stringify({
@@ -54,13 +64,13 @@ export async function writeBundle(
         target: 'test-target',
         runtime: { kind: 'inference_runner', minVersion: '1.0.0' },
         models: [{
-            id: `model-${deploymentVersion}`,
+            id: producerLayout ? 'impulse-1' : `model-${deploymentVersion}`,
             projectId: 1,
             impulseId: 1,
             deploymentVersion,
             engine: manifestEngine,
             modelType: 'classification',
-            path: 'model.eim',
+            path: relativeModelPath,
             sha256: createHash('sha256').update(source).digest('hex'),
         }],
     }));
@@ -75,6 +85,10 @@ export async function writeBundle(
 export function mockEimSource(options: MockEimOptions = {}): string {
     const {
         deploymentVersion = 1,
+        pidPath,
+        imageWidth = 1,
+        imageHeight = 1,
+        resizeMode = 'squash',
         sensor = 2,
         inferencingEngine = 2,
         thresholds = [],
@@ -84,6 +98,7 @@ export function mockEimSource(options: MockEimOptions = {}): string {
     } = options;
     return `#!/usr/bin/env node
 const net = require('net');
+if (${pidPath !== undefined}) require('fs').writeFileSync(${JSON.stringify(pidPath ?? '')}, String(process.pid));
 const socketPath = process.argv[2];
 const server = net.createServer(socket => {
     let buffered = '';
@@ -101,8 +116,8 @@ const server = net.createServer(socket => {
                     project: { id: 1, name: 'Test', owner: 'Owner', deploy_version: ${deploymentVersion} },
                     model_parameters: {
                         axis_count: 1, frequency: 1, has_anomaly: 0, input_features_count: 1,
-                        image_input_height: 1, image_input_width: 1, image_input_frames: 1,
-                        image_channel_count: 3, image_resize_mode: 'squash', interval_ms: 1,
+                        image_input_height: ${imageHeight}, image_input_width: ${imageWidth}, image_input_frames: 1,
+                        image_channel_count: 3, image_resize_mode: ${JSON.stringify(resizeMode)}, interval_ms: 1,
                         label_count: 1, sensor: ${sensor}, labels: [ 'value' ], model_type: 'classification',
                         use_continuous_mode: false, has_performance_calibration: false,
                         inferencing_engine: ${inferencingEngine}, thresholds: ${JSON.stringify(thresholds)}

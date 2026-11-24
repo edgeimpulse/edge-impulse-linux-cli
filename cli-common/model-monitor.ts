@@ -2,17 +2,20 @@ import fs from 'fs/promises';
 import { MonitoringSummaryPolicy } from '../shared/device-protocol/remote-management';
 import Path from 'path';
 import { Config } from './config';
-import { RunnerClassifyResponseSuccess, ModelInformation, RunnerHelloHasAnomaly } from "../library/classifier/linux-impulse-runner-types";
+import { RunnerClassifyResponseSuccess, ModelInformation, RunnerHelloHasAnomaly, RunnerBlockThreshold } from "../library/classifier/linux-impulse-runner-types";
 import { EventEmitter } from 'tsee';
 import { MgmtInterfaceImpulseRecordRawData, MgmtInterfaceInferenceSummary } from '../shared/MgmtInterfaceTypes';
 
-// Preserve the legacy cadence until the server confirms that faster summaries can be ingested.
+// Use the conservative cadence until the server confirms that faster summaries can be ingested.
 export const DEFAULT_MONITOR_SUMMARY_INTERVAL_MS = 60_000;
 export const MIN_MONITOR_SUMMARY_INTERVAL_MS = 5_000;
 const MONITOR_PREFIX = '\x1b[34m[MON]\x1b[0m';
+const NO_SUMMARY_POLICY = 'no-policy';
+const CLOCK_BACK_LIMIT_MS = 10_000;
 
-const DEFAULT_THRESHOLD = 0.5;
+const SUMMARY_CLOSE_RETRY_MS = 1000;
 
+/** Return whether the path is accessible; inaccessible paths are treated as absent. */
 function checkFileExists(file: string) {
     return new Promise(resolve => {
         return fs.access(file, fs.constants.F_OK)
@@ -21,6 +24,7 @@ function checkFileExists(file: string) {
     });
 }
 
+/** Limit concurrent iterator calls while collecting their results in input order. */
 async function asyncPool<IN, OUT>(poolLimit: number, array: ReadonlyArray<IN>,
     iteratorFn: (generator: IN) => Promise <OUT>): Promise<OUT[]> {
     const ret = [];
@@ -43,7 +47,7 @@ async function asyncPool<IN, OUT>(poolLimit: number, array: ReadonlyArray<IN>,
 /**
  * Helper to check if the model has visual AD capabilities based on its parameters.
 */
-export function hasVisualAd(model: ModelInformation) {
+export function hasVisualAd(model: Pick<MonitoredModel, 'modelParameters'>) {
     return [
         RunnerHelloHasAnomaly.VisualGMM,
         RunnerHelloHasAnomaly.VisualPatchcore,
@@ -77,9 +81,26 @@ export type MetricsWindowBoundary = {
 
 export type InferenceMetrics = MgmtInterfaceInferenceSummary['inferenceSummary'];
 
+/** Model metadata plus the original threshold snapshot used to calculate inference summaries. */
+export type MonitoredModel = {
+    modelParameters: Pick<ModelInformation['modelParameters'], 'model_type' | 'has_anomaly' | 'thresholds'>;
+    // An empty snapshot means the model reported no thresholds; local runner defaults are not substituted.
+    reportedThresholds: readonly RunnerBlockThreshold[];
+};
+
+/**
+ * The part of the configuration that the metrics calculator reads.
+ */
+export interface MetricsConfig {
+    getMonitorSummaryIntervalMs(): Promise<number | undefined>;
+}
+
+/**
+ * Stores monitoring records by project/deployment. Records use indexed segments;
+ * JPEG inputs are separate files, WAV inputs stay inline, and segment cleanup limits record storage.
+ */
 class StorageManager {
     private _storagePath: string = '';
-    private _metricsDir: string = '';
     private _config: Config;
     private _model: ModelInformation;
     private _storageIndex: number = 0;
@@ -95,17 +116,20 @@ class StorageManager {
     // on a propers level (depending on ther record size and the number of records per second)
     // so there will be more than one segment in the storage
 
+    /** Open the deployment's storage and recover its record bounds and tracked byte usage. */
     static async getStorageManager(conf: Config, model: ModelInformation) {
         let storageManager = new StorageManager(conf, model);
         await storageManager.initialize();
         return storageManager;
     }
 
+    /** Retain configuration and model identity; the factory performs asynchronous storage setup. */
     private constructor(conf: Config, model: ModelInformation) {
         this._config = conf;
         this._model = model;
     }
 
+    /** Find record-index bounds from numeric JSON filenames, returning zero bounds when none exist. */
     private async getHighestAndLowestIndexes(path: string): Promise<{ highest: number, lowest: number }> {
         let highest = 0;
         let lowest = Number.MAX_SAFE_INTEGER;
@@ -136,6 +160,7 @@ class StorageManager {
         return { highest, lowest };
     }
 
+    /** Resolve a record's segment directory and create it if needed. */
     private async getPathByIndex(index: number): Promise<string> {
         const segment = Math.floor(index / this._storageIndexSegment);
         const path = Path.join(this._storagePath, segment.toString());
@@ -146,6 +171,7 @@ class StorageManager {
         return path;
     }
 
+    /** Sum file sizes recursively for storage accounting. */
     private async getStorageSize(path: string = this._storagePath): Promise<number> {
 
         const dirSize = async (dir: string) => {
@@ -170,6 +196,7 @@ class StorageManager {
         return await dirSize(path);
     }
 
+    /** Select deployment storage, create directories, and recover indexes and usage from disk. */
     private async initialize(): Promise<void> {
         const modelProjectId = this._model.project.id;
         const deploymentVersion = await this._config.getDeploymentVersion();
@@ -201,12 +228,6 @@ class StorageManager {
             this._storageSizeMaxBytes = storageMaxSizeMb * 1024 * 1024; // convert to bytes
         }
 
-        // set the metrics directory path
-        this._metricsDir = Path.join(this._storagePath, 'metrics');
-        if (await checkFileExists(this._metricsDir) === false) {
-            await fs.mkdir(this._metricsDir, { recursive: true });
-        }
-
         // get the current storage index (the next index to be used for saving records)
         // storage index may be updated during the initialization if there is a record with higer index
         // we can't overwrite existing records, so we need to start from the next index
@@ -215,6 +236,9 @@ class StorageManager {
         // check if storage directory exists
         if (await checkFileExists(this._storagePath) === false) {
             await fs.mkdir(this._storagePath, { recursive: true });
+            // Empty monitoring storage historically reports zero bounds and allocates record 1 first.
+            this._firstIndex = 0;
+            this._storageIndex = 1;
         }
         else {
             // if storage exist, then try to restore first and last index
@@ -257,8 +281,9 @@ class StorageManager {
         this._storageSize = await this.getStorageSize();
     }
 
-    // TODO[MM] Currently, only data segments are deleted when storage is full.
-    // If metrics files grow too large, they may not be cleaned up.
+    /**
+     * Remove one record segment in the existing storage ordering, retaining at least one segment.
+     */
     private async cleanupStorage(): Promise<void> {
         // get list of segment directories
         let dirs = await fs.readdir(this._storagePath, { withFileTypes: true });
@@ -296,6 +321,7 @@ class StorageManager {
         this._storageSize -= lowestSegmentSize;
     }
 
+    /** Report retained index bounds and their timestamps for Remote Management's record requests. */
     async getStorageStatus(): Promise<StorageStatus> {
         let temp = await this.getRecord(this._firstIndex);
         const firstTimestamp = temp ? temp.timestamp : 0;
@@ -310,40 +336,11 @@ class StorageManager {
         };
     }
 
-    async saveInferenceMetrics(metricsStr: string, fileName: string): Promise<void> {
-        const metricsPath = Path.join(this._metricsDir, `${fileName}.json`);
-        await fs.writeFile(metricsPath, metricsStr);
-    }
-
-    async getLatestInferenceMetrics(): Promise<string | undefined> {
-        try {
-            const files = await fs.readdir(this._metricsDir);
-            const metricsFiles = files.filter(file => file.endsWith('.json'));
-            if (metricsFiles.length === 0) {
-                return undefined;
-            }
-
-            // Sort files by the last index in the filename (after the last underscore)
-            metricsFiles.sort((a, b) => {
-                const indexA = Number(a.replace('.json', '').split('_').pop());
-                const indexB = Number(b.replace('.json', '').split('_').pop());
-                return indexB - indexA; // Sort in descending order
-            });
-
-            const latestFile = metricsFiles[0];
-            return await fs.readFile(Path.join(this._metricsDir, latestFile), 'utf-8');
-        }
-        catch (error) {
-            console.error(MONITOR_PREFIX, 'Error reading metrics files:', error);
-            return undefined;
-        }
-    }
-
-    // we pass raw data separately, so the storage manager can decide how to store it
-    // JPEGs are stored in the files on disk, while WAVs are stored in the JSONs (so far)
+    /** Allocate an index, persist the record/input, and update usage before applying segment cleanup. */
     async saveRecord(record: ImpulseRecord): Promise<void> {
         let recordSize: number = 0;
         let rawDataSize: number = 0;
+        let storedRecord = record;
 
         record.index = this._storageIndex++;
         if (!this._isUpdatingStorageIndex) {
@@ -359,10 +356,14 @@ class StorageManager {
             const buf = Buffer.from(record.rawData.bufferBase64, 'base64');
             await fs.writeFile(imgPath, buf);
             rawDataSize = buf.length;
-            record.rawData.bufferBase64 = imgPath;
+            // Persist the file reference without replacing the base64 image emitted to live debug clients.
+            storedRecord = {
+                ...record,
+                rawData: { ...record.rawData, bufferBase64: imgPath },
+            };
         }
 
-        const recordStr = JSON.stringify(record, null, 4);
+        const recordStr = JSON.stringify(storedRecord, null, 4);
         await fs.writeFile(recordPath, recordStr, 'utf-8');
         recordSize = recordStr.length;
 
@@ -374,6 +375,7 @@ class StorageManager {
         }
     }
 
+    /** Read a retained record and load its JPEG input into the response; absent records return undefined. */
     async getRecord(index: number): Promise<ImpulseRecord | undefined> {
         const recordPath = Path.join(await this.getPathByIndex(index), index.toString() + '.json');
 
@@ -402,467 +404,318 @@ class StorageManager {
     }
 }
 
-interface MetricCalculator {
-    name: string;
-    update(classification: { [label: string]: number } | undefined, threshold: number): void;
-    getMetric(): { label: string; value: number }[];
-}
-
-type MeanValues = {
-    [label: string]: {
-        count: number;
-        sum: number;
-    };
+/** Distinguish the active reporting interval from the saved CLI preference during construction. */
+type MetricsCalculatorCadence = {
+    summaryWindowMs: number;
+    configuredSummaryIntervalMs: number | undefined;
 };
 
-class MeanCalculator implements MetricCalculator {
-    private _mean: MeanValues;
-    private _name: string = 'mean';
-
-    constructor() {
-        this._mean = { };
+/** Compare Unicode code points rather than JavaScript's UTF-16 code units or the host locale. */
+function compareSummaryLabels(left: string, right: string): number {
+    const a = Array.from(left, character => character.codePointAt(0)!);
+    const b = Array.from(right, character => character.codePointAt(0)!);
+    for (let index = 0; index < Math.min(a.length, b.length); index++) {
+        if (a[index] !== b[index]) return a[index] - b[index];
     }
-
-    get name(): string {
-        return this._name;
-    }
-
-    update(classification: { [label: string]: number } | undefined, threshold: number): void {
-        if (classification === undefined) {
-            return;
-        }
-
-        // Here we only want to update the mean for the label that was actually
-        // predicted (hence, the one >= the threshold, with the highest score).
-        // Imagine a model with two classes, A and B, and within some window the model
-        // classifies once as A, once as B, with the scores: [ (0.8, 0.2), (0.2, 0.8) ].
-        // When looking at the mean for A we should get an answer of 0.8, not 0.5, this is
-        // because the question we're answering is "when the model predicts A, how confident
-        // is it in its decision?"
-        let predictedLabel: string | undefined;
-        let predictedScore: number = 0;
-
-        for (const label of Object.keys(classification)) {
-            const score = Number(classification[label]);
-            if (score > predictedScore && score >= threshold) {
-                predictedScore = score;
-                predictedLabel = label;
-            }
-        }
-
-        if (predictedLabel !== undefined) {
-            try {
-                this._mean[predictedLabel].count += 1;
-                this._mean[predictedLabel].sum += Number(classification[predictedLabel]);
-            }
-            catch (ex) {
-                this._mean[predictedLabel] = { count: 1, sum: Number(classification[predictedLabel]) };
-            }
-        }
-    }
-
-    getMeanByLabel(label: string): number {
-        if (this._mean[label] === undefined) {
-            return 0;
-        }
-        return this._mean[label].sum / this._mean[label].count;
-    }
-
-    getMetric(): { label: string; value: number }[] {
-        let ret: { label: string; value: number }[] = [];
-
-        for (const label in this._mean) {
-            if (!this._mean.hasOwnProperty(label)) {
-                continue;
-            }
-            ret.push({ label: label, value: this._mean[label].sum / this._mean[label].count });
-        }
-        return ret;
-    }
+    return a.length - b.length;
 }
 
-type StdDevValues = {
-    [label: string]: {
-        count: number;
-        m2: number;
-        mean: number;
-    };
-};
+/** Incremental mean and population variance for all supplied scores, not just winning predictions. */
+class Moments {
+    count = 0;
+    mean = 0;
+    private _squares = 0;
 
-class StdDevCalculator implements MetricCalculator {
-    private _stdDev: StdDevValues;
-    private _name: string = 'standardDeviation';
-
-    constructor() {
-        this._stdDev = { };
+    /** Incorporate one score using Welford's update without retaining individual observations. */
+    add(value: number): void {
+        this.count++;
+        const delta = value - this.mean;
+        this.mean += delta / this.count;
+        this._squares += delta * (value - this.mean);
     }
 
-    get name(): string {
-        return this._name;
-    }
-
-    // based on Welford's online algorithm
-    // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
-    update(classification: { [label: string]: number } | undefined, threshold: number): void {
-        if (classification === undefined) {
-            return;
-        }
-
-        // Here we only want to update the stdev for the label that was actually
-        // predicted (hence, the one >= the threshold, with the highest score).
-        // See comment above in MeanCalculator for more details.
-        let predictedLabel: string | undefined;
-        let predictedScore: number = 0;
-
-        for (const label of Object.keys(classification)) {
-            const score = Number(classification[label]);
-            if (score > predictedScore && score >= threshold) {
-                predictedScore = score;
-                predictedLabel = label;
-            }
-        }
-
-        if (predictedLabel !== undefined) {
-            try {
-                const x = Number(classification[predictedLabel]);
-                this._stdDev[predictedLabel].count += 1;
-
-                const delta = x - this._stdDev[predictedLabel].mean;
-                this._stdDev[predictedLabel].mean += delta / this._stdDev[predictedLabel].count;
-
-                const delta2 = x - this._stdDev[predictedLabel].mean;
-                this._stdDev[predictedLabel].m2 += delta * delta2;
-            }
-            catch (ex) {
-                this._stdDev[predictedLabel] = { count: 1, m2: 0, mean: Number(classification[predictedLabel]) };
-            }
-        }
-    }
-
-    getStdDevByLabel(label: string): number {
-        if (this._stdDev[label] === undefined) {
-            return 0;
-        }
-
-        return Math.sqrt(this._stdDev[label].m2 / (this._stdDev[label].count));
-    }
-
-    getMetric(): { label: string; value: number }[] {
-        const ret: { label: string; value: number }[] = [];
-
-        for (const label of Object.keys(this._stdDev)) {
-            const val = Math.sqrt(this._stdDev[label].m2 / (this._stdDev[label].count));
-            ret.push({ label: label, value: val });
-        }
-
-        return ret;
-    }
-}
-
-type InferenceMetricsCache = {
-    metrics: InferenceMetrics;
-};
-
-class MetricsCalculator {
-    private _storageManager: StorageManager;
-    private _meanCalculator: MeanCalculator;
-    private _stdDevCalculator: StdDevCalculator;
-    private _metrics: InferenceMetrics;
-    private _model: ModelInformation;
-    private _summaryWindowMs: number;
-    readonly configuredSummaryIntervalMs: number | undefined;
-    private _confidenceThresholds = new Map<string, number>();
-
-    // parameters and variables used to determine summary period
-    private _windowStartIndex: number = 0;
-    private _windowStartTimestamp: number = 0;
-
-    private _totalInferenceTime = {
-        dsp: 0,
-        classification: 0,
-        anomaly: 0,
-    };
-
-    private _visualAnomalyMean: number = 0;
-
-    // because we need to initialize the class with async method, the constructor is private
-    // and any new object should be created using getMetricsInstance
-    static async getMetricsInstance(
-        config: Config,
-        storage: StorageManager,
-        model: ModelInformation
-    ): Promise<MetricsCalculator> {
-        const savedInterval = await config.getMonitorSummaryIntervalMs();
-        const configuredInterval = savedInterval && Number.isFinite(savedInterval) && savedInterval > 0 ?
-            savedInterval : undefined;
-        const metrics = new MetricsCalculator(storage, model,
-            Math.max(configuredInterval ?? DEFAULT_MONITOR_SUMMARY_INTERVAL_MS,
-                DEFAULT_MONITOR_SUMMARY_INTERVAL_MS), configuredInterval);
-
-        // Initialize the metrics by restoring them from the storage
-        await metrics.restoreMetrics();
-
-        return metrics;
-    }
-
-    // private constructor to prevent direct object creation, use getMetricsInstance instead
-    private constructor(storage: StorageManager, model: ModelInformation, summaryWindowMs: number,
-        configuredSummaryIntervalMs: number | undefined) {
-        this._storageManager = storage;
-        this._model = model;
-        this._summaryWindowMs = summaryWindowMs;
-        this.configuredSummaryIntervalMs = configuredSummaryIntervalMs;
-
-        let threshold: number | undefined;
-
-        if (hasVisualAd(model)) {
-            const thresholdObj = (model.modelParameters.thresholds || []).find(x => x.type === 'anomaly_gmm');
-            if (thresholdObj && thresholdObj.type === 'anomaly_gmm') {
-                if (typeof thresholdObj.min_anomaly_score === 'number') {
-                    threshold = thresholdObj.min_anomaly_score;
-                    this._confidenceThresholds.set('min_anomaly_score', threshold);
-                }
-            }
-        }
-
-        // An impulse might have both visual AD and classifier/object detection, but classification and object detection
-        // are mutually exclusive, so we check them in an if-else statement
-        if (model.modelParameters.model_type === 'constrained_object_detection' ||
-            model.modelParameters.model_type === 'object_detection'
-        ) {
-            const thresholdObj = (model.modelParameters.thresholds || []).find(x => x.type === 'object_detection');
-            if (thresholdObj && thresholdObj.type === 'object_detection') {
-                if (typeof thresholdObj.min_score === 'number') {
-                    threshold = thresholdObj.min_score;
-                    this._confidenceThresholds.set('min_score', threshold);
-                }
-            }
-        }
-        else if (model.modelParameters.model_type === 'classification') {
-            const thresholdObj = (model.modelParameters.thresholds || []).find(x => x.type === 'classification');
-            if (thresholdObj && thresholdObj.type === 'classification') {
-                if (typeof thresholdObj.min_score === 'number') {
-                    threshold = thresholdObj.min_score;
-                    this._confidenceThresholds.set('min_score', threshold);
-                }
-            }
-        }
-
-        if (this._confidenceThresholds.size === 0) {
-            console.warn(MONITOR_PREFIX, `Model threshold is not defined, using default value of ${DEFAULT_THRESHOLD}`);
-        }
-        this._meanCalculator = new MeanCalculator();
-        this._stdDevCalculator = new StdDevCalculator();
-
-        // init as empty, will be overwritten by restoreMetrics
-        this._metrics = {
-            start: { index: 0, timestamp: 0 },
-            end: { index: 0, timestamp: 0 },
-            classificationCounter: [],
-            mean: [],
-            standardDeviation: [],
-            metrics: {},
-        };
-    }
-
-    get summaryIntervalMs() {
-        return this._summaryWindowMs;
-    }
-
-    setSummaryIntervalMs(intervalMs: number) {
-        // Preserve the in-flight aggregate. The next inference closes it if the shorter deadline is due;
-        // speeding up cannot manufacture historical summaries or duplicate the records already included.
-        this._summaryWindowMs = intervalMs;
-    }
-
-    private resetMetrics(): void {
-        this._meanCalculator = new MeanCalculator();
-        this._stdDevCalculator = new StdDevCalculator();
-
-        this._metrics = {
-            start: { index: this._windowStartIndex, timestamp: this._windowStartTimestamp },
-            end: { index: this._windowStartIndex, timestamp: this._windowStartTimestamp },
-            classificationCounter: [],
-            mean: [],
-            standardDeviation: [],
-            metrics: {},
-        };
-
-        this._totalInferenceTime = {
-            dsp: 0,
-            classification: 0,
-            anomaly: 0,
-        };
-
-        this._visualAnomalyMean = 0;
-    }
-
-    async updateMetrics(record: ImpulseRecord): Promise<boolean> {
-        // If this is the first record in a new window, reset metrics
-        if (this._windowStartTimestamp === 0) {
-            // This is the start of a new metrics window,
-            // set window start index/timestamp
-            this._windowStartIndex = record.index;
-            this._windowStartTimestamp = record.timestamp;
-
-            this.resetMetrics();
-        }
-
-        const incrementClassificationCounter = (key: string) => {
-            // find key index in classificationCounter
-            const index = this._metrics.classificationCounter.findIndex((element) => element.label === key);
-            if (index < 0) {
-                this._metrics.classificationCounter.push({ label: key, value: 1 });
-            }
-            else {
-                this._metrics.classificationCounter[index].value++;
-            }
-        };
-
-        if (hasVisualAd(this._model) && record.impulseRecord.result.visual_anomaly_max !== undefined) {
-            const minAnomalyScore = this._confidenceThresholds.get('min_anomaly_score') ?? DEFAULT_THRESHOLD;
-
-            const isAnomaly = record.impulseRecord.result.visual_anomaly_max > minAnomalyScore;
-            const predictedLabel = isAnomaly ? 'anomaly' : 'no anomaly';
-            incrementClassificationCounter(predictedLabel);
-
-            const classifications = { [predictedLabel]: record.impulseRecord.result.visual_anomaly_max };
-            // update mean and stdev partial values
-            this._meanCalculator.update(classifications, minAnomalyScore);
-            this._stdDevCalculator.update(classifications, minAnomalyScore);
-        }
-
-        // check if property classification exists in record.impulseRecord.result
-        if (record.impulseRecord.result.classification !== undefined) {
-            const minScore = this._confidenceThresholds.get('min_score') ?? DEFAULT_THRESHOLD;
-
-            // iterate over properites in impulseRecord.result.classification
-            for (const key in record.impulseRecord.result.classification) {
-                if (!record.impulseRecord.result.classification.hasOwnProperty(key)) {
-                    continue;
-                }
-
-                // check if value is above threshold
-                if (Number(record.impulseRecord.result.classification[key]) > minScore) {
-                    incrementClassificationCounter(key);
-                }
-            }
-
-            // update mean and stdev partial values
-            this._meanCalculator.update(record.impulseRecord.result.classification, minScore);
-            this._stdDevCalculator.update(record.impulseRecord.result.classification, minScore);
-        }
-
-        if (record.impulseRecord.result.bounding_boxes !== undefined) {
-            const minScore = this._confidenceThresholds.get('min_score') ?? DEFAULT_THRESHOLD;
-
-            // iterate over list of bounding boxes
-            for (const box of record.impulseRecord.result.bounding_boxes) {
-                // check if value is above threshold
-                if (box.value > minScore) {
-                    incrementClassificationCounter(box.label);
-                }
-            }
-
-            // Convert bounding boxes to a classification data object, i.e go from
-            // [{ label: 'cat', value: 0.9, x: 40, y: 50, ... }, { label: 'dog', value: 0.8, x: 10, y: 20, ... }] to
-            // { cat: 0.9, dog: 0.8 }, so we can use it for mean and stdev calculations
-            const classificationData = record.impulseRecord.result.bounding_boxes.reduce((acc, { label, value }) => {
-                acc[label] = value;
-                return acc;
-            }, {} as { [k: string]: number });
-
-            // update mean and stdev partial values
-            this._meanCalculator.update(classificationData, minScore);
-            this._stdDevCalculator.update(classificationData, minScore);
-        }
-
-        // Calculate average inference time, if timing information is present
-        if (record.impulseRecord.timing) {
-            this._totalInferenceTime.dsp += record.impulseRecord.timing.dsp;
-            this._totalInferenceTime.classification += record.impulseRecord.timing.classification;
-            this._totalInferenceTime.anomaly += record.impulseRecord.timing.anomaly;
-        }
-
-        // Only calculate mean visual anomaly score if relevant
-        if (hasVisualAd(this._model) && record.impulseRecord.result.visual_anomaly_mean) {
-            this._visualAnomalyMean += record.impulseRecord.result.visual_anomaly_mean;
-        }
-
-        // update the end boundary
-        this._metrics.end = { index: record.index, timestamp: record.timestamp };
-
-        // Check if the time window has elapsed
-        if ((record.timestamp - this._windowStartTimestamp) >= this._summaryWindowMs) {
-            // Save metrics and reset window
-            await this.saveMetrics();
-            this._windowStartTimestamp = 0;
-
-            return true;
-        }
-
-        return false;
-    }
-
-    getMetrics(): InferenceMetrics {
-        // get actual mean values
-        this._metrics.mean = this._meanCalculator.getMetric();
-        this._metrics.standardDeviation = this._stdDevCalculator.getMetric();
-
-        // calculate other metrics
-        const numberOfInferences = this._metrics.end.index - this._metrics.start.index + 1;
-
-        // Average inference time, only include `anomaly` if the model has anomaly detection
-        if (this._model.modelParameters.has_anomaly) {
-            this._metrics.metrics.avg_inference_time = {
-                dsp: this._totalInferenceTime.dsp / numberOfInferences,
-                classification: this._totalInferenceTime.classification / numberOfInferences,
-                anomaly: this._totalInferenceTime.anomaly / numberOfInferences,
-            };
-        }
-        else {
-            this._metrics.metrics.avg_inference_time = {
-                dsp: this._totalInferenceTime.dsp / numberOfInferences,
-                classification: this._totalInferenceTime.classification / numberOfInferences,
-            };
-        }
-
-        // Only include visual_anomaly_mean if visual anomaly is relevant
-        if (hasVisualAd(this._model)) {
-            this._metrics.metrics.visual_anomaly_mean = this._visualAnomalyMean / numberOfInferences;
-        }
-        else {
-            delete this._metrics.metrics.visual_anomaly_mean;
-        }
-
-        return this._metrics;
-    }
-
-    async saveMetrics(): Promise<void> {
-        const cache: InferenceMetricsCache = {
-            metrics: this.getMetrics()
-        };
-
-        await this._storageManager.saveInferenceMetrics(
-            JSON.stringify(cache, null, 2),
-            `${this._metrics.start.index}_${this._metrics.end.index}`
-        );
-    }
-
-    // restore saved metrics from the storage
-    private async restoreMetrics(): Promise<void> {
-        // load serialized metrics from the storage
-        const cache = await this._storageManager.getLatestInferenceMetrics();
-        if (cache) {
-            // if cache exists, then try to deserialize it
-            const data = <InferenceMetricsCache>JSON.parse(cache);
-            this._metrics = data.metrics;
-        }
+    /** Compute population deviation from the accumulated moments; callers require at least one score. */
+    get deviation(): number {
+        return Math.sqrt(Math.max(0, this._squares / this.count));
     }
 }
 
 /**
- * Represents a model monitor that emits events related to impulse records and inference summaries.
+ * Accumulates the telemetry statistics for one admitted model and window, independently by result field.
+ * Classification statistics include every reported label score, and timing counts actual results.
+ * The calculator owns window admission and closure.
+ */
+class InferenceSummaryAccumulator {
+    private _labels = new Map<string, { counted: number, scores: Moments }>();
+    private _first: InferenceMetrics['start'] | undefined;
+    private _last: InferenceMetrics['end'] | undefined;
+    private _results = 0;
+    private _dsp = 0;
+    private _classification = 0;
+    private _anomalyTime = 0;
+    private _hasAnomalyTime = false;
+    private _anomalyScores = new Moments();
+    private _anomalyCount: number | undefined;
+    private _visualMeans = new Moments();
+
+    /** Start empty with the model's reported thresholds, without adding runner defaults. */
+    constructor(private readonly _thresholds: readonly RunnerBlockThreshold[]) { }
+
+    /** Read a numeric parameter from the first block of its type; absent parameters have no fallback. */
+    private threshold(type: string, key: string): number | undefined {
+        // A later block cannot supply a key missing from the first block of this type.
+        const value = this._thresholds.find(block => block.type === type)?.[key];
+        return typeof value === 'number' ? value : undefined;
+    }
+
+    /** Retrieve/create the shared counters and moments for a model or generated label. */
+    private label(name: string) {
+        const existing = this._labels.get(name);
+        if (existing) return existing;
+        const entry = { counted: 0, scores: new Moments() };
+        this._labels.set(name, entry);
+        return entry;
+    }
+
+    /** Count one prediction or qualifying box for a label. */
+    private count(name: string): void {
+        this.label(name).counted++;
+    }
+
+    /** Add a score to a label's mean/deviation independently of whether its prediction counter increments. */
+    private score(name: string, value: number): void {
+        this.label(name).scores.add(value);
+    }
+
+    /** Apply each present result field's summary rule and track result count and index-associated timestamps. */
+    add(record: Pick<ImpulseRecord, 'impulseRecord' | 'timestamp' | 'index'>): void {
+        const position = { index: record.index, timestamp: record.timestamp };
+        if (!this._first || record.index < this._first.index) this._first = position;
+        if (!this._last || record.index > this._last.index) this._last = position;
+        this._results++;
+        const { result, timing } = record.impulseRecord;
+        this._dsp += timing.dsp;
+        this._classification += timing.classification;
+        this._anomalyTime += timing.anomaly;
+
+        const classifications = Object.entries(result.classification ?? {});
+        const top = classifications.reduce<[string, number] | undefined>((best, candidate) => {
+            if (!best || candidate[1] > best[1] ||
+                (candidate[1] === best[1] && compareSummaryLabels(candidate[0], best[0]) < 0)) return candidate;
+            return best;
+        }, undefined);
+        if (top) {
+            const threshold = this.threshold('classification', 'min_score');
+            this.count(threshold !== undefined && top[1] < threshold ? 'no prediction' : top[0]);
+            for (const [ label, value ] of classifications) this.score(label, value);
+        }
+
+        const detectionThreshold = this.threshold('object_detection', 'min_score');
+        for (const box of result.bounding_boxes ?? []) {
+            if (detectionThreshold === undefined || box.value > detectionThreshold) {
+                this.count(box.label);
+                this.score(box.label, box.value);
+            }
+        }
+
+        const anomalyThreshold = this.threshold('anomaly_gmm', 'min_anomaly_score');
+        if (result.visual_anomaly_max !== undefined) {
+            this._hasAnomalyTime = true;
+            if (anomalyThreshold !== undefined) {
+                this.count(result.visual_anomaly_max > anomalyThreshold ? 'anomaly' : 'no anomaly');
+            }
+            this.score('anomaly', result.visual_anomaly_max);
+        }
+        else if (result.anomaly !== undefined) {
+            this._hasAnomalyTime = true;
+            this._anomalyScores.add(result.anomaly);
+            if (anomalyThreshold !== undefined) {
+                this._anomalyCount = (this._anomalyCount ?? 0) + (result.anomaly > anomalyThreshold ? 1 : 0);
+            }
+        }
+        if (result.visual_anomaly_mean !== undefined) this._visualMeans.add(result.visual_anomaly_mean);
+    }
+
+    /**
+     * Build a tagged, code-point-ordered snapshot; omit non-finite statistics
+     * and suppress empty/invalid timing output.
+     */
+    getMetrics(): InferenceMetrics | undefined {
+        if (!this._first || !this._last) return undefined;
+        const dsp = this._dsp / this._results;
+        const classification = this._classification / this._results;
+        if (!Number.isFinite(dsp) || !Number.isFinite(classification)) return undefined;
+        const labels = [ ...this._labels ].sort(([ left ], [ right ]) => compareSummaryLabels(left, right));
+        const scored = labels.filter(([ , label ]) => label.scores.count > 0 &&
+            Number.isFinite(label.scores.mean) && Number.isFinite(label.scores.deviation));
+        const metrics: InferenceMetrics['metrics'] = { avg_inference_time: { dsp, classification } };
+        const anomalyTime = this._anomalyTime / this._results;
+        if (this._hasAnomalyTime && Number.isFinite(anomalyTime)) metrics.avg_inference_time!.anomaly = anomalyTime;
+        if (this._anomalyScores.count && Number.isFinite(this._anomalyScores.mean)) {
+            metrics.anomaly_mean = this._anomalyScores.mean;
+        }
+        if (this._anomalyCount !== undefined) metrics.anomaly_count = this._anomalyCount;
+        if (this._visualMeans.count && Number.isFinite(this._visualMeans.mean)) {
+            metrics.visual_anomaly_mean = this._visualMeans.mean;
+        }
+        return {
+            rulesVersion: 2,
+            start: { ...this._first }, end: { ...this._last },
+            classificationCounter: labels.filter(([ , label ]) => label.counted > 0)
+                .map(([ label, value ]) => ({ label, value: value.counted })),
+            mean: scored.map(([ label, value ]) => ({ label, value: value.scores.mean })),
+            standardDeviation: scored.map(([ label, value ]) => ({ label, value: value.scores.deviation })),
+            metrics,
+        };
+    }
+}
+
+/**
+ * Computes inference summaries from the model's original thresholds. Half-open windows close
+ * before a boundary result or on a timer; late results are dropped, and empty windows produce no summary.
+ */
+export class MetricsCalculator {
+    private _completedMetrics: InferenceMetrics | undefined;
+    private _summaryWindowMs: number;
+    readonly configuredSummaryIntervalMs: number | undefined;
+    private _accumulator: InferenceSummaryAccumulator;
+    private _windowStart: number | undefined;
+    private _windowEnd: number | undefined;
+    private _latestTimestamp: number | undefined;
+    private _closedThrough: number | undefined;
+
+    /** Prepare a fresh accumulator for one deployment and retain its configured and effective cadence. */
+    constructor(
+        private readonly _model: MonitoredModel,
+        cadence: MetricsCalculatorCadence,
+    ) {
+        this._summaryWindowMs = cadence.summaryWindowMs;
+        this.configuredSummaryIntervalMs = cadence.configuredSummaryIntervalMs;
+        this._accumulator = this.createAccumulator();
+    }
+
+    /** Read the saved preference and create a fresh calculator for this monitoring session. */
+    static async getMetricsInstance(
+        config: MetricsConfig,
+        model: MonitoredModel,
+    ): Promise<MetricsCalculator> {
+        const savedInterval = await config.getMonitorSummaryIntervalMs();
+        const configuredInterval = savedInterval && Number.isFinite(savedInterval) && savedInterval > 0 ?
+            savedInterval : undefined;
+        return new MetricsCalculator(model, {
+            summaryWindowMs: Math.max(configuredInterval ?? DEFAULT_MONITOR_SUMMARY_INTERVAL_MS,
+                DEFAULT_MONITOR_SUMMARY_INTERVAL_MS),
+            configuredSummaryIntervalMs: configuredInterval,
+        });
+    }
+
+    /** Create empty statistics using this deployment's original thresholds, never mutable runner settings. */
+    private createAccumulator(): InferenceSummaryAccumulator {
+        return new InferenceSummaryAccumulator(this._model.reportedThresholds);
+    }
+
+    /** Expose the current half-open window's end, or undefined when no window has results. */
+    get summaryDeadline(): number | undefined {
+        return this._windowEnd;
+    }
+
+    /** Expose the policy-adjusted reporting interval. */
+    get summaryIntervalMs(): number {
+        return this._summaryWindowMs;
+    }
+
+    /** Update cadence while keeping the open window's end strictly after every already-admitted timestamp. */
+    setSummaryIntervalMs(intervalMs: number) {
+        this._summaryWindowMs = intervalMs;
+        // Preserve results already admitted beyond a shortened deadline. Subsequent windows use
+        // the new interval without manufacturing historical summaries.
+        if (this._windowStart !== undefined) {
+            this._windowEnd = Math.max(this._windowStart + intervalMs, this._latestTimestamp! + 1);
+        }
+    }
+
+    /** Finish any valid snapshot before resetting statistics and advancing the late-result cutoff. */
+    private async closeWindow(endTimestamp: number): Promise<InferenceMetrics | undefined> {
+        const metrics = this._accumulator.getMetrics();
+        this._accumulator = this.createAccumulator();
+        this._windowStart = undefined;
+        this._windowEnd = undefined;
+        this._latestTimestamp = undefined;
+        this._closedThrough = endTimestamp;
+        return metrics;
+    }
+
+    /** Return whether wall time moved far enough behind known windows that the existing grid is unusable. */
+    private clockMovedBack(timestamp: number): boolean {
+        const known = Math.max(this._closedThrough ?? Number.NEGATIVE_INFINITY,
+            this._windowStart ?? Number.NEGATIVE_INFINITY);
+        return Number.isFinite(known) && timestamp + CLOCK_BACK_LIMIT_MS < known;
+    }
+
+    /** Close the current window, if any, and forget the future grid after a backward clock correction. */
+    private async resetAfterClockCorrection(): Promise<InferenceMetrics | undefined> {
+        const metrics = this._windowStart === undefined ? undefined : await this.closeWindow(this.summaryDeadline!);
+        this._closedThrough = undefined;
+        return metrics;
+    }
+
+    /** Close an elapsed window, or reset a stale future window after wall time moves backwards. */
+    async closeDueWindow(timestamp: number): Promise<InferenceMetrics | undefined> {
+        if (this.clockMovedBack(timestamp)) return this.resetAfterClockCorrection();
+        const deadline = this.summaryDeadline;
+        if (deadline === undefined || timestamp < deadline) return undefined;
+        return this.closeWindow(deadline);
+    }
+
+    /** Close pending results once at a partial-window cutoff; leave empty windows unreported. */
+    async flushMetrics(): Promise<InferenceMetrics | undefined> {
+        if (this._windowStart === undefined) return undefined;
+        return this.closeWindow(Math.max(this._latestTimestamp! + 1,
+            Math.min(Date.now(), this.summaryDeadline!)));
+    }
+
+    /**
+     * Reject late records, close a due window before admission,
+     * and expose its summary separately from the new window.
+     */
+    async updateMetrics(record: Pick<ImpulseRecord, 'impulseRecord' | 'timestamp' | 'index'>): Promise<boolean> {
+        let completed = false;
+        if (this.clockMovedBack(record.timestamp)) {
+            this._completedMetrics = await this.resetAfterClockCorrection();
+            completed = this._completedMetrics !== undefined;
+        }
+        // Once a window closes, a late result cannot change it or enter a newer window.
+        if (this._closedThrough !== undefined && record.timestamp < this._closedThrough) return false;
+        if (this._windowStart !== undefined && record.timestamp < this._windowStart) return false;
+        const deadline = this.summaryDeadline;
+        if (deadline !== undefined && record.timestamp >= deadline) {
+            this._completedMetrics = await this.closeWindow(deadline);
+            completed = this._completedMetrics !== undefined;
+        }
+        if (this._windowStart === undefined) {
+            const start = this._closedThrough ?? record.timestamp;
+            this._windowStart = start +
+                Math.floor((record.timestamp - start) / this._summaryWindowMs) * this._summaryWindowMs;
+            this._windowEnd = this._windowStart + this._summaryWindowMs;
+        }
+        this._accumulator.add(record);
+        this._latestTimestamp = Math.max(this._latestTimestamp ?? record.timestamp, record.timestamp);
+        return completed;
+    }
+
+    /** Hand off a record-triggered completed summary once, independently of the new window's snapshot. */
+    takeCompletedMetrics(): InferenceMetrics | undefined {
+        const completed = this._completedMetrics;
+        this._completedMetrics = undefined;
+        return completed;
+    }
+
+}
+
+/**
+ * Coordinates record persistence, calculator updates and summary delivery through one serialized queue.
+ * Keeps policy, deployment transitions and debug-record delivery separate from summary aggregation,
+ * using the calculator's deadline for timer-driven closure.
  */
 export class ModelMonitor extends EventEmitter<{
     'impulse-record': (ev: ImpulseRecord) => void,
@@ -871,10 +724,14 @@ export class ModelMonitor extends EventEmitter<{
 }> {
     private _storageManager: StorageManager | undefined;
     private _metricsCalculator: MetricsCalculator | undefined;
+    private _processing: Promise<void> = Promise.resolve();
+    private _acceptingResults = true;
+    private _summaryTimer: NodeJS.Timeout | undefined;
     private _streamState: 'idle' | 'debug' | 'records-request' = 'idle';
     private _lastPolicy: string | undefined;
     private _streamPrevState: 'idle' | 'debug' | 'records-request' = 'idle';
 
+    /** Prepare event delivery; the factory initializes deployment storage and its calculator asynchronously. */
     private constructor(_config: Config) {
         super();
     }
@@ -883,21 +740,85 @@ export class ModelMonitor extends EventEmitter<{
      * Creates a new instance of ModelMonitor with the provided configuration and model information.
      * @param config The configuration object.
      * @param model The model information object.
+     * @param options Original model thresholds supplied by the runner, before local settings are applied.
      * @returns A promise that resolves to a ModelMonitor instance.
      */
-    static async getModelMonitor(config: Config, model: ModelInformation): Promise<ModelMonitor> {
+    static async getModelMonitor(config: Config, model: ModelInformation,
+        options: Pick<MonitoredModel, 'reportedThresholds'>): Promise<ModelMonitor> {
         const monitor = new ModelMonitor(config);
+        const reportedThresholds = options.reportedThresholds.map(block => ({ ...block }));
 
         monitor._storageManager = await StorageManager.getStorageManager(config, model);
-        monitor._metricsCalculator = await MetricsCalculator.getMetricsInstance(config, monitor._storageManager, model);
+        monitor._metricsCalculator = await MetricsCalculator.getMetricsInstance(config, {
+            modelParameters: model.modelParameters,
+            reportedThresholds,
+        });
 
         return monitor;
     }
 
+    /** Serialize record allocation, statistics and flushes while allowing later operations after a failure. */
+    private enqueue(operation: () => Promise<void>): Promise<void> {
+        const pending = this._processing.then(operation);
+        this._processing = pending.catch(() => undefined);
+        return pending;
+    }
+
+    /** Schedule the active deadline, delaying retries if closure fails. */
+    private scheduleSummary(minimumDelayMs = 0): void {
+        if (this._summaryTimer) clearTimeout(this._summaryTimer);
+        this._summaryTimer = undefined;
+        const deadline = this._metricsCalculator?.summaryDeadline;
+        if (!this._acceptingResults || deadline === undefined) return;
+        this._summaryTimer = setTimeout(() => {
+            void this.enqueue(async () => {
+                const summary = await this._metricsCalculator?.closeDueWindow(Date.now());
+                if (summary) this.emit('inference-summary', summary);
+                this.scheduleSummary();
+            }).catch(error => {
+                console.warn(MONITOR_PREFIX, 'Unable to close summary window', error);
+                this.scheduleSummary(SUMMARY_CLOSE_RETRY_MS);
+            });
+        }, Math.max(minimumDelayMs, deadline - Date.now()));
+        this._summaryTimer.unref();
+    }
+
+    /** Permanently stop admitting results, then drain and flush the current deployment. */
+    async stop(): Promise<void> {
+        this._acceptingResults = false;
+        if (this._summaryTimer) clearTimeout(this._summaryTimer);
+        this._summaryTimer = undefined;
+        await this.flushMetrics();
+    }
+
+    /**
+     * Replace deployment storage/statistics after the caller pauses inference and flushes the old model.
+     * Retain listeners and policy without restarting a monitor that has been terminally stopped.
+     */
+    async replaceModel(config: Config, model: ModelInformation,
+        options: Pick<MonitoredModel, 'reportedThresholds'>): Promise<void> {
+        const reportedThresholds = options.reportedThresholds.map(block => ({ ...block }));
+        await this.enqueue(async () => {
+            const storage = await StorageManager.getStorageManager(config, model);
+            const calculator = await MetricsCalculator.getMetricsInstance(config, {
+                modelParameters: model.modelParameters,
+                reportedThresholds,
+            });
+            this._storageManager = storage;
+            this._metricsCalculator = calculator;
+            const policy = this._lastPolicy && this._lastPolicy !== NO_SUMMARY_POLICY ?
+                JSON.parse(this._lastPolicy) as MonitoringSummaryPolicy : undefined;
+            this._lastPolicy = undefined;
+            this.applySummaryPolicy(policy);
+        });
+    }
+
+    /** Expose the saved CLI preference, independent of this session's server policy. */
     get configuredSummaryIntervalMs() {
         return this._metricsCalculator?.configuredSummaryIntervalMs;
     }
 
+    /** Expose the calculator's current policy-adjusted reporting interval. */
     get effectiveSummaryIntervalMs() {
         return this._metricsCalculator?.summaryIntervalMs;
     }
@@ -919,7 +840,7 @@ export class ModelMonitor extends EventEmitter<{
             console.warn(MONITOR_PREFIX, 'Ignoring invalid summary policy');
             return;
         }
-        const policyKey = JSON.stringify(policy) ?? 'legacy';
+        const policyKey = JSON.stringify(policy) ?? NO_SUMMARY_POLICY;
         if (this._lastPolicy === policyKey) return;
         this._lastPolicy = policyKey;
         const configured = this.configuredSummaryIntervalMs;
@@ -928,6 +849,7 @@ export class ModelMonitor extends EventEmitter<{
             Math.max(configured ?? DEFAULT_MONITOR_SUMMARY_INTERVAL_MS,
                 DEFAULT_MONITOR_SUMMARY_INTERVAL_MS);
         calculator.setSummaryIntervalMs(effective);
+        this.scheduleSummary();
         console.log(MONITOR_PREFIX, `Summary interval: configured ${configured ?? 'automatic'}, effective ${effective} ms`);
         if (configured !== undefined && configured !== effective) {
             console.warn(MONITOR_PREFIX, 'The server policy overrides the saved interval for this session; ' +
@@ -948,24 +870,23 @@ export class ModelMonitor extends EventEmitter<{
         }
     }
 
+    /** Queue a flush after admitted records, emit only a new summary, and refresh any remaining timer. */
     async flushMetrics(): Promise<void> {
-        if (this._metricsCalculator) {
-            await this._metricsCalculator.saveMetrics();
-
-            this.emit('inference-summary', this._metricsCalculator.getMetrics());
-        }
+        await this.enqueue(async () => {
+            const metrics = await this._metricsCalculator?.flushMetrics();
+            if (metrics) this.emit('inference-summary', metrics);
+            this.scheduleSummary();
+        });
     }
 
+    /** Report whether processed records are currently streamed live for debugging. */
     get impulseDebug() {
         return this._streamState === 'debug';
     }
 
     /**
-     * Enable the Model Debugging mode.
-     * When enabled, the model monitor will emit impulse records as they are processed.
-     * When disabled, the model monitor will not emit impulse records.
-     * In the 'records-request' state, setting impulseDebug to true will abort the records-request state.
-     * In the 'records-request' state, setting impulseDebug to false has no effect.
+     * Switch between live debug-record streaming and idle, replacing any records-request state.
+     * Summary collection remains active independently of debug streaming.
      */
     set impulseDebug(enabled: boolean) {
         if (this._streamState === 'records-request' && enabled === true) {
@@ -983,6 +904,7 @@ export class ModelMonitor extends EventEmitter<{
         }
     }
 
+    /** Return retained record bounds for Remote Management, or zero bounds before storage is available. */
     async getStorageStatus(): Promise<StorageStatus> {
         if (this._storageManager) {
             return await this._storageManager.getStorageStatus();
@@ -995,6 +917,7 @@ export class ModelMonitor extends EventEmitter<{
         };
     }
 
+    /** Restore the previous streaming state when a record request is aborted. */
     abortImpulseRecordsRequest() {
         this._streamState = this._streamPrevState;
         this._streamPrevState = 'idle';
@@ -1007,7 +930,8 @@ export class ModelMonitor extends EventEmitter<{
      * - index: The index of the single impulse record to retrieve.
      * - range: An object with first and last properties specifying the range of impulse records to retrieve.
      * - list: An array of indices of impulse records to retrieve (in any order)
-     * @throws Error if the request is invalid or the first index is greater than the last index.
+     * Missing records and inverted ranges emit error responses.
+     * @throws Error if the request supplies none of the supported selectors.
      */
     getImpulseRecords(impulseRequest: {
                         index?: number,
@@ -1087,10 +1011,15 @@ export class ModelMonitor extends EventEmitter<{
         this._streamState = this._streamPrevState;
     }
 
+    /**
+     * Admit an active producer result, persist it before aggregation,
+     * and deliver completed summaries/debug records.
+     */
     async processResult(result: RunnerClassifyResponseSuccess, rawData: {
         type: 'wav' | 'jpg',
         buffer: Buffer,
     }): Promise<void> {
+        if (!this._acceptingResults) return;
         let record: ImpulseRecord = {
             impulseRecord: result,
             timestamp: Date.now(),
@@ -1101,14 +1030,15 @@ export class ModelMonitor extends EventEmitter<{
             },
         };
 
-        void this._storageManager?.saveRecord(record);
-
-        if (this._metricsCalculator && await this._metricsCalculator.updateMetrics(record)) {
-            this.emit('inference-summary', this._metricsCalculator.getMetrics());
-        }
-
-        if (this.impulseDebug) {
-            this.emit('impulse-record', record);
-        }
+        await this.enqueue(async () => {
+            // Allocation and disk persistence finish before the record contributes to a summary.
+            await this._storageManager?.saveRecord(record);
+            if (this._metricsCalculator && await this._metricsCalculator.updateMetrics(record)) {
+                const metrics = this._metricsCalculator.takeCompletedMetrics();
+                if (metrics) this.emit('inference-summary', metrics);
+            }
+            this.scheduleSummary();
+            if (this.impulseDebug) this.emit('impulse-record', record);
+        });
     }
 }

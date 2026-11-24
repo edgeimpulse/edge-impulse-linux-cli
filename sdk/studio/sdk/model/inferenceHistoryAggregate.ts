@@ -4,9 +4,9 @@ import type { InferenceSummaryMetrics } from './inferenceSummaryMetrics';
 
 export type InferenceHistoryAggregate = {
     /**
-    * Workload producer, absent for legacy device summaries.
+    * Application producer, absent for legacy device summaries.
     */
-    workloadId?: string;
+    applicationId?: string;
     /**
     * Bundle-local model producer, absent for legacy device summaries.
     */

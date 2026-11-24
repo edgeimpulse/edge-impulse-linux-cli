@@ -33,7 +33,7 @@ export type DeviceToServer =
     | NewModelUpdated
     | Telemetry
     | MonitoringSummaryPolicyRequest
-    | WorkloadInventory;
+    | ApplicationInventory;
 /**
  * The device's identity, sensors and mode.
  */
@@ -71,25 +71,25 @@ export type HelloInference = HelloV4Common & {
      */
     supportsMonitoringSummaryPolicy?: boolean;
     /**
-     * Opt in to workloadIdentity. No scoped messages are sent unless the accepted server also advertises
-     * it.
+     * Opt in to applicationIdentity. No scoped messages are sent unless the accepted server also
+     * advertises it.
      */
-    supportsWorkloadIdentity?: boolean;
+    supportsApplicationIdentity?: boolean;
 };
 /**
  * What the model produces.
  */
 export type ModelType = 'classification' | 'object_detection' | 'constrained_object_detection' | 'freeform';
 /**
- * Producer identity. Requires workloadIdentity negotiation and modelId and inferenceInfo. Preserved
+ * Producer identity. Requires applicationIdentity negotiation and modelId and inferenceInfo. Preserved
  * even for historical records.
  */
-export type WorkloadId = string;
+export type ApplicationId = string;
 /**
- * Producer identity. Requires workloadIdentity negotiation and modelId and inferenceInfo. Preserved
+ * Producer identity. Requires applicationIdentity negotiation and modelId and inferenceInfo. Preserved
  * even for historical records.
  */
-export type WorkloadId1 = string;
+export type ApplicationId1 = string;
 /**
  * How the input image was resized, for image models.
  */
@@ -99,15 +99,16 @@ export type ResizeMode = 'none' | 'fit-shortest' | 'fit-longest' | 'squash';
  */
 export type RawDataType = 'wav' | 'jpg';
 /**
- * Producer identity. Requires workloadIdentity negotiation and modelId and inferenceInfo. Preserved
+ * Producer identity. Requires applicationIdentity negotiation and modelId and inferenceInfo. Preserved
  * even for historical records.
  */
-export type WorkloadId2 = string;
+export type ApplicationId2 = string;
 /**
- * Producer identity. Requires workloadIdentity negotiation and modelId and inferenceInfo. Preserved
- * even for historical records.
+ * The application that made the record. A range includes the records of every application of the
+ * device, so this tells them apart. Sent only on a session that negotiated applicationIdentity,
+ * together with modelId and inferenceInfo.
  */
-export type WorkloadId3 = string;
+export type ApplicationId3 = string;
 /**
  * Device to server. The outcome of a model update, whichever message or
  * policy started it.
@@ -118,31 +119,31 @@ export type NewModelUpdated = ModelUpdateSuccess | ModelUpdateFailure;
  */
 export type UpdateOperation = 'deploy' | 'rollback';
 /**
- * Provisioning identity of the workload that completed this bundle operation. Requires
- * workloadIdentity negotiation and models.
+ * Provisioning identity of the application that completed this bundle operation. Requires
+ * applicationIdentity negotiation and models.
  */
-export type WorkloadId4 = string;
+export type ApplicationId4 = string;
 /**
  * New, optional. Which operation failed.
  */
 export type UpdateOperation1 = 'deploy' | 'rollback';
 /**
- * Provisioning identity of the workload that completed this bundle operation. Requires
- * workloadIdentity negotiation and models.
+ * Provisioning identity of the application that completed this bundle operation. Requires
+ * applicationIdentity negotiation and models.
  */
-export type WorkloadId5 = string;
+export type ApplicationId5 = string;
 /**
  * Whether it was a deploy or a rollback.
  */
 export type UpdateOperation2 = 'deploy' | 'rollback';
 /**
- * Where the workload is in its life.
+ * Where the application is in its life.
  */
-export type WorkloadState = 'starting' | 'running' | 'unhealthy' | 'stopped';
+export type ApplicationState = 'starting' | 'running' | 'unhealthy' | 'stopped';
 /**
  * Identity assigned by provisioning.
  */
-export type WorkloadId6 = string;
+export type ApplicationId6 = string;
 /**
  * Server-to-device messages of a Hello V4 session, including the existing
  * Remote Management protocol and the agent's additive commands.
@@ -167,9 +168,10 @@ export type ServerToDevice =
  */
 export type HelloResponse = HelloAccepted | HelloRejected;
 /**
- * Producer being acknowledged. Present for negotiated workload-scoped records, together with modelId.
+ * Producer being acknowledged. Present for negotiated application-scoped records, together with
+ * modelId.
  */
-export type WorkloadId7 = string;
+export type ApplicationId7 = string;
 /**
  * The version to consider.
  */
@@ -178,6 +180,11 @@ export type DeploymentVersionOrLatest = number | Latest;
  * The string `latest`.
  */
 export type Latest = 'latest';
+/**
+ * The application to activate. Required when application identity was negotiated; omitted for legacy
+ * sessions.
+ */
+export type ApplicationId8 = string;
 
 /**
  * Device to server. The first message of a session.
@@ -213,7 +220,7 @@ export interface HelloV4Common {
      */
     deviceType: string;
     /**
-     * The sensors of this project's workloads, for sampling from Studio.
+     * The sensors of this project's applications, for sampling from Studio.
      */
     sensors: Sensor[];
     /**
@@ -242,7 +249,7 @@ export interface Sensor {
     name: string;
 }
 /**
- * The range of records the device can serve on request.
+ * The records the device can serve on request.
  */
 export interface AvailableRecords {
     /**
@@ -432,7 +439,7 @@ export interface InferenceStarted {
      * Whether inference has started.
      */
     inferenceStarted: boolean;
-    workloadId?: WorkloadId;
+    applicationId?: ApplicationId;
     /**
      * Bundle-local model that produced the record or summary.
      */
@@ -466,7 +473,7 @@ export interface InferenceInfo1 {
  */
 export interface InferenceSummary {
     inferenceSummary: InferenceSummaryBody;
-    workloadId?: WorkloadId1;
+    applicationId?: ApplicationId1;
     /**
      * Bundle-local model that produced the record or summary.
      */
@@ -478,25 +485,25 @@ export interface InferenceSummary {
  */
 export interface InferenceSummaryBody {
     /**
-     * How many inferences each label won in the window.
+     * How many times each label was counted in the window. The labels are the model's labels and the
+     * labels the rules add. Holds only labels with at least one count.
      */
     classificationCounter: LabelValue[];
     end: RecordPosition;
     /**
-     * Mean score per label over the window.
+     * Mean score per label over the window. Holds only labels with at least one score.
      */
     mean: LabelValue[];
     metrics: SummaryMetrics;
     /**
-     * New, optional. The rules version that produced this summary. Absent
-     * means the runner's original rules. The agent computes with rules v2
-     * and sends `2` only when the server's `capabilities` include
-     * `summaryRulesVersion`, because older Studio versions do not consume or
-     * store the field.
+     * Optional. The rules version that produced this summary, `2` for rules v2. A summary without it is
+     * treated as rules v1, the original rules of the runner's `--monitor` mode. The rules of each version
+     * are in the registry in `device-services-contracts/summary-rules/`.
      */
     rulesVersion?: number;
     /**
-     * Standard deviation of the score per label over the window.
+     * Population standard deviation of the score per label over the window. It uses the same scores and
+     * labels as `mean`.
      */
     standardDeviation: LabelValue[];
     start: RecordPosition1;
@@ -515,7 +522,8 @@ export interface LabelValue {
     value: number;
 }
 /**
- * The last record of the window.
+ * Where the results of the series in the window end: the `index` and the time of a result, not the
+ * window's boundary.
  */
 export interface RecordPosition {
     /**
@@ -528,12 +536,22 @@ export interface RecordPosition {
     timestamp: number;
 }
 /**
- * Timing and anomaly metrics over the window.
+ * Timing and anomaly metrics over the results of the series in the window.
  */
 export interface SummaryMetrics {
+    /**
+     * How many results with a GMM or K-means `anomaly` score passed the anomaly threshold of the model.
+     * Set from rules v2. Absent when it does not apply.
+     */
+    anomaly_count?: number;
+    /**
+     * Mean of the GMM or K-means `anomaly` score over the results that have it. Set from rules v2. Absent
+     * when it does not apply.
+     */
+    anomaly_mean?: number;
     avg_inference_time?: AverageInferenceTime;
     /**
-     * Mean of the visual anomaly means over the window.
+     * Mean of the `visual_anomaly_mean` of the results over the window. Absent when it does not apply.
      */
     visual_anomaly_mean?: number;
 }
@@ -542,7 +560,7 @@ export interface SummaryMetrics {
  */
 export interface AverageInferenceTime {
     /**
-     * Average time in the anomaly block, when the impulse has one.
+     * Average time in the anomaly block. Absent when the series has no anomaly stage.
      */
     anomaly?: number;
     /**
@@ -555,7 +573,8 @@ export interface AverageInferenceTime {
     dsp: number;
 }
 /**
- * The first record of the window.
+ * Where the results of the series in the window begin: the `index` and the time of a result, not the
+ * window's boundary.
  */
 export interface RecordPosition1 {
     /**
@@ -605,7 +624,7 @@ export interface ImpulseRecord {
      */
     index: number;
     rawData: RawData;
-    workloadId?: WorkloadId2;
+    applicationId?: ApplicationId2;
     /**
      * Bundle-local model that produced the record or summary.
      */
@@ -798,36 +817,52 @@ export interface InferenceInfo3 {
 }
 /**
  * Device to server. One record per message, or an error for an index the
- * device no longer has.
+ * device cannot serve. An event with several results of the project can
+ * answer with one message per result, all with the same index. A device may
+ * leave out of a range the indexes it cannot serve, so a gap in the answers is
+ * not an error, and may stop a request that is too large with an error at the
+ * next index, which carries nextIndex.
  */
 export interface ImpulseRecordsResponse {
+    applicationId?: ApplicationId3;
     /**
      * Why the record could not be served.
      */
     error?: string;
     /**
-     * Always true; names the message.
+     * The impulse of the model that made the result.
+     */
+    impulseId?: number;
+    /**
+     * True when the message holds a record, false when it holds an error. Names the message.
      */
     impulseRecordsResponse: boolean;
     /**
      * The record's index.
      */
     index?: number;
+    /**
+     * The model that made the result, as the application registered it.
+     */
+    modelId?: string;
+    /**
+     * Set only on the last message of a request the device stopped before its end, because the request
+     * went past what one request may answer. The index to ask again from. The request did not fail: what
+     * came before it was answered. Absent on every other message, so a client can tell this from a failure
+     * without reading the error.
+     */
+    nextIndex?: number;
     rawData?: RawData1;
     record?: StoredRecord1;
     /**
      * When the record was made.
      */
     timestamp?: number;
-    workloadId?: WorkloadId3;
-    /**
-     * Bundle-local model that produced the record or summary.
-     */
-    modelId?: string;
     inferenceInfo?: InferenceInfo4;
 }
 /**
- * The input of the record, inline.
+ * The input of the record, inline. The device agent does not send it: the input of a record does not
+ * travel through Remote Management.
  */
 export interface RawData1 {
     /**
@@ -886,13 +921,13 @@ export interface ModelUpdateSuccess {
      */
     modelUpdateSuccess: true;
     operation?: UpdateOperation;
-    workloadId?: WorkloadId4;
+    applicationId?: ApplicationId4;
     /**
      * All models for the authenticated project, preserving bundle-local model identity.
      *
      * @maxItems 64
      */
-    models?: WorkloadModel[];
+    models?: ApplicationModel[];
 }
 /**
  * The project and impulse the device serves after the update.
@@ -917,12 +952,12 @@ export interface InferenceInfo5 {
     projectOwner: string;
 }
 /**
- * One bundle-local model served by a workload. A workload may contain several models and projects, but
- * each session contains only its authorized project.
+ * One bundle-local model served by an application. An application may contain several models and
+ * projects, but each session contains only its authorized project.
  */
-export interface WorkloadModel {
+export interface ApplicationModel {
     /**
-     * Bundle-local model identity, unique within this workload.
+     * Bundle-local model identity, unique within this application.
      */
     id: string;
     inferenceInfo: InferenceInfo6;
@@ -966,16 +1001,16 @@ export interface ModelUpdateFailure {
      */
     modelUpdateSuccess: false;
     operation?: UpdateOperation1;
-    workloadId?: WorkloadId5;
+    applicationId?: ApplicationId5;
     /**
      * All models for the authenticated project, preserving bundle-local model identity.
      *
      * @maxItems 64
      */
-    models?: WorkloadModel[];
+    models?: ApplicationModel[];
 }
 /**
- * Device to server, new. Health of the device and its workloads.
+ * Device to server, new. Health of the device and its applications.
  */
 export interface Telemetry {
     telemetry: TelemetryBody;
@@ -997,9 +1032,9 @@ export interface TelemetryBody {
      */
     windowStart: number;
     /**
-     * The workloads of this session's project.
+     * The applications of this session's project.
      */
-    workloads: WorkloadMetrics[];
+    applications: ApplicationMetrics[];
 }
 /**
  * The agent's version and the host's operating system and architecture.
@@ -1083,7 +1118,7 @@ export interface DeviceMetrics {
     'system.uptime'?: number;
 }
 /**
- * The spool directory shared with the workloads for large inputs.
+ * The spool directory shared with the applications for large inputs.
  */
 export interface FilesystemMetrics {
     /**
@@ -1109,10 +1144,10 @@ export interface FilesystemMetrics1 {
     'system.filesystem.utilization'?: number;
 }
 /**
- * One workload's section. In the demo each session carries the one
- * workload of its project.
+ * One application's section. In the demo each session carries the one
+ * application of its project.
  */
-export interface WorkloadMetrics {
+export interface ApplicationMetrics {
     /**
      * Accelerator busy fraction, 0 to 1, where the SoC exposes it.
      */
@@ -1126,7 +1161,7 @@ export interface WorkloadMetrics {
      */
     'container.memory.usage'?: number;
     /**
-     * The deployment version the workload reported at registration.
+     * The deployment version the application reported at registration.
      */
     deploymentVersion?: number;
     /**
@@ -1134,7 +1169,7 @@ export interface WorkloadMetrics {
      */
     eventsPerSecond?: number;
     /**
-     * The digest of the image the workload runs from, for a container.
+     * The digest of the image the application runs from, for a container.
      */
     imageDigest?: string;
     /**
@@ -1155,14 +1190,14 @@ export interface WorkloadMetrics {
      * Restarts since the agent started.
      */
     restarts?: number;
-    state: WorkloadState;
+    state: ApplicationState;
     /**
-     * The ID the agent gave the workload at registration.
+     * The ID the agent gave the application at registration.
      */
-    workloadId: string;
+    applicationId: string;
 }
 /**
- * The outcome of the workload's last model update, if there was one.
+ * The outcome of the application's last model update, if there was one.
  */
 export interface LastUpdate {
     /**
@@ -1199,23 +1234,23 @@ export interface MonitoringSummaryPolicyRequest {
  * persisted models and history. Sent after Hello acceptance and on registration changes, before queued
  * results. No deviceId is accepted as attribution.
  */
-export interface WorkloadInventory {
+export interface ApplicationInventory {
     /**
-     * Complete project-scoped catalog. Only sent after workloadIdentity negotiation.
+     * Complete project-scoped catalog. Only sent after applicationIdentity negotiation.
      *
      * @maxItems 64
      */
-    workloads: WorkloadRegistration[];
+    applications: ApplicationRegistration[];
 }
 /**
- * A local workload producer and its project-scoped models. connected=false retires this producer
+ * A local application producer and its project-scoped models. connected=false retires this producer
  * without deleting its models or history. Models describe current registration, not an independent
  * deployment unit.
  */
-export interface WorkloadRegistration {
-    workloadId: WorkloadId6;
+export interface ApplicationRegistration {
+    applicationId: ApplicationId6;
     /**
-     * Whether this workload is currently registered and serving this project.
+     * Whether this application is currently registered and serving this project.
      */
     connected: boolean;
     /**
@@ -1223,7 +1258,7 @@ export interface WorkloadRegistration {
      *
      * @maxItems 64
      */
-    models: WorkloadModel[];
+    models: ApplicationModel[];
 }
 /**
  * The session was accepted. Remote Management always sends the server's clock with it.
@@ -1249,9 +1284,9 @@ export interface HelloAccepted {
  */
 export interface ServerCapabilities {
     /**
-     * Whether Studio consumes and stores `rulesVersion` on summaries. Without
-     * this capability the agent omits the field, because older Studio versions
-     * ignore it and lose the rules-version provenance.
+     * Whether Studio consumes and stores `rulesVersion` on summaries. Without this capability the agent
+     * sends no summaries. Without `rulesVersion` the server would store them as rules v1, which they do
+     * not follow, and with it a server that does not know the field refuses them.
      */
     summaryRulesVersion?: boolean;
     /**
@@ -1260,10 +1295,10 @@ export interface ServerCapabilities {
      */
     telemetry?: boolean;
     /**
-     * Negotiated support for workload catalogs, scoped deployment results and scoped monitoring. False or
-     * absent keeps the single-representative V4 behavior.
+     * Negotiated support for application catalogs, scoped deployment results and scoped monitoring. False
+     * or absent keeps the single-representative V4 behavior.
      */
-    workloadIdentity?: boolean;
+    applicationIdentity?: boolean;
 }
 /**
  * Initial policy for opted-in inference clients; omitted if the lookup failed.
@@ -1425,7 +1460,7 @@ export interface ImpulseRecordAck {
      * Optional explanation when the record was not accepted.
      */
     error?: string;
-    workloadId?: WorkloadId7;
+    applicationId?: ApplicationId7;
     /**
      * Bundle-local model that produced the record or summary.
      */
@@ -1482,7 +1517,7 @@ export interface DeployModel {
     deployModel: DeploymentTarget;
 }
 /**
- * The version to deploy.
+ * The application and version to deploy.
  */
 export interface DeploymentTarget {
     /**
@@ -1490,6 +1525,7 @@ export interface DeploymentTarget {
      * back to, which the device must still hold.
      */
     deploymentVersion: number;
+    applicationId?: ApplicationId8;
 }
 /**
  * Server to device, new. Roll back to a version the device still holds.
@@ -1498,7 +1534,7 @@ export interface RollbackModel {
     rollbackModel: DeploymentTarget1;
 }
 /**
- * The version to go back to.
+ * The application and version to go back to.
  */
 export interface DeploymentTarget1 {
     /**
@@ -1506,6 +1542,7 @@ export interface DeploymentTarget1 {
      * back to, which the device must still hold.
      */
     deploymentVersion: number;
+    applicationId?: ApplicationId8;
 }
 /**
  * Server to device: current project policy. A failed refresh leaves the last policy in effect.

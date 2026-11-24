@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import Path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
+    CaptureMetadata,
+    CaptureSample,
     Command,
     CommandResult,
     CompletedInferenceEvent,
@@ -12,7 +14,7 @@ import {
     InferenceRunnerRegistration,
     Input,
     RegisterResponse,
-} from '../shared/device-protocol/workload-contract';
+} from '../shared/device-protocol/application-contract';
 import {
     parseCommand,
     parseEventBatchResponse,
@@ -20,14 +22,14 @@ import {
     serializeCommandResult,
     serializeEventBatch,
     serializeRegistration,
-} from './workload-contract';
+} from './application-contract';
 
 // Device agent endpoints:
 // Registers or replaces the runner state held by the device agent.
 const REGISTER_PATH = '/v1/register';
 // Delivers completed inference events, with optional model inputs, to the device agent.
 const EVENTS_PATH = '/v1/events';
-// Opens the server-sent event stream on which the device agent delivers workload commands.
+// Opens the server-sent event stream on which the device agent delivers application commands.
 const COMMANDS_PATH = '/v1/commands';
 
 const RECONNECT_DELAY_MS = 1000;
@@ -36,6 +38,8 @@ const REQUEST_TIMEOUT_MS = 10000;
 const SHUTDOWN_FLUSH_TIMEOUT_MS = 3000;
 // Matches the device agent's default activation lease so an ambiguous result cannot block rollback forever.
 const COMMAND_RESULT_RETRY_TIMEOUT_MS = 60000;
+const COMPLETED_COMMAND_CACHE_SIZE = 100;
+const RETAINED_CAPTURE_COUNT = 4;
 const RETRYABLE_TRANSPORT_ERROR_CODES = new Set([
     'ENOENT',
     'ECONNREFUSED',
@@ -44,14 +48,14 @@ const RETRYABLE_TRANSPORT_ERROR_CODES = new Set([
     'ETIMEDOUT',
 ]);
 
-/** Non-success response from the agent workload API, including its contract refusal code. */
+/** Non-success response from the agent application API, including its contract refusal code. */
 class AgentRequestError extends Error {
     /** HTTP response status returned by the agent. */
     readonly statusCode: number | undefined;
     /** Structured refusal reason, when the response contains a valid contract error. */
     readonly contractCode: ContractErrorCode | undefined;
 
-    /** Creates an error for one refused workload API request. */
+    /** Creates an error for one refused application API request. */
     constructor(statusCode: number | undefined, responseBody: string) {
         const contractError = parseContractError(responseBody);
         super(`Agent returned HTTP ${statusCode || 'unknown'}: ${responseBody}`);
@@ -82,7 +86,7 @@ function parseContractError(responseBody: string): { code: ContractErrorCode } |
  * Identifies socket failures that can succeed after the local agent starts or restarts. Contract,
  * JSON and HTTP response errors deliberately remain fatal because retrying cannot correct them.
  *
- * @param error Failure returned by an agent workload API request.
+ * @param error Failure returned by an agent application API request.
  */
 function isRetryableTransportError(error: unknown): boolean {
     const code = (error as NodeJS.ErrnoException).code;
@@ -107,6 +111,30 @@ export type AgentInferenceInput = {
     buffer: Buffer;
 };
 
+/**
+ * Sensor input prepared for delivery from runner to agent, with ownership of its temporary storage.
+ * Bytes travel as base64 in the request or through a file in a directory shared with the agent (the spool).
+ */
+export type PreparedAgentInput = {
+    /** Request data: inline base64, or the shared file's relative path, format and byte count. */
+    input: Input;
+    /** Base64 memory bytes or shared-file bytes counted against capture-result retention limits. */
+    retainedBytes: number;
+    /** Deletes the shared file; a no-op for inline input. Called after use, capture eviction or shutdown. */
+    release(): Promise<void>;
+};
+
+/**
+ * Capture handler return value, carrying the sample to send and its temporary-storage ownership.
+ * The command processor retains it after failed delivery so redelivery can reuse the same physical sample.
+ */
+export type PreparedCaptureSample = {
+    /** Sample included in the command result: encoded input plus sensor, timestamp and image/audio metadata. */
+    capture: CaptureSample;
+    /** Owns capture.input's storage until agent acknowledgement, retention eviction or processor shutdown. */
+    preparedInput: PreparedAgentInput;
+};
+
 /** Request timeout and reconnect timing used by the local agent transport. */
 export type AgentClientOptions = {
     // Maximum time to wait for one registration, event or command-result response.
@@ -117,15 +145,23 @@ export type AgentClientOptions = {
     commandResultRetryTimeoutMs?: number;
 };
 
-/** Commands supported here; capture needs payload-aware bounded retry handling before it can be enabled. */
-type AgentCommandType = Exclude<Command['type'], 'capture'>;
+/** Value returned by each command handler; only capture carries result data and retained resources. */
+export type CommandHandlerOutput<T extends Command['type']> =
+    T extends 'capture' ? PreparedCaptureSample : void;
 
-/** Type-specific workload command operation registered by the runner. */
-export type AgentCommandHandler<T extends AgentCommandType> =
-    (command: Extract<Command, { type: T }>) => Promise<void>;
+/** Type-specific application command operation registered by the runner. */
+export type AgentCommandHandler<T extends Command['type']> =
+    (command: Extract<Command, { type: T }>) => Promise<CommandHandlerOutput<T>>;
 
 /** Type-erased command handler stored after on() checks its command key. */
-type StoredCommandHandler = (command: Command) => Promise<void>;
+type StoredCommandHandler = (command: Command) => Promise<CommandHandlerOutput<Command['type']>>;
+
+/** A capture delivery retained for consistent redelivery while it remains in the bounded history. */
+type CaptureCompletion = {
+    command: Extract<Command, { type: 'capture' }>;
+    result: CommandResult;
+    preparedInput?: PreparedAgentInput;
+};
 
 /**
  * Posts a completed result to the agent. Rejection means delivery failed, not that the command's
@@ -133,23 +169,35 @@ type StoredCommandHandler = (command: Command) => Promise<void>;
  */
 type CommandResultSender = (result: CommandResult) => Promise<void>;
 
+/** Returns the target byte budget for older unacknowledged capture results. */
+type RetainedByteLimit = () => number;
+
 /**
  * Owns command registration, ordered execution and result posting. The transport only needs to
  * pass each validated command to process().
  */
 export class AgentCommandProcessor {
     private readonly _postResult: CommandResultSender;
+    private readonly _retainedByteLimit: RetainedByteLimit;
     private readonly _handlers = new Map<Command['type'], StoredCommandHandler>();
     // Commands execute in delivery order. A failed result post does not poison later work.
     private _queue: Promise<void> = Promise.resolve();
+    // Ordinary commands are deliberately reapplied. Capture keeps a bounded completion history because
+    // repeating a pending command would create a different physical sample.
+    private _recentCaptures = new Map<string, CaptureCompletion>();
+    private _retainedBytes = 0;
+    private _closed = false;
+    private _closePromise: Promise<void> | undefined;
 
     /**
      * Creates a processor whose completed results are sent through the supplied transport operation.
      *
      * @param postResult Posts one completed result and resolves when the agent accepts it.
+     * @param retainedByteLimit Target budget used to evict older unacknowledged capture payloads.
      */
-    constructor(postResult: CommandResultSender) {
+    constructor(postResult: CommandResultSender, retainedByteLimit: RetainedByteLimit = () => Infinity) {
         this._postResult = postResult;
+        this._retainedByteLimit = retainedByteLimit;
     }
 
     /**
@@ -158,7 +206,7 @@ export class AgentCommandProcessor {
      * @param type Command type owned by this definition.
      * @param handler Applies one validated command of this type.
      */
-    on<T extends AgentCommandType>(type: T, handler: AgentCommandHandler<T>): void {
+    on<T extends Command['type']>(type: T, handler: AgentCommandHandler<T>): void {
         if (this._handlers.has(type)) {
             throw new Error(`A handler is already registered for command "${type}"`);
         }
@@ -171,6 +219,9 @@ export class AgentCommandProcessor {
      * @param command Command received from the agent stream.
      */
     process(command: Command): Promise<void> {
+        if (this._closed) {
+            return Promise.reject(new Error('Cannot process a command after the processor has closed'));
+        }
         const processing = this._queue.then(() => this.processDelivery(command));
         this._queue = processing.catch(() => undefined);
         return processing;
@@ -190,31 +241,91 @@ export class AgentCommandProcessor {
         }
     }
 
+    /** Stops new command work, drains started work for a bounded time, then releases retained inputs. */
+    close(timeoutMs: number): Promise<void> {
+        if (this._closePromise) return this._closePromise;
+        this._closed = true;
+        this._closePromise = (async () => {
+            await this.waitForIdle(timeoutMs);
+            const retainedInputs: PreparedAgentInput[] = [];
+            for (const completion of this._recentCaptures.values()) {
+                if (completion.preparedInput) {
+                    retainedInputs.push(completion.preparedInput);
+                    completion.preparedInput = undefined;
+                }
+            }
+            this._recentCaptures.clear();
+            this._retainedBytes = 0;
+            await Promise.all(retainedInputs.map(input => this.releaseInput(input)));
+        })();
+        return this._closePromise;
+    }
+
     /** Executes one delivered command, then posts its completed result to the agent. */
     private async processDelivery(command: Command): Promise<void> {
-        const result = await this.executeCommand(command, this._handlers.get(command.type));
-        await this._postResult(result);
+        if (this._closed) {
+            throw new Error('Cannot process a command after the processor has closed');
+        }
+        // Capture owns a physical sample, so its retry and cleanup rules belong in a separate path.
+        if (command.type === 'capture') {
+            await this.processCaptureDelivery(command);
+            return;
+        }
+        if (this._recentCaptures.has(command.id)) {
+            throw new Error(`Command ID "${command.id}" was reused for type "${command.type}"`);
+        }
+
+        // Reapply ordinary commands on every delivery to restore state after agent reconnection.
+        const completion = await this.executeCommand(command, this._handlers.get(command.type));
+        await this._postResult(completion.result);
+    }
+
+    /** Reuses a retained capture outcome on redelivery and releases its sample only after acceptance. */
+    private async processCaptureDelivery(command: Extract<Command, { type: 'capture' }>): Promise<void> {
+        let completion = this._recentCaptures.get(command.id);
+        if (!completion) {
+            // Save the outcome before posting: a lost response must not trigger another physical capture.
+            completion = await this.executeCommand(command, this._handlers.get('capture'));
+            await this.rememberCapture(completion);
+        }
+
+        // A rejected POST leaves the sample retained for redelivery; it does not undo the capture.
+        await this._postResult(completion.result);
+        await this.acknowledgeCapture(completion);
     }
 
     /** Runs the command handler and converts success or failure into a contract result. */
-    private async executeCommand(
-        command: Command,
+    private async executeCommand<T extends Command>(
+        command: T,
         handler: StoredCommandHandler | undefined
-    ): Promise<CommandResult> {
+    ): Promise<{ command: T; result: CommandResult; preparedInput?: PreparedAgentInput }> {
         let result: CommandResult;
+        let preparedInput: PreparedAgentInput | undefined;
         try {
             if (!handler) {
                 throw new Error(`No handler is registered for command "${command.type}"`);
             }
+            const output = await handler(command);
             if (command.type === 'capture') {
-                throw new Error('Capture commands are not supported by this workload');
+                if (!output || !('capture' in output)) {
+                    throw new Error('Capture command handler did not return a sample');
+                }
+                // Successful captures return both wire data and the resource retained for result retries.
+                preparedInput = output.preparedInput;
+                result = {
+                    capture: output.capture,
+                    commandId: command.id,
+                    type: command.type,
+                    success: true,
+                };
             }
-            await handler(command);
-            result = {
-                commandId: command.id,
-                type: command.type,
-                success: true,
-            };
+            else {
+                result = {
+                    commandId: command.id,
+                    type: command.type,
+                    success: true,
+                };
+            }
         }
         catch (ex2) {
             const ex = <Error>ex2;
@@ -225,7 +336,87 @@ export class AgentCommandProcessor {
                 reason: ex.message || ex.toString(),
             };
         }
-        return result;
+        return { command, result, preparedInput };
+    }
+
+    /** Saves a bounded capture history so pending redelivery can reuse the original outcome. */
+    private async rememberCapture(completion: CaptureCompletion): Promise<void> {
+        if (this._closed) {
+            // Shutdown may finish draining before the handler returns; do not retain its late sample.
+            if (completion.preparedInput) {
+                await this.releaseInput(completion.preparedInput);
+                completion.preparedInput = undefined;
+            }
+            return;
+        }
+        // Map insertion order lets us evict the oldest outcomes first.
+        this._recentCaptures.set(completion.command.id, completion);
+        this._retainedBytes += completion.preparedInput?.retainedBytes || 0;
+        await this.enforceRetentionLimit(completion.command.id);
+
+        // Bound compact markers too. Deduplication applies only while an ID remains in this history.
+        while (this._recentCaptures.size > COMPLETED_COMMAND_CACHE_SIZE) {
+            const oldestCommandId = this._recentCaptures.keys().next().value;
+            if (!oldestCommandId) break;
+            const oldest = this._recentCaptures.get(oldestCommandId);
+            if (oldest?.preparedInput) {
+                this._retainedBytes -= oldest.preparedInput.retainedBytes;
+                await this.releaseInput(oldest.preparedInput);
+            }
+            this._recentCaptures.delete(oldestCommandId);
+        }
+    }
+
+    /** Releases an accepted capture payload and keeps a compact marker that prevents recapture. */
+    private async acknowledgeCapture(completion: CaptureCompletion): Promise<void> {
+        const preparedInput = completion.preparedInput;
+        if (!preparedInput) return;
+        // Acceptance transfers the sample to the agent. Keep only a failure marker for stale redelivery.
+        this._retainedBytes -= preparedInput.retainedBytes;
+        // Clear ownership before asynchronous deletion so concurrent shutdown cannot release it twice.
+        completion.preparedInput = undefined;
+        completion.result = this.captureTombstone(
+            completion, 'Capture result was already acknowledged; capture was not repeated');
+        await this.releaseInput(preparedInput);
+    }
+
+    /** Evicts older payloads while preserving bounded markers for pending command redelivery. */
+    private async enforceRetentionLimit(newestCommandId: string): Promise<void> {
+        const limit = this._retainedByteLimit();
+        // Drop older payloads first; preserve their IDs so retries report expiry instead of recapturing.
+        for (const completion of this._recentCaptures.values()) {
+            if (this._retainedBytes <= limit) break;
+            // Allow the newest sample its first delivery even if it alone exceeds the target budget.
+            if (completion.command.id === newestCommandId || !completion.preparedInput) continue;
+            const preparedInput = completion.preparedInput;
+            // Replace the wire result as well as its resource; keeping base64 here would retain the bytes.
+            this._retainedBytes -= preparedInput.retainedBytes;
+            completion.preparedInput = undefined;
+            completion.result = this.captureTombstone(
+                completion, 'Capture result expired before delivery; capture was not repeated');
+            await this.releaseInput(preparedInput);
+        }
+    }
+
+    /** Builds a compact failure for a capture whose sample must no longer be retained. */
+    private captureTombstone(completion: CaptureCompletion, reason: string): CommandResult {
+        return {
+            commandId: completion.command.id,
+            type: 'capture',
+            success: false,
+            reason,
+        };
+    }
+
+    /** Releases retained resources without changing an already-completed command outcome. */
+    private async releaseInput(preparedInput: PreparedAgentInput): Promise<void> {
+        try {
+            await preparedInput.release();
+        }
+        catch (error) {
+            const ex = error instanceof Error ? error : new Error(String(error));
+            console.warn(`Failed to release retained command input: ${ex.message}`);
+        }
     }
 
 }
@@ -241,9 +432,9 @@ export class AgentCommandProcessor {
 export class AgentClient {
     // Command ownership exposed to the runner before the command stream is opened.
     readonly commands: AgentCommandProcessor;
-    // Unix socket created by the device agent for this workload's HTTP API.
+    // Unix socket created by the device agent for this application's HTTP API.
     private readonly _socketPath: string;
-    // Maximum time an ordinary workload API request may wait for the agent to respond.
+    // Maximum time an ordinary application API request may wait for the agent to respond.
     private readonly _requestTimeoutMs: number;
     // Base initial-connect backoff and fixed delay for recovering an established command stream.
     private readonly _reconnectDelayMs: number;
@@ -271,9 +462,9 @@ export class AgentClient {
     private _closed = false;
 
     /**
-     * Creates a client for the HTTP/1.1 workload API exposed on the agent's Unix socket.
+     * Creates a client for the HTTP/1.1 application API exposed on the agent's Unix socket.
      *
-     * @param socketPath Path to the Unix socket created for this workload by the device agent.
+     * @param socketPath Path to the Unix socket created for this application by the device agent.
      * @param options Optional request timeout and reconnection delay overrides.
      */
     constructor(socketPath: string, options: AgentClientOptions = {}) {
@@ -282,13 +473,15 @@ export class AgentClient {
         this._reconnectDelayMs = options.reconnectDelayMs ?? RECONNECT_DELAY_MS;
         this._commandResultRetryTimeoutMs = options.commandResultRetryTimeoutMs ??
             COMMAND_RESULT_RETRY_TIMEOUT_MS;
-        this.commands = new AgentCommandProcessor(result => this.postCommandResult(result));
+        this.commands = new AgentCommandProcessor(
+            result => this.postCommandResult(result),
+            () => (this._session?.inlineSizeLimitBytes || 0) * RETAINED_CAPTURE_COUNT);
         // On policy delivery, apply it before success because subsequent events must use the new value.
         this.commands.on('updateInputPolicy', command => this.applyInputPolicy(command.inputPolicy));
     }
 
     /**
-     * Establishes the workload session by registering the runner, then opens the long-lived command
+     * Establishes the application session by registering the runner, then opens the long-lived command
      * stream through which the agent will deliver future model and input-policy commands.
      *
      * @param registration Complete initial state of the runner before it has loaded a model.
@@ -319,7 +512,7 @@ export class AgentClient {
 
     /**
      * Publishes the runner's current model after activation while preserving the command stream and
-     * workload session.
+     * application session.
      *
      * @param registration Complete state, including the model the runner now serves.
      */
@@ -381,7 +574,8 @@ export class AgentClient {
         event: CompletedInferenceEvent,
         input?: AgentInferenceInput
     ): Promise<EventBatchResponse> {
-        const prepared = input && this.shouldAttachInput() ? await this.prepareInput(input) : undefined;
+        const prepared = input && this.shouldAttachInput() ?
+            await this.prepareInput(input, { purpose: 'inference' }) : undefined;
         const eventWithInput: CompletedInferenceEvent = prepared ? { ...event, input: prepared.input } : event;
         const batch: EventBatch = { events: [ eventWithInput ] };
         // Preserve an event request during graceful shutdown; close() waits for these separately.
@@ -392,17 +586,15 @@ export class AgentClient {
             return parseEventBatchResponse(JSON.parse(response));
         }
         finally {
-            if (prepared?.spoolPath) {
-                await fs.rm(prepared.spoolPath, { force: true });
-            }
+            await prepared?.release();
         }
     }
 
     /**
-     * Stops command delivery, cancels reconnection work and waits for event POSTs that were already
-     * started. The runner calls this after stopping its sensor pipeline so SIGTERM does not lose the
-     * final inferences that were already being sent to the agent. The wait is bounded so an
-     * unavailable agent cannot keep the container alive past its shutdown grace period.
+     * Stops command delivery, releases retained command inputs, cancels reconnection work and waits
+     * for event POSTs that were already started. The runner calls this after stopping its sensor
+     * pipeline so SIGTERM does not lose final inferences or leave capture spool files behind. Waits
+     * are bounded so an unavailable agent cannot keep the container alive past its shutdown grace.
      */
     async close(): Promise<void> {
         this._closed = true;
@@ -421,6 +613,7 @@ export class AgentClient {
         }
         this._rejectInitialConnect?.(new Error('Agent client closed'));
         this._rejectInitialConnect = undefined;
+        await this.commands.close(SHUTDOWN_FLUSH_TIMEOUT_MS);
         let timeout: NodeJS.Timeout | undefined;
         await Promise.race([
             Promise.allSettled(Array.from(this._pendingEventRequests)),
@@ -513,30 +706,41 @@ export class AgentClient {
     }
 
     /**
-     * Converts selected input bytes into the representation allowed by the agent. Inline inputs are
-     * base64 bytes embedded in the event JSON. Spooled inputs are files in the shared directory, with
-     * only the relative filename and byte count included in the event. If no spool is available for
-     * an oversized input, or writing the spool fails, the event is sent without that input.
+     * Encodes sensor bytes using the current session's inline limit and shared spool directory.
+     * Inference input is optional: preparation failure omits it so the prediction can still be sent.
+     * Capture input is required: preparation failure rejects the command rather than returning success
+     * without a sample. The caller owns the returned resource and must release it after use.
      *
-     * @param input Format and bytes of the input consumed by the model.
+     * @param input JPEG or WAV bytes to send to the agent.
+     * @param options Consumer of the input, which determines whether preparation failure is fatal.
      */
-    private async prepareInput(input: AgentInferenceInput): Promise<{
-        input: Input,
-        spoolPath?: string,
-    } | undefined> {
+    private prepareInput(
+        input: AgentInferenceInput, options: { purpose: 'capture' }
+    ): Promise<PreparedAgentInput>;
+    private prepareInput(
+        input: AgentInferenceInput, options: { purpose: 'inference' }
+    ): Promise<PreparedAgentInput | undefined>;
+    private async prepareInput(
+        input: AgentInferenceInput, options: { purpose: 'capture' | 'inference' }
+    ): Promise<PreparedAgentInput | undefined> {
         if (!this._session) {
+            if (options.purpose === 'capture') throw new Error('Cannot prepare capture input before agent registration');
             return undefined;
         }
         if (input.buffer.length <= this._session.inlineSizeLimitBytes) {
+            const bufferBase64 = input.buffer.toString('base64');
             return {
                 input: {
                     location: 'inline',
                     type: input.type,
-                    bufferBase64: input.buffer.toString('base64'),
+                    bufferBase64,
                 },
+                retainedBytes: Buffer.byteLength(bufferBase64),
+                release: () => Promise.resolve(),
             };
         }
         if (!this._session.spoolDirectory) {
+            if (options.purpose === 'capture') throw new Error('Capture exceeds the inline limit and no agent spool is available');
             return undefined;
         }
 
@@ -549,8 +753,10 @@ export class AgentClient {
             // The inference result is still useful when an optional input cannot be spooled. Remove
             // any partial file without allowing cleanup failure to discard the event as well.
             await fs.rm(spoolPath, { force: true }).catch(() => undefined);
+            if (options.purpose === 'capture') throw new Error('Failed to write capture input to the agent spool');
             return undefined;
         }
+        let released = false;
         return {
             input: {
                 location: 'spool',
@@ -558,7 +764,31 @@ export class AgentClient {
                 path: filename,
                 sizeBytes: input.buffer.length,
             },
-            spoolPath,
+            retainedBytes: input.buffer.length,
+            release: async () => {
+                if (released) return;
+                released = true;
+                await fs.rm(spoolPath, { force: true });
+            },
+        };
+    }
+
+    /**
+     * Packages a live sensor capture as a command-result sample and transfers input ownership to the
+     * command processor. The processor retains it across failed result POSTs and releases it after
+     * acknowledgement, eviction or shutdown. Rejects if the required bytes cannot be prepared.
+     *
+     * @param input Captured JPEG or WAV bytes.
+     * @param metadata Sensor name, capture time and dimensions or audio properties of these bytes.
+     */
+    async prepareCapture(input: AgentInferenceInput, metadata: CaptureMetadata): Promise<PreparedCaptureSample> {
+        const preparedInput = await this.prepareInput(input, { purpose: 'capture' });
+        return {
+            capture: {
+                input: preparedInput.input,
+                metadata,
+            },
+            preparedInput,
         };
     }
 
@@ -692,8 +922,8 @@ export class AgentClient {
      * Sends one JSON request over the agent's Unix socket and returns its response body, rejecting
      * non-successful HTTP responses so registration cannot continue with invalid agent state.
      *
-     * @param method HTTP method for the workload API operation.
-     * @param path Versioned workload API path on the agent.
+     * @param method HTTP method for the application API operation.
+     * @param path Versioned application API path on the agent.
      * @param body Serialized JSON request body.
      * @param abortOnClose Whether shutdown should cancel this request instead of waiting for it.
      */
