@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { EventEmitter } from 'tsee';
-import { agentEngineName, agentRunnerMode } from '../cli/linux/agent-runner-metadata';
+import { agentEngineName, agentRunnerMode, previewServerEnabled } from '../cli/linux/agent-runner-metadata';
 import { AudioClassifier } from '../library/classifier/audio-classifier';
 import {
     LinuxImpulseRunner,
@@ -29,6 +29,15 @@ describe('agent runner configuration', () => {
     it('reports the mode from a loaded model when no input was selected explicitly', () => {
         const model = <ModelInformation>{ modelParameters: { sensorType: 'camera' } };
         assert.strictEqual(agentRunnerMode(undefined, undefined, undefined, model), 'camera');
+    });
+
+    // The preview interface is unreachable and unauthenticated in agent mode, so it starts only on request.
+    it('serves the preview interface in agent mode only when asked', () => {
+        assert.strictEqual(previewServerEnabled(false, false, undefined), true);
+        assert.strictEqual(previewServerEnabled(true, false, undefined), false);
+        assert.strictEqual(previewServerEnabled(true, true, undefined), true);
+        assert.strictEqual(previewServerEnabled(true, false, '1'), true);
+        assert.strictEqual(previewServerEnabled(true, false, 'true'), false);
     });
 
     // Registration uses stable names and must tolerate an engine introduced after this CLI version.

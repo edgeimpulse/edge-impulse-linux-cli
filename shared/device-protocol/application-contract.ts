@@ -13,6 +13,7 @@
  * | Post events | `POST /v1/events` | `EventBatch` | `EventBatchResponse` |
  * | Command stream | `GET /v1/commands` | none | server-sent events, each `data:` a `Command` |
  * | Command result | `POST /v1/commands/{commandId}/result` | `CommandResult` | empty |
+ * | Preview sample | `POST /v1/preview` | `PreviewSample` | `PreviewAck` |
  *
  * The application registers before using the other operations. An inference
  * application initially reports no models, then replaces that registration
@@ -26,10 +27,25 @@
  * ID idempotently. If the agent stops waiting for a command, a later result may
  * be refused with `unknown_command`.
  *
+ * A live preview starts with the `startPreview` command, which the agent sends
+ * only to an application that declared the `preview` capability. The application
+ * then posts the preview's samples, one per request, and the answer to each one
+ * is the lease: the application stops the preview when an answer says
+ * `active: false`, or when `timeoutMs` passes without an answer that says
+ * `active: true`. There is no stop command.
+ *
  * A refused request answers an HTTP error status with a `ContractError`.
  */
 export type ApplicationContractMessage =
-    RegisterRequest | RegisterResponse | EventBatch | EventBatchResponse | Command | CommandResult | ContractError;
+    | RegisterRequest
+    | RegisterResponse
+    | EventBatch
+    | EventBatchResponse
+    | Command
+    | CommandResult
+    | ContractError
+    | PreviewSample
+    | PreviewAck;
 /**
  * Application to agent: `POST /v1/register`. The application must register before using the other
  * operations on its socket. Registration replaces the state for that application session rather than
@@ -140,7 +156,10 @@ export type FailedInferenceEvent = InferenceEventCommon & {
     results?: ModelResult[];
 };
 /**
- * The input, when the input policy selected it.
+ * The input, when the input policy selected it. An image is what the model received, so the
+ * coordinates of the results are in its pixels. An application that attaches another image of the same
+ * frame sets `resized` and `resizeMode` in each image model's result, with `originalWidth` and
+ * `originalHeight` the size of the attached image.
  */
 export type Input = InlineInput | SpoolInput;
 /**
@@ -200,7 +219,7 @@ export type CompletedInferenceEvent = InferenceEventCommon & {
 /**
  * Agent to application: one event of the command stream.
  */
-export type Command = ActivateBundleCommand | UpdateInputPolicyCommand | CaptureCommand;
+export type Command = ActivateBundleCommand | UpdateInputPolicyCommand | CaptureCommand | StartPreviewCommand;
 /**
  * Activate a staged inference bundle. Needs the `activateBundle` capability. The application reads
  * manifest.json from the bundle directory and registers again with the models it now serves.
@@ -241,6 +260,23 @@ export type CaptureCommand = CommandCommon & {
     type: 'capture';
 };
 /**
+ * Start a live preview of a sensor. Needs the `preview` capability. The command's ID is the preview's
+ * ID. The application answers once it is ready to post samples, without waiting for the first one. The
+ * agent waits up to 5 seconds for the command result after sending the command, including the time to
+ * post the result. If that deadline expires, it ends the preview and may refuse a later result with
+ * `unknown_command`. This startup deadline is separate from the sample lease in `timeoutMs`. The same
+ * ID again while that preview runs changes nothing; another ID for the same sensor ends the running
+ * preview and starts this one. There is no stop command: the answer to each `PreviewSample` is the
+ * lease.
+ */
+export type StartPreviewCommand = CommandCommon & {
+    preview: PreviewRequest;
+    /**
+     * Always `startPreview`.
+     */
+    type: 'startPreview';
+};
+/**
  * Application to agent: `POST /v1/commands/{commandId}/result`. The result names the command's type
  * and whether it succeeded, so a successful `capture` must carry its sample, and the agent checks the
  * type against the command it sent. If the agent no longer waits for the command, it may answer
@@ -250,7 +286,7 @@ export type CommandResult = CommandFailure | CaptureResult | CommandSuccess;
 /**
  * The command's type.
  */
-export type CommandType = 'activateBundle' | 'updateInputPolicy' | 'capture';
+export type CommandType = 'activateBundle' | 'updateInputPolicy' | 'capture' | 'startPreview';
 /**
  * The sample's bytes, inline or in the spool.
  */
@@ -262,12 +298,54 @@ export type CaptureResultType = 'capture';
 /**
  * The command's type.
  */
-export type PlainCommandType = 'activateBundle' | 'updateInputPolicy';
+export type PlainCommandType = 'activateBundle' | 'updateInputPolicy' | 'startPreview';
 /**
  * Why the request was refused.
  */
 export type ContractErrorCode =
     'invalid_request' | 'not_registered' | 'rate_limited' | 'unknown_command' | 'unsupported_version' | 'internal';
+/**
+ * Application to agent: `POST /v1/preview`. One sample of a running preview, at most `maxPerSecond` of
+ * them. Samples are not events: the agent shows the latest one and keeps none. The application never
+ * queues samples, skips one while a post of the same preview is in progress, and does not retry a
+ * refused one. A refused or failed post neither renews the lease nor stops the preview. The agent
+ * refuses a sample with `not_registered` (`409`); with `invalid_request` (`400`) when the body is not
+ * valid, the application did not declare the `preview` capability, or a frame is over `maxFrameBytes`
+ * or not a JPEG; and with `rate_limited` (`429`) over `maxPerSecond`. The agent answers `active:
+ * false` to a sample of a preview it has ended.
+ */
+export type PreviewSample = PreviewFrame | PreviewLevel;
+/**
+ * A camera frame.
+ */
+export type PreviewFrame = PreviewSampleCommon & {
+    /**
+     * The frame as a JPEG, in standard base64, at most `maxWidth` by `maxHeight` pixels and
+     * `maxFrameBytes` bytes. Always inline, never in the spool.
+     */
+    jpegBase64: string;
+    /**
+     * Always `frame`.
+     */
+    type: 'frame';
+};
+/**
+ * A microphone level over the audio since the previous sample.
+ */
+export type PreviewLevel = PreviewSampleCommon & {
+    /**
+     * The peak level in dB relative to full scale, from -120 to 0.
+     */
+    peakDbfs: number;
+    /**
+     * The RMS level in dB relative to full scale, from -120 (silence) to 0.
+     */
+    rmsDbfs: number;
+    /**
+     * Always `level`.
+     */
+    type: 'level';
+};
 
 /**
  * The fields every variant of `RegisterRequest` shares.
@@ -767,6 +845,35 @@ export interface CaptureRequest {
     sensor: string;
 }
 /**
+ * What to preview and within which limits.
+ */
+export interface PreviewRequest {
+    /**
+     * The largest JPEG to post, in bytes, for a camera. A larger frame is skipped.
+     */
+    maxFrameBytes?: number;
+    /**
+     * The tallest frame to post, in pixels, for a camera. A taller source is scaled down.
+     */
+    maxHeight?: number;
+    /**
+     * The most samples to post per second.
+     */
+    maxPerSecond: number;
+    /**
+     * The widest frame to post, in pixels, for a camera. A wider source is scaled down.
+     */
+    maxWidth?: number;
+    /**
+     * The sensor's name from the registration.
+     */
+    sensor: string;
+    /**
+     * The application stops the preview if it receives no `active: true` response within this time.
+     */
+    timeoutMs: number;
+}
+/**
  * The command failed.
  */
 export interface CommandFailure {
@@ -864,4 +971,27 @@ export interface ContractError {
      * Detail for a person reading the application's log.
      */
     message: string;
+}
+/**
+ * The fields every variant of `PreviewSample` shares.
+ */
+export interface PreviewSampleCommon {
+    /**
+     * When the sample was taken.
+     */
+    capturedAt: number;
+    /**
+     * The ID of the `startPreview` command that started the preview.
+     */
+    previewId: string;
+}
+/**
+ * Agent to application: the answer to a `PreviewSample`. It is the preview's lease.
+ */
+export interface PreviewAck {
+    /**
+     * Whether the agent still wants this preview. On `false` the application stops it at once. An answer
+     * with `true` renews the lease of `timeoutMs`.
+     */
+    active: boolean;
 }

@@ -14,4 +14,6 @@ export declare const validateEventBatch: (value: unknown) => boolean;
 export declare const validateEventBatchResponse: (value: unknown) => boolean;
 export declare const validateCommand: (value: unknown) => boolean;
 export declare const validateCommandResult: (value: unknown) => boolean;
+export declare const validatePreviewSample: (value: unknown) => boolean;
+export declare const validatePreviewAck: (value: unknown) => boolean;
 export declare const validateInferenceBundleManifest: (value: unknown) => boolean;

@@ -92,6 +92,8 @@ Pass `--agent <socket>` or set `EI_AGENT_SOCKET` to enable this mode. The runner
 
 The agent stages each model as a directory containing `manifest.json` and one executable `.eim`, then mounts that directory read-only into the runner container. Initial activation validates and starts the model, builds its sensor or HTTP pipeline, and registers it before reporting success. A different bundle is statically validated while the current model remains available; the runner then exits without completing the command so its supervisor can restart it and the agent can replay the activation in a fresh process. A replacement rejected by static checks leaves the current model running. A bundle that passes those checks but fails while its `.eim` or input pipeline starts is recovered by the agent rolling back and restarting the previous bundle.
 
+In agent mode the runner does not serve its preview HTTP interface: the agent's HMI shows the application's inference live. Pass `--preview-server` or set `EI_RUNNER_PREVIEW_SERVER=1` to turn it on for debugging, on `--preview-host`/`HOST` and `--preview-port`/`PORT`. The interface has no authentication and lets any client change the model's thresholds, and a container without a network cannot be reached on it.
+
 Agent-specific environment variables are ignored unless agent mode is enabled. `--agent` takes precedence over `EI_AGENT_SOCKET`; after agent mode is enabled, each other command-line option takes precedence over its corresponding environment variable.
 
 | Variable | Purpose and accepted values | Corresponding command-line option and precedence |
@@ -107,6 +109,7 @@ Agent-specific environment variables are ignored unless agent mode is enabled. `
 | `EI_MICROPHONE` | Microphone name or device path for streaming mode. It avoids an interactive device-selection prompt. | `--microphone <microphone>` takes precedence. |
 | `EI_RUNNER_IMAGE` | Container image reference reported to the agent as runner metadata. Defaults to `edge-impulse-linux-runner:<package-version>`. | No command-line equivalent. |
 | `EI_RUNNER_IMAGE_DIGEST` | Optional immutable container image digest reported to the agent as runner metadata. | No command-line equivalent. |
+| `EI_RUNNER_PREVIEW_SERVER` | `1` serves the preview HTTP interface, which is off in agent mode. Other values leave it off. | `--preview-server` takes precedence. |
 
 #### Greengrass integration
 

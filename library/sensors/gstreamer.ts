@@ -30,7 +30,7 @@ type GStreamerDevice = {
     videoSource: string,
 };
 
-export type GStreamerMode = 'default' | 'rpi' | 'rpi5' | 'qualcomm-rb3gen2' | 'qualcomm-yupik' | 'unoq';
+export type GStreamerMode = 'default' | 'rpi' | 'rpi5' | 'qualcomm-rb3gen2' | 'jmo-perspec-1' | 'unoq';
 
 const CUSTOM_GST_LAUNCH_COMMAND = 'custom-gst-launch-command';
 const DEFAULT_GST_VIDEO_SOURCE = 'v4l2src';
@@ -200,8 +200,11 @@ export class GStreamer extends EventEmitter<{
             (firmwareModel.indexOf('RB3gen2') > -1 && osRelease.indexOf('ID=qcom-distro') > -1 && osRelease.indexOf('VERSION_ID=2.') > -1)) {
             this._mode = 'qualcomm-rb3gen2';
         }
-        else if (firmwareModel.indexOf('Qualcomm') > -1 && firmwareModel.indexOf('Yupik') > -1) {
-            this._mode = 'qualcomm-yupik';
+        // early PERSPEC-1: "Qualcomm Technologies, Inc. Yupik IOT IDP + PM7250B" 
+        // PERSPEC-1: "Qualcomm Technologies, Inc. qcm6490-addons IDP platform JMO"
+        else if ((firmwareModel.indexOf('Qualcomm') > -1 && firmwareModel.indexOf('Yupik') > -1) ||
+                 (firmwareModel.indexOf('Qualcomm') > -1 && firmwareModel.indexOf('IDP platform JMO') > -1)) {
+            this._mode = 'jmo-perspec-1';
         }
         else if (firmwareModel.indexOf('Raspberry Pi') > -1) {
             if (((osRelease.indexOf('bullseye') > -1) || (osRelease.indexOf('bookworm') > -1))
@@ -851,7 +854,7 @@ export class GStreamer extends EventEmitter<{
                 cap.width += 8;
             }
         }
-        else if ((this._mode === 'qualcomm-rb3gen2') || (this._mode === 'qualcomm-yupik')) {
+        else if ((this._mode === 'qualcomm-rb3gen2') || (this._mode === 'jmo-perspec-1')) {
             videoSource = [
                 ...(this._profiling ? [ '-m' ] : []),
                 'qtiqmmfsrc',
@@ -1377,7 +1380,7 @@ export class GStreamer extends EventEmitter<{
         if (this._mode === 'qualcomm-rb3gen2') {
             devices = devices.concat(await this.listQtiqmmsrcDevices());
         }
-        else if (this._mode === 'qualcomm-yupik') {
+        else if (this._mode === 'jmo-perspec-1') {
             devices = devices.concat(await this.listQtiqmmsrcOnYupikDevices());
         }
 

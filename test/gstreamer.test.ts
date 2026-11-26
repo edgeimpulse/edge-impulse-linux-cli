@@ -2154,7 +2154,7 @@ Freeing pipeline ...
             const devices = await testGetDevices({
                 gstDeviceMonitor: () => gstMonitorOutput,
                 gstInspect: () => gstInspectOutput,
-                modeOverride: 'qualcomm-yupik'
+                modeOverride: 'jmo-perspec-1'
             });
             assert.equal(devices.length, 3);
             assert.equal(devices[0].id, '0');

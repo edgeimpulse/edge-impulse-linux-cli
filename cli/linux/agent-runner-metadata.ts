@@ -35,6 +35,18 @@ export function agentEngineName(engine: number): string {
 }
 
 /**
+ * Whether the runner serves its preview HTTP interface: always outside agent mode, and in agent mode
+ * only when asked, for debugging.
+ *
+ * @param agentMode Whether the runner is managed by the agent.
+ * @param option Whether `--preview-server` was passed.
+ * @param env The value of `EI_RUNNER_PREVIEW_SERVER`, read only in agent mode.
+ */
+export function previewServerEnabled(agentMode: boolean, option: boolean, env: string | undefined): boolean {
+    return !agentMode || option || env === '1';
+}
+
+/**
  * Determines the application mode for initial registration from explicit runner configuration, then
  * falls back to loaded-model metadata once it is available.
  *

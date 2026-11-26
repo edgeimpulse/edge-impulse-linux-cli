@@ -38,7 +38,7 @@ import { ChildProcess } from 'node:child_process';
 import type { AgentClient, AgentInferenceInput } from '../../cli-common/agent-client';
 import { CompletedInferenceEvent, InferenceRunnerRegistration, ModelRegistration } from '../../shared/device-protocol/application-contract';
 import { BundleModel } from '../../shared/device-protocol/inference-bundle-manifest';
-import { agentRunnerMode } from './agent-runner-metadata';
+import { agentRunnerMode, previewServerEnabled } from './agent-runner-metadata';
 import { buildMonoPcm16WavFile } from './audio-utils';
 import type { PreparedAgentBundle } from './agent-bundle';
 import type { AgentBundleLifecycle } from './agent-bundle-lifecycle';
@@ -105,6 +105,8 @@ program
     .option('--preview-host <host>', 'Host to listen on for the preview HTTP interface (default: 0.0.0.0) (ignored when running with --run-http-server). ' +
         'Alternatively you can use the HOST environmental variable. If both are set then `--preview-host` takes precedence.')
     .option('--preview-original-resolution', 'If set, does not resize the preview image to the impulse resolution')
+    .option('--preview-server', 'Serve the preview HTTP interface in agent mode, where it is off by default, for debugging. ' +
+        'Agent mode also reads EI_RUNNER_PREVIEW_SERVER=1')
     .option('--monitor', 'Enable model monitoring', false)
     .option('--monitor-max-storage-size <size>', 'The maximum storage size to be used for model monitoring, in MB. Defaults to 250.')
     .option('--monitor-summary-interval-ms <ms>', `Preferred summary interval in milliseconds (minimum ${MIN_MONITOR_SUMMARY_INTERVAL_MS}). Adapts to active alert rules; without cadence negotiation the effective interval is at least ${DEFAULT_MONITOR_SUMMARY_INTERVAL_MS}.`)
@@ -203,6 +205,8 @@ else if (process.env.HOST) {
 const gstSourceArgv = <string | undefined>program.gstSource;
 
 let previewOriginalResolutionArgv: boolean = !!program.previewOriginalResolution;
+const previewServerArgv = previewServerEnabled(!!agentSocketArgv, !!program.previewServer,
+    agentSocketArgv ? process.env.EI_RUNNER_PREVIEW_SERVER : undefined);
 const enableVideo = (process.env.PROPHESEE_CAM === '1') || (process.env.ENABLE_VIDEO === '1');
 const dontPrintPredictionsArgv: boolean = !!program.dontPrintPredictions;
 const thresholdsArgv = <string | undefined>program.thresholds;
@@ -309,6 +313,25 @@ const onSignal = async () => {
 process.on('SIGHUP', onSignal);
 process.on('SIGINT', onSignal);
 process.on('SIGTERM', onSignal);
+
+async function startPreviewServer(opts: Parameters<typeof startWebServer>[0]) {
+    try {
+        await startWebServer(opts);
+    }
+    catch (ex2) {
+        const ex = <Error>ex2;
+        if ((ex.message || ex.toString()).indexOf('EADDRINUSE') > -1) {
+            console.log('');
+            console.log(`EADDRINUSE: Could not listen on ${previewHostArgv}:${previewPortArgv}`);
+            console.log(`Most likely another application (for example, another instance of edge-impulse-linux-runner) is already listening on this port. You can select another port via --preview-port <port>, for example:`);
+            console.log(``);
+            console.log(`    edge-impulse-linux-runner --preview-port ${previewPortArgv + 1}`);
+            console.log(``);
+            throw ex;
+        }
+        throw ex;
+    }
+}
 
 async function ensureVlmServer(opts: { serverPath: string,
                                        modelFolder: string,
@@ -1336,8 +1359,8 @@ async function ensureVlmServer(opts: { serverPath: string,
                 agentCapture?.useMicrophone(audioClassifier);
             }
 
-            try {
-                await startWebServer({
+            if (previewServerArgv) {
+                await startPreviewServer({
                     type: 'audio',
                     model: model,
                     audioClassifier: audioClassifier,
@@ -1345,27 +1368,17 @@ async function ensureVlmServer(opts: { serverPath: string,
                     host: previewHostArgv,
                     port: previewPortArgv,
                 });
+                console.log('');
+                console.log('Want to see live classification in your browser? ' +
+                    'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
+                console.log('');
+                console.log('Want to use predictions in your application? ' +
+                    'Open a websocket to ws://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
+                console.log('');
             }
-            catch (ex2) {
-                const ex = <Error>ex2;
-                if ((ex.message || ex.toString()).indexOf('EADDRINUSE') > -1) {
-                    console.log('');
-                    console.log(`EADDRINUSE: Could not listen on ${previewHostArgv}:${previewPortArgv}`);
-                    console.log(`Most likely another application (for example, another instance of edge-impulse-linux-runner) is already listening on this port. You can select another port via --preview-port <port>, for example:`);
-                    console.log(``);
-                    console.log(`    edge-impulse-linux-runner --preview-port ${previewPortArgv + 1}`);
-                    console.log(``);
-                    throw ex;
-                }
-                throw ex;
+            else {
+                console.log(RUNNER_PREFIX, 'Preview HTTP interface is off in agent mode (enable it with --preview-server)');
             }
-            console.log('');
-            console.log('Want to see live classification in your browser? ' +
-                'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
-            console.log('');
-            console.log('Want to use predictions in your application? ' +
-                'Open a websocket to ws://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
-            console.log('');
 
             if (model.modelParameters.has_performance_calibration) {
                  console.log(`Performance calibration is configured for your project. If no event is detected, all values are 0.`);
@@ -1523,8 +1536,8 @@ async function ensureVlmServer(opts: { serverPath: string,
                 await agentCapture?.useCamera(imageClassifier);
             }
 
-            try {
-                await startWebServer({
+            if (previewServerArgv) {
+                await startPreviewServer({
                     type: 'camera',
                     model: model,
                     camera: camera,
@@ -1536,27 +1549,17 @@ async function ensureVlmServer(opts: { serverPath: string,
                         'original' :
                         'scaled-using-impulse',
                 });
+                console.log('');
+                console.log('Want to see a feed of the camera and live classification in your browser? ' +
+                    'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
+                console.log('');
+                console.log('Want to use predictions in your application? ' +
+                    'Open a websocket to ws://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
+                console.log('');
             }
-            catch (ex2) {
-                const ex = <Error>ex2;
-                if ((ex.message || ex.toString()).indexOf('EADDRINUSE') > -1) {
-                    console.log('');
-                    console.log(`EADDRINUSE: Could not listen on ${previewHostArgv}:${previewPortArgv}`);
-                    console.log(`Most likely another application (for example, another instance of edge-impulse-linux-runner) is already listening on this port. You can select another port via --preview-port <port>, for example:`);
-                    console.log(``);
-                    console.log(`    edge-impulse-linux-runner --preview-port ${previewPortArgv + 1}`);
-                    console.log(``);
-                    throw ex;
-                }
-                throw ex;
+            else {
+                console.log(RUNNER_PREFIX, 'Preview HTTP interface is off in agent mode (enable it with --preview-server)');
             }
-            console.log('');
-            console.log('Want to see a feed of the camera and live classification in your browser? ' +
-                'Go to http://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
-            console.log('');
-            console.log('Want to use predictions in your application? ' +
-                'Open a websocket to ws://' + (ips.length > 0 ? ips[0].address : 'localhost') + ':' + previewPortArgv);
-            console.log('');
 
             imageClassifier.on('result', async (ev, timeMs, imgAsJpg) => {
                 // AWS Integration

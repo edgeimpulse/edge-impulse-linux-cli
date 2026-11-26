@@ -27,4 +27,6 @@ export const validateEventBatch: Validator<import('./application-contract').Even
 export const validateEventBatchResponse: Validator<import('./application-contract').EventBatchResponse> = implementation.validateEventBatchResponse as unknown as Validator<import('./application-contract').EventBatchResponse>;
 export const validateCommand: Validator<import('./application-contract').Command> = implementation.validateCommand as unknown as Validator<import('./application-contract').Command>;
 export const validateCommandResult: Validator<import('./application-contract').CommandResult> = implementation.validateCommandResult as unknown as Validator<import('./application-contract').CommandResult>;
+export const validatePreviewSample: Validator<import('./application-contract').PreviewSample> = implementation.validatePreviewSample as unknown as Validator<import('./application-contract').PreviewSample>;
+export const validatePreviewAck: Validator<import('./application-contract').PreviewAck> = implementation.validatePreviewAck as unknown as Validator<import('./application-contract').PreviewAck>;
 export const validateInferenceBundleManifest: Validator<import('./inference-bundle-manifest').InferenceBundleManifest> = implementation.validateInferenceBundleManifest as unknown as Validator<import('./inference-bundle-manifest').InferenceBundleManifest>;

@@ -511,11 +511,10 @@ export function startWebServer(opts: ({
 
         imgClassifier.on('result', (result, timeMs, imgAsJpg) => {
 
-            filterClassificationResultsOnMinScore(
-                result.result.classification || {},
-                getClassificationMinScore(model.modelParameters.thresholds || []));
-
             let resultsMapped = structuredClone(result.result);
+            filterClassificationResultsOnMinScore(
+                resultsMapped.classification || {},
+                getClassificationMinScore(model.modelParameters.thresholds || []));
 
             // result is scaled to the impulse; rescale to original cam resolution if required
             if (opts.streamResolution === 'original' && cameraResolution) {
