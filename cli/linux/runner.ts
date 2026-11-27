@@ -7,7 +7,9 @@ import { AudioClassifier } from '../../library/classifier/audio-classifier';
 import { ImageClassifier } from '../../library/classifier/image-classifier';
 import inquirer from 'inquirer';
 import { initCliApp, setupCliApp } from "../../cli-common/init-cli-app";
-import { RunnerDownloader, RunnerModelPath, downloadFile, downloadModel, untarFile } from './runner-downloader';
+import {
+    RunnerDownloader, RunnerModelPath, chooseModelFileUpdateVariant, downloadFile, downloadModel, untarFile,
+} from './runner-downloader';
 import program from 'commander';
 import { ips } from '../../cli-common/get-ips';
 import { RemoteMgmt } from '../../cli-common/remote-mgmt-service';
@@ -1139,9 +1141,9 @@ async function ensureVlmServer(opts: { serverPath: string,
         }
 
         remoteMgmt?.on('newModelAvailable', async ( ) => {
-            if (!initializedProjectState) return;
-
             console.log(RUNNER_PREFIX, 'New model available, downloading...');
+            // Until inference pauses, a failed update leaves the current model serving.
+            let replacingModel = false;
             try {
                 if (!projectId) {
                     throw new Error('projectId is null');
@@ -1178,16 +1180,39 @@ async function ensureVlmServer(opts: { serverPath: string,
                     }
                 }
 
+                let deploymentType: string;
+                let variant: models.KerasModelVariantEnum;
+                if (initializedProjectState) {
+                    ({ deploymentType, variant } = initializedProjectState);
+                }
+                else {
+                    // Started with --model-file, so no target or variant was chosen at startup.
+                    deploymentType = await RunnerDownloader.getDeploymentType(forceTargetArgv);
+                    variant = await chooseModelFileUpdateVariant({
+                        api: config.api,
+                        projectId: projectId,
+                        impulseId: impulseId,
+                        deploymentType: deploymentType,
+                        forceVariant: forceVariantArgv,
+                        quantized: quantizedArgv,
+                        savedVariant: await configFactory.getRunnerModelVariantForProjectId(projectId),
+                    });
+                    console.log(RUNNER_PREFIX, `Updating to project ${projectId}, impulse ${impulseId}, ` +
+                        `variant "${variant}" for "${deploymentType}" ` +
+                        '(choose with --impulse-id, --force-variant or --force-target)');
+                }
+
                 ({ modelFile, modelPath } = await downloadModel({
                     projectId: projectId,
                     impulseId: impulseId,
                     api: config.api,
-                    deploymentType: initializedProjectState.deploymentType,
-                    variant: initializedProjectState.variant,
+                    deploymentType: deploymentType,
+                    variant: variant,
                     forcedEngine: forceEngineArgv
                 }));
 
                 // pause features streaming
+                replacingModel = true;
                 imageClassifier?.pause();
                 audioClassifier?.pause();
                 await modelMonitor?.flushMetrics();
@@ -1224,7 +1249,11 @@ async function ensureVlmServer(opts: { serverPath: string,
             }
             catch (ex) {
                 let exErr = <Error>ex;
-                await remoteMgmt?.sendModelUpdateStatus(model, false);
+                await remoteMgmt?.sendModelUpdateStatus(model, false, exErr.message);
+                if (!replacingModel) {
+                    console.error(RUNNER_PREFIX, 'Model update failed, keeping the current model:', exErr.message);
+                    return;
+                }
                 throw Error('Model update failed: ' + exErr.message);
             }
         });

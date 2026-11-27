@@ -350,6 +350,56 @@ export async function downloadModel(opts: {
     return { modelFile, modelPath };
 }
 
+/**
+ * Picks the variant a runner started with --model-file downloads when Studio requests a model
+ * update. The running file does not record its variant and an update cannot prompt, so the
+ * startup flags win, then the variant this host saved for the project, then the project's
+ * reference variant. Every choice must be one the deployment target supports.
+ */
+export async function chooseModelFileUpdateVariant(opts: {
+    api: {
+        deployment: Pick<EdgeImpulseApi['deployment'], 'listDeploymentTargetsForProjectDataSources'>,
+        projects: Pick<EdgeImpulseApi['projects'], 'getModelVariants'>,
+    },
+    projectId: number,
+    impulseId: number,
+    deploymentType: string,
+    forceVariant: models.KerasModelVariantEnum | undefined,
+    quantized: boolean,
+    savedVariant: models.KerasModelVariantEnum | null,
+}): Promise<models.KerasModelVariantEnum> {
+    const { api, projectId, impulseId, deploymentType } = opts;
+
+    const deployment = (await api.deployment.listDeploymentTargetsForProjectDataSources(projectId, {
+        impulseId: impulseId,
+    })).targets.find(x => x.format === deploymentType);
+    if (!deployment) {
+        throw new Error(`Failed to find deployment target "${deploymentType}"`);
+    }
+
+    const requested = opts.forceVariant ?? (opts.quantized ? 'int8' : undefined);
+    if (requested) {
+        const variantInfo = deployment.modelVariants.find(x => x.variant === requested);
+        if (!variantInfo || !variantInfo.supported) {
+            const flag = opts.forceVariant ? '--force-variant' : '--quantized';
+            throw new Error(`Variant "${requested}" (via ${flag}) is not supported on "${deploymentType}"` +
+                (variantInfo?.hint ? `: ${variantInfo.hint}` : ''));
+        }
+        return requested;
+    }
+
+    const supported = (await api.projects.getModelVariants(projectId, { impulseId: impulseId })).modelVariants
+        .filter(v => models.KerasModelVariantEnumValues.includes(v.variant))
+        .filter(v => deployment.modelVariants.some(x => x.variant === v.variant && x.supported));
+    const choice = supported.find(v => v.variant === opts.savedVariant) ??
+        supported.find(v => v.isReferenceVariant) ??
+        supported[0];
+    if (!choice) {
+        throw new Error(`No available model variants can be deployed on "${deploymentType}"`);
+    }
+    return choice.variant;
+}
+
 export async function downloadFile(url: string, outputPath: string) {
     console.log(RUNNER_PREFIX, `Downloading from ${url} to ${outputPath}...`);
 
